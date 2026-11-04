@@ -4,6 +4,8 @@
   "main": "src/index.js",
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
+  // Dominio propio (descomentar cuando cada-lado.com esté en Cloudflare):
+  // "routes": [{ "pattern": "chessort.cada-lado.com", "custom_domain": true }],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
