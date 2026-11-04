@@ -14,9 +14,9 @@ export function newGameId(len = 8) {
   return Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join('');
 }
 
-export function json(data, status = 200) {
+export function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...extraHeaders },
   });
 }

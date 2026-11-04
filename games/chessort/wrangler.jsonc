@@ -4,8 +4,9 @@
   "main": "src/index.js",
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
-  // Dominio propio (descomentar cuando cada-lado.com esté en Cloudflare):
-  // "routes": [{ "pattern": "chessort.cada-lado.com", "custom_domain": true }],
+  // El "name" es interno: no lo cambies, Cloudflare publica este Worker con ese nombre.
+  // Dominio propio (descomentar cuando cadalado.com esté en la cuenta de Cloudflare):
+  // "routes": [{ "pattern": "ajedrez.cadalado.com", "custom_domain": true }],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

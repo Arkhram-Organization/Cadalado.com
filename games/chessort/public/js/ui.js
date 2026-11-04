@@ -38,6 +38,7 @@ const ICONS = {
   blitz: '<path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="currentColor" stroke="none"/>',
   rapid: '<circle cx="12" cy="13" r="8" fill="currentColor" stroke="none"/><path d="M12 9v4l2.5 2" stroke="#262421"/><path d="M10 2h4"/>',
   unlimited: '<path d="M7 9a3 3 0 100 6c2.5 0 7.5-6 10-6a3 3 0 110 6c-2.5 0-7.5-6-10-6z"/>',
+  grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
   play: '<path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
 };

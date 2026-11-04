@@ -28,9 +28,9 @@ export default {
       return json({ id });
     }
 
-    // Lista de partidas abiertas y en vivo
+    // Lista de partidas abiertas y en vivo (pública: el portal cadalado.com la muestra)
     if (path === '/api/lobby' && request.method === 'GET') {
-      return json(await lobbyStub(env).list());
+      return json(await lobbyStub(env).list(), 200, { 'access-control-allow-origin': '*' });
     }
 
     // WebSocket de una partida

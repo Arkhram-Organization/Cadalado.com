@@ -443,7 +443,7 @@ export function mountGame(root, ctrl, { gameId = null, navigate }) {
   function updateTitle() {
     const g = v.game;
     const myTurn = g.status === 'playing' && isOnline && v.you === core.turn(g);
-    document.title = (myTurn ? '● Tu turno · ' : '') + 'ChessORT';
+    document.title = (myTurn ? '● Tu turno · ' : '') + 'Ajedrez · cadalado';
   }
 
   // ---------- chat ----------
@@ -567,6 +567,6 @@ export function mountGame(root, ctrl, { gameId = null, navigate }) {
     clearInterval(clockTimer);
     document.removeEventListener('keydown', onKey);
     ctrl.close();
-    document.title = 'ChessORT';
+    document.title = 'Ajedrez · cadalado';
   };
 }

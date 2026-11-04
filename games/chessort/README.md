@@ -1,9 +1,11 @@
-# ChessORT ♟️
+# Ajedrez · cadalado ♟️
 
-Ajedrez online de [cada-lado.com](../../README.md), con estética oscura y tablero verde, para jugar con amigos
+Ajedrez online de [cadalado.com](../../README.md), con estética oscura y tablero verde, para jugar con amigos
 en tiempo real. Corre entera en **Cloudflare Workers**, gratis.
 
 > Se trabaja en la rama **`chessort`** y todo vive en esta carpeta (`games/chessort`).
+> "chessort" quedó como nombre interno (carpeta, rama y Worker de Cloudflare); para la gente el juego es **Ajedrez**.
+> Dirección: `ajedrez.cadalado.com`.
 
 ## Qué incluye
 
@@ -80,8 +82,8 @@ en el Worker `chessort` de Cloudflare, **Settings → Build**:
 Production branch `chessort`, Root directory `games/chessort`, Build watch paths `games/chessort/*`,
 Deploy command `npx wrangler deploy`.
 
-Para usar `chessort.cada-lado.com`, descomenta la línea `routes` de `wrangler.jsonc`
-(requiere que el dominio esté agregado a Cloudflare).
+Para usar `ajedrez.cadalado.com`: en el Worker, **Settings → Domains & Routes → Add → Custom domain**
+(requiere que `cadalado.com` esté agregado a Cloudflare), o descomenta la línea `routes` de `wrangler.jsonc`.
 
 > Los Durable Objects usan almacenamiento SQLite, que está incluido en el plan gratuito de Workers.
 

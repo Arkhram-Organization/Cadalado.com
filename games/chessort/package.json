@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "ChessORT: ajedrez online multijugador sobre Cloudflare Workers",
+  "description": "Ajedrez online multijugador de cadalado.com, sobre Cloudflare Workers",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
