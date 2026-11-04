@@ -105,6 +105,10 @@ export class OnlineController extends Emitter {
     // Ignora respuestas viejas que llegan tarde (por ejemplo, una consulta anterior a tu jugada).
     if (data.now < this.lastNow) return;
     this.lastNow = data.now;
+    if (!this.recordada) {
+      this.recordada = true;
+      recordar(this.gameId, data);
+    }
     const g = data.game;
     // La presencia (quién está conectado) no viene en todas las respuestas: se completa con la última.
     if (g.spectators === null) {
@@ -203,4 +207,17 @@ export class LocalController extends Emitter {
   }
 
   close() {}
+}
+
+// Guarda la partida en "Volvé a jugar" del portal (mismo dominio, mismo localStorage).
+function recordar(id, data) {
+  try {
+    const p = data.game.players;
+    const rival = data.you === 'w' ? p.b?.name : data.you === 'b' ? p.w?.name : null;
+    const titulo = rival ? `vs ${rival}` : p.w && p.b ? `${p.w.name} vs ${p.b.name}` : `Partida ${id}`;
+    const url = `/ajedrez/game/${id}`;
+    const lista = JSON.parse(localStorage.getItem('cadalado.recientes') || '[]').filter((x) => x.url !== url);
+    lista.unshift({ juego: 'ajedrez', url, titulo, fecha: Date.now() });
+    localStorage.setItem('cadalado.recientes', JSON.stringify(lista.slice(0, 8)));
+  } catch {}
 }

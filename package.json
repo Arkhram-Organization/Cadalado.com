@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node dev-server.js",
     "build": "node scripts/build.mjs",
-    "test": "node --test --test-force-exit games/*/test/*.test.js"
+    "test": "node --test --test-force-exit games/*/test/*.test.js shared/test/*.test.js"
   },
   "dependencies": {
     "chess.js": "1.4.0",

@@ -3,6 +3,7 @@
 //   POST {t, pid, …}    → acciones: join, move, resign, draw-offer, chat, rematch…
 import { core, loadRoom, mutateRoom, applyAction, touchPresence, getPresence, updateLobby, view, seatOf } from '../../lib/room.js';
 import { cleanGameId, cleanPid, json, readJson, serverError } from '../../lib/util.js';
+import { usuarioActual } from '../../../../shared/cuenta.js';
 
 function gameIdFrom(request) {
   const parts = new URL(request.url).pathname.split('/').filter(Boolean);
@@ -49,8 +50,12 @@ export async function POST(request) {
     const pid = cleanPid(msg.pid);
     if (!id) return json({ t: 'notfound' }, 404);
     if (!pid) return json({ error: 'Identificador inválido' }, 400);
-    if (msg.t === 'join') await touchPresence(id, pid);
-    const r = await mutateRoom(id, (room, chess) => applyAction(room, chess, pid, msg));
+    let cuenta = null;
+    if (msg.t === 'join') {
+      await touchPresence(id, pid);
+      cuenta = await usuarioActual(request);
+    }
+    const r = await mutateRoom(id, (room, chess) => applyAction(room, chess, pid, msg, Date.now(), cuenta));
     if (r.notfound) return json({ t: 'notfound' }, 404);
     if (!r.room) return json({ error: r.error }, 409);
     const presence = await getPresence(id, r.room.game);

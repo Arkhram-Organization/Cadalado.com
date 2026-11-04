@@ -1,4 +1,4 @@
-// Almacenamiento de partidas. Usa lo primero que encuentre:
+// Almacenamiento compartido por todo cadalado (partidas, cuentas, chats). Usa lo primero que encuentre:
 // 1. Upstash por HTTP: KV_REST_API_URL + KV_REST_API_TOKEN (o UPSTASH_REDIS_REST_URL + _TOKEN).
 // 2. Redis común: REDIS_URL o KV_URL.
 //    (Las variables las crea Vercel al conectar Redis/Upstash en la pestaña Storage.)
@@ -50,6 +50,18 @@ const restStore = {
   async hdel(key, fields) {
     if (fields.length) await rest('HDEL', key, ...fields);
   },
+  async lpush(key, value, max, ttlSec) {
+    await rest('LPUSH', key, value);
+    if (max) await rest('LTRIM', key, 0, max - 1);
+    if (ttlSec) await rest('EXPIRE', key, ttlSec);
+  },
+  lrange: async (key, start, stop) => (await rest('LRANGE', key, start, stop)) || [],
+  async incr(key, ttlSec) {
+    const n = await rest('INCR', key);
+    if (ttlSec) await rest('EXPIRE', key, ttlSec);
+    return Number(n);
+  },
+  hget: (key, field) => rest('HGET', key, field),
   ping: () => rest('PING'),
 };
 
@@ -91,6 +103,20 @@ const redisStore = {
   async hdel(key, fields) {
     if (fields.length) await (await redis()).hDel(key, fields);
   },
+  async lpush(key, value, max, ttlSec) {
+    const c = await redis();
+    await c.lPush(key, value);
+    if (max) await c.lTrim(key, 0, max - 1);
+    if (ttlSec) await c.expire(key, ttlSec);
+  },
+  lrange: async (key, start, stop) => (await redis()).lRange(key, start, stop),
+  async incr(key, ttlSec) {
+    const c = await redis();
+    const n = await c.incr(key);
+    if (ttlSec) await c.expire(key, ttlSec);
+    return Number(n);
+  },
+  hget: async (key, field) => (await redis()).hGet(key, field),
   ping: async () => (await redis()).ping(),
 };
 
@@ -128,6 +154,27 @@ const memoryStore = {
   async hdel(key, fields) {
     const e = alive(key);
     if (e) for (const f of fields) delete e.v[f];
+  },
+  async lpush(key, value, max, ttlSec) {
+    const e = alive(key) || { v: [], exp: 0 };
+    e.v.unshift(value);
+    if (max) e.v.length = Math.min(e.v.length, max);
+    if (ttlSec) e.exp = Date.now() + ttlSec * 1000;
+    mem.set(key, e);
+  },
+  async lrange(key, start, stop) {
+    const list = alive(key)?.v || [];
+    return list.slice(start, stop === -1 ? undefined : stop + 1);
+  },
+  async incr(key, ttlSec) {
+    const e = alive(key) || { v: '0', exp: 0 };
+    e.v = String(Number(e.v) + 1);
+    if (ttlSec) e.exp = Date.now() + ttlSec * 1000;
+    mem.set(key, e);
+    return Number(e.v);
+  },
+  async hget(key, field) {
+    return alive(key)?.v?.[field] ?? null;
   },
   ping: async () => 'PONG',
 };

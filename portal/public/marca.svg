@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <path d="M29 4a24 24 0 0 0 0 48z" fill="#ff5a1f"/>
-  <path d="M35 12a24 24 0 0 1 0 48z" fill="#3b5bff"/>
+  <!-- Dos piezas enfrentadas: el espacio entre ellas forma la C de cadalado -->
+  <path fill="#f4f1ea" d="M14 4H50A10 10 0 0 1 60 14V16H36A16 16 0 0 0 36 48H60V50A10 10 0 0 1 50 60H14A10 10 0 0 1 4 50V14A10 10 0 0 1 14 4Z"/>
+  <path fill="#c5f04a" d="M60 21H36A11 11 0 0 0 36 43H60Z"/>
 </svg>

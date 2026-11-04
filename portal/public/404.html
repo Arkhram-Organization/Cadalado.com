@@ -5,40 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>No encontrado · cadalado</title>
   <meta name="description" content="Página no encontrada.">
-  <meta name="theme-color" content="#121110">
+  <meta name="theme-color" content="#141413">
   <meta property="og:title" content="No encontrado · cadalado">
   <meta property="og:description" content="Página no encontrada.">
+  <meta property="og:image" content="/img/truco.webp">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <header class="cabecera">
-    <a class="logo" href="/" aria-label="cadalado, inicio"><img src="/marca.svg" alt=""><span>cadalado</span></a>
-    <nav class="nav">
-      <a href="/#juegos">Juegos</a>
-      <a href="/creadores">Creadores</a>
-    </nav>
-  </header>
-
+  <div id="cabecera"></div>
   <main>
-    <section class="hero hero-chico vacio">
-      <div class="hero-texto">
-        <p class="kicker"><i></i>Error 404</p>
-        <h1>Este <em>lado</em> no existe.</h1>
-        <p class="hero-sub">La página que buscás no está. Volvé al inicio y elegí un juego.</p>
-        <div class="hero-cta"><a class="btn btn-primario btn-grande" href="/">Ir al inicio</a></div>
+    <section class="cierre casilleros" style="min-height:70vh;display:grid;place-items:center">
+      <div class="contenedor">
+        <span class="kicker">Error 404</span>
+        <h2>Esta mesa <em>no existe.</em></h2>
+        <p>Puede que el link esté mal o que la partida ya haya terminado.</p>
+        <div class="hero-cta"><a class="btn btn-lima btn-grande" href="/">Volver al inicio</a></div>
       </div>
     </section>
   </main>
 
-  <footer class="pie">
-    <a class="logo logo-chico" href="/"><img src="/marca.svg" alt=""><span>cadalado</span></a>
-    <nav class="nav"><a href="/#juegos">Juegos</a><a href="/creadores">Creadores</a></nav>
-    <p>Hecho entre amigos · © <span data-anio>2026</span> cadalado.com</p>
-  </footer>
-  <script type="module" src="/js/main.js"></script>
+  <div id="pie"></div>
+  <script type="module" src="/js/pagina.js"></script>
 </body>
 </html>

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Club · cadalado</title>
+  <meta name="description" content="Tu historial, tus amigos y tus chats en cadalado.">
+  <meta name="theme-color" content="#141413">
+  <meta property="og:title" content="Club · cadalado">
+  <meta property="og:description" content="Tu historial, tus amigos y tus chats en cadalado.">
+  <meta property="og:image" content="/img/truco.webp">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="cabecera"></div>
+  <main class="club">
+    <div class="contenedor">
+      <div data-sin-cuenta class="hidden">
+        <div class="vacio" style="padding:60px 20px">
+          <b>Entrá para ver tu club</b>
+          Con cuenta guardás el historial, sumás amigos y chateás.
+          <div class="btns"><a class="btn btn-lima" href="/entrar?volver=/club">Entrar o crear cuenta</a></div>
+        </div>
+      </div>
+      <div data-con-cuenta class="hidden">
+        <section class="perfil-cabeza entra">
+          <span data-avatar></span>
+          <div>
+            <h1 data-nombre></h1>
+            <div class="usuario" data-usuario></div>
+          </div>
+          <div class="acciones">
+            <button class="btn btn-borde btn-chico" data-editar>Cambiar nombre</button>
+            <button class="btn btn-borde btn-chico" data-salir>Salir</button>
+          </div>
+        </section>
+        <div class="stats entra" style="--d:.08s" data-stats></div>
+        <div class="club-tabs" role="tablist">
+          <button role="tab" aria-selected="true" data-tab="historial">Historial</button>
+          <button role="tab" aria-selected="false" data-tab="amigos">Amigos <span class="badge hidden" data-badge-amigos></span></button>
+          <button role="tab" aria-selected="false" data-tab="chats">Chats <span class="badge hidden" data-badge-chats></span></button>
+        </div>
+        <section data-panel="historial"><div class="filas" data-historial></div></section>
+        <section data-panel="amigos" class="hidden">
+          <div class="dos-col">
+            <div class="panel">
+              <h3>Sumar amigo</h3>
+              <form class="agregar" data-agregar><input class="entrada" placeholder="Usuario de tu amigo" autocapitalize="none" spellcheck="false" maxlength="20" required><button class="btn btn-lima btn-chico">Sumar</button></form>
+              <div data-solicitudes style="margin-top:18px"></div>
+            </div>
+            <div class="panel"><h3>Tus amigos <span class="mono" data-n-amigos></span></h3><div class="filas" data-amigos></div></div>
+          </div>
+        </section>
+        <section data-panel="chats" class="hidden">
+          <div class="dos-col">
+            <div class="panel"><h3>Conversaciones</h3><div class="filas chat-lista" data-conversaciones></div></div>
+            <div class="chat">
+              <div class="chat-cabeza" data-chat-cabeza></div>
+              <div class="chat-log" data-chat-log aria-live="polite"></div>
+              <form class="chat-form" data-chat-form><input class="entrada" maxlength="500" placeholder="Escribí algo…" autocomplete="off"><button class="btn btn-lima btn-chico">Enviar</button></form>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div id="pie"></div>
+  <script type="module" src="/js/club.js"></script>
+</body>
+</html>

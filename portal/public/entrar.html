@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · cadalado</title>
+  <meta name="description" content="Entrá o creá tu cuenta en cadalado.">
+  <meta name="theme-color" content="#141413">
+  <meta property="og:title" content="Entrar · cadalado">
+  <meta property="og:description" content="Entrá o creá tu cuenta en cadalado.">
+  <meta property="og:image" content="/img/truco.webp">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="cabecera"></div>
+  <main class="acceso">
+    <section class="acceso-arte casilleros">
+      <img class="grande flota" src="/marca.svg" alt="">
+      <span class="kicker entra">Tu cuenta</span>
+      <h1 class="entra" style="--d:.08s">Tu lado <em>de la mesa.</em></h1>
+      <p class="entra" style="--d:.16s">Con cuenta guardás tu historial de partidas, sumás amigos, chateás y los desafiás con un toque. Para jugar no hace falta.</p>
+    </section>
+    <section class="acceso-form">
+      <form class="tarjeta-form" data-form novalidate>
+        <div class="pestanas" role="tablist">
+          <button type="button" role="tab" aria-selected="true" data-modo="entrar">Entrar</button>
+          <button type="button" role="tab" aria-selected="false" data-modo="registro">Crear cuenta</button>
+        </div>
+        <div class="campo"><label for="usuario">Usuario</label><input id="usuario" name="usuario" autocomplete="username" required minlength="3" maxlength="20" autocapitalize="none" spellcheck="false"><small data-solo-registro class="hidden">3 a 20 letras, números, punto o guion bajo. Así te encuentran tus amigos.</small></div>
+        <div class="campo hidden" data-solo-registro><label for="nombre">Nombre para mostrar</label><input id="nombre" name="nombre" autocomplete="nickname" maxlength="24" placeholder="Cómo te ven en la mesa"></div>
+        <div class="campo"><label for="clave">Contraseña</label><input id="clave" name="clave" type="password" autocomplete="current-password" required minlength="6"><small data-solo-registro class="hidden">Mínimo 6 caracteres.</small></div>
+        <p class="error" data-error role="alert"></p>
+        <button class="btn btn-lima btn-grande" data-enviar>Entrar</button>
+        <a href="/" style="color:var(--gris);text-align:center;font-size:15px">Seguir sin cuenta →</a>
+      </form>
+    </section>
+  </main>
+
+  <div id="pie"></div>
+  <script type="module" src="/js/entrar.js"></script>
+</body>
+</html>

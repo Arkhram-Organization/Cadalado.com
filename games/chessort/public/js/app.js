@@ -103,6 +103,11 @@ function showHome() {
       </section>
     </div>`;
 
+  if (cuenta) {
+    const inp = app.querySelector('#name');
+    inp.readOnly = true;
+    inp.title = 'Es el nombre de tu cuenta. Lo cambiás desde el club.';
+  }
   const board = new Board(app.querySelector('.home-board'), { settings: getSettings });
   board.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', { animate: false });
 
@@ -275,9 +280,31 @@ function openSettings() {
   });
 }
 
+// Cuenta de cadalado (mismo dominio): si entraste, jugás con el nombre de tu cuenta
+// y las partidas quedan en tu historial del club.
+let cuenta = null;
+async function cargarCuenta() {
+  try {
+    const r = await fetch('/api/club/yo', { cache: 'no-store' });
+    cuenta = (await r.json()).usuario || null;
+  } catch {
+    cuenta = null;
+  }
+  if (cuenta) setName(cuenta.nombre);
+  renderSidebarUser();
+  const inp = document.querySelector('#name');
+  if (inp && cuenta) {
+    inp.value = cuenta.nombre;
+    inp.readOnly = true;
+    inp.title = 'Es el nombre de tu cuenta. Lo cambiás desde el club.';
+  }
+}
+
 function renderSidebarUser() {
   const el = document.querySelector('.sidebar-user');
-  if (el) el.innerHTML = `${avatarHtml(getName(), 'w')}<span>${esc(getName())}</span>`;
+  if (!el) return;
+  el.innerHTML = `${avatarHtml(getName(), 'w')}<span>${esc(getName())}${cuenta ? '' : '<small style="display:block;font-weight:500;color:var(--muted)">Entrar al club</small>'}</span>`;
+  el.href = cuenta ? '/club' : '/entrar?volver=' + encodeURIComponent(location.pathname);
 }
 
 // ---------- arranque ----------
@@ -287,3 +314,4 @@ document.querySelector('[data-settings]').onclick = openSettings;
 document.querySelectorAll('.sidebar [data-icon]').forEach((el) => (el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon))));
 renderSidebarUser();
 route();
+cargarCuenta();

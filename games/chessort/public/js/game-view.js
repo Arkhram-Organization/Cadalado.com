@@ -359,7 +359,7 @@ export function mountGame(root, ctrl, { gameId = null, navigate }) {
             invite.querySelector('input').select();
             document.execCommand('copy');
           }
-          e.target.textContent = '¡Copiado!';
+          e.target.textContent = 'Link copiado';
           setTimeout(() => (e.target.textContent = 'Copiar'), 1500);
         };
       }

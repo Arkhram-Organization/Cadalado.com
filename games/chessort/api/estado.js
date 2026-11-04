@@ -1,6 +1,6 @@
 // GET /api/estado: diagnóstico rápido. Dice qué almacenamiento se usa y si responde.
 // No muestra contraseñas: solo si cada variable existe o no.
-import { getStore, storeKind } from '../lib/store.js';
+import { getStore, storeKind } from '../../../shared/store.js';
 import { json } from '../lib/util.js';
 
 export async function GET() {

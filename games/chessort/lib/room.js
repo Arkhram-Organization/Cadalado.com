@@ -3,8 +3,9 @@
 // por sala para que dos jugadas simultáneas no se pisen.
 import { Chess } from 'chess.js';
 import { createCore, findTimeControl } from '../public/js/core.js';
-import { getStore } from './store.js';
+import { getStore } from '../../../shared/store.js';
 import { cleanName } from './util.js';
+import { registrarPartida } from '../../../shared/cuenta.js';
 
 export const core = createCore(Chess);
 
@@ -29,10 +30,10 @@ async function saveRoom(room) {
   await getStore().set(roomKey(room.game.id), JSON.stringify(room), ROOM_TTL);
 }
 
-export async function createRoom({ id, tcId, color, pid, name }) {
+export async function createRoom({ id, tcId, color, pid, name, uid }) {
   const seat = color === 'w' || color === 'b' ? color : Math.random() < 0.5 ? 'w' : 'b';
   const players = { w: null, b: null };
-  players[seat] = { pid, name };
+  players[seat] = { pid, name, uid: uid || undefined };
   const room = { game: core.newState({ id, tc: findTimeControl(tcId), players }), chat: [], chatSeq: 0 };
   await saveRoom(room);
   await getStore().hset(presKey(id), pid, String(Date.now()), PRESENCE_TTL);
@@ -54,10 +55,12 @@ export async function mutateRoom(id, fn) {
     const room = await loadRoom(id);
     if (!room) return { notfound: true };
     const before = JSON.stringify(room);
+    const endedBefore = room.game.status === 'ended' ? room.game.gameNo : null;
     const result = fn(room, core.rebuild(room.game)) || {};
     if (JSON.stringify(room) !== before) {
       await saveRoom(room);
       await updateLobby(room, Date.now());
+      if (room.game.status === 'ended' && endedBefore !== room.game.gameNo) await saveHistory(room);
     }
     return { ...result, room };
   } finally {
@@ -78,16 +81,19 @@ function pushChat(room, entry) {
   if (room.chat.length > MAX_CHAT) room.chat.splice(0, room.chat.length - MAX_CHAT);
 }
 
-export function applyAction(room, chess, pid, msg, now = Date.now()) {
+export function applyAction(room, chess, pid, msg, now = Date.now(), cuenta = null) {
   const g = room.game;
   const color = seatOf(g, pid);
   switch (msg.t) {
     case 'join': {
-      const name = cleanName(msg.name);
-      if (color) g.players[color].name = name;
-      else if (g.status === 'waiting') {
+      // Con cuenta, el nombre es el de la cuenta y la partida queda en su historial.
+      const name = cuenta?.nombre || cleanName(msg.name);
+      if (color) {
+        g.players[color].name = name;
+        if (cuenta) g.players[color].uid = cuenta.id;
+      } else if (g.status === 'waiting') {
         const seat = g.players.w ? 'b' : 'w';
-        g.players[seat] = { pid, name };
+        g.players[seat] = { pid, name, uid: cuenta?.id };
         g.status = 'playing';
         pushChat(room, { system: true, text: `${name} se unió a la partida` });
       }
@@ -132,6 +138,28 @@ export function applyAction(room, chess, pid, msg, now = Date.now()) {
     }
     default:
       return { error: 'Acción desconocida' };
+  }
+}
+
+// ---------- historial de cada jugador con cuenta ----------
+async function saveHistory(room) {
+  const g = room.game;
+  const r = g.result;
+  for (const c of ['w', 'b']) {
+    const p = g.players[c];
+    if (!p?.uid) continue;
+    const rival = g.players[c === 'w' ? 'b' : 'w'];
+    await registrarPartida(p.uid, {
+      juego: 'ajedrez',
+      sala: g.id,
+      url: `/ajedrez/game/${g.id}`,
+      resultado: r.reason === 'aborted' ? 'abortada' : !r.winner ? 'tablas' : r.winner === c ? 'victoria' : 'derrota',
+      detalle: r.reason,
+      color: c === 'w' ? 'blancas' : 'negras',
+      marcador: r.reason === 'aborted' ? '—' : !r.winner ? '½-½' : r.winner === 'w' ? '1-0' : '0-1',
+      rivales: rival ? [rival.name] : [],
+      jugadas: g.moves.length,
+    });
   }
 }
 

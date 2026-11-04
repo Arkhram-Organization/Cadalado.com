@@ -6,8 +6,36 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/ajedrez/api/:path*", "destination": "/api/ajedrez/:path*" },
-    { "source": "/ajedrez/game/:id", "destination": "/ajedrez/index.html" },
-    { "source": "/ajedrez/local", "destination": "/ajedrez/index.html" }
+    {
+      "source": "/ajedrez/api/:ruta*",
+      "destination": "/api/juegos/ajedrez?ruta=:ruta*"
+    },
+    {
+      "source": "/api/truco/:ruta*",
+      "destination": "/api/juegos/truco?ruta=:ruta*"
+    },
+    {
+      "source": "/api/club/:ruta*",
+      "destination": "/api/club?ruta=:ruta*"
+    },
+    {
+      "source": "/ajedrez/game/:id",
+      "destination": "/ajedrez/index.html"
+    },
+    {
+      "source": "/ajedrez/local",
+      "destination": "/ajedrez/index.html"
+    },
+    {
+      "source": "/truco/sala/:code",
+      "destination": "/truco/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/creadores",
+      "destination": "/equipo",
+      "permanent": true
+    }
   ]
 }

@@ -4,7 +4,10 @@
 // Para sumar un juego, agregalo a JUEGOS.
 import { cp, rm, mkdir } from 'node:fs/promises';
 
-export const JUEGOS = [{ carpeta: 'games/chessort', ruta: 'ajedrez' }];
+export const JUEGOS = [
+  { carpeta: 'games/chessort', ruta: 'ajedrez' },
+  { carpeta: 'games/truco', ruta: 'truco' },
+];
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist');

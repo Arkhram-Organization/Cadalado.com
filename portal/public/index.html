@@ -3,93 +3,113 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>cadalado · Juegos online entre amigos</title>
-  <meta name="description" content="Ajedrez, truco y más juegos para jugar online con amigos. Sin cuentas ni descargas: mandás un link y se juega.">
-  <meta name="theme-color" content="#121110">
-  <meta property="og:title" content="cadalado · Juegos online entre amigos">
-  <meta property="og:description" content="Ajedrez, truco y más juegos para jugar online con amigos. Sin cuentas ni descargas: mandás un link y se juega.">
+  <title>cadalado · ¿Sale una partida?</title>
+  <meta name="description" content="Club de juegos online: ajedrez y truco para jugar con amigos. Cada uno de su lado, todos en la misma partida.">
+  <meta name="theme-color" content="#141413">
+  <meta property="og:title" content="cadalado · ¿Sale una partida?">
+  <meta property="og:description" content="Club de juegos online: ajedrez y truco para jugar con amigos. Cada uno de su lado, todos en la misma partida.">
+  <meta property="og:image" content="/img/truco.webp">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <header class="cabecera">
-    <a class="logo" href="/" aria-label="cadalado, inicio"><img src="/marca.svg" alt=""><span>cadalado</span></a>
-    <nav class="nav">
-      <a href="/#juegos">Juegos</a>
-      <a href="/creadores">Creadores</a>
-    </nav>
-  </header>
-
+  <div id="cabecera"></div>
   <main>
-    <section class="hero">
-      <div class="hero-texto">
-        <p class="kicker"><i></i>Juegos online entre amigos</p>
-        <h1>Elegí tu <em>lado</em>.</h1>
-        <p class="hero-sub">Juegos clásicos para jugar con tus amigos desde el navegador. Sin cuentas ni descargas: mandás un link y cada uno juega desde su lado.</p>
-        <div class="hero-cta">
-          <a class="btn btn-primario btn-grande" href="#juegos" data-primer-juego>Jugar ahora</a>
-          <a class="btn btn-borde btn-grande" href="#juegos">Ver juegos</a>
+    <section class="hero casilleros">
+      <div class="contenedor">
+        <div class="hero-texto">
+          <span class="kicker entra">Club de juegos online</span>
+          <h1 class="entra" style="--d:.08s">¿Sale una <em>partida?</em></h1>
+          <p class="hero-sub entra" style="--d:.16s">Ajedrez y truco para jugar con tus amigos desde el navegador. Cada uno de su lado, todos en la misma partida.</p>
+          <div class="hero-cta entra" style="--d:.24s">
+            <a class="btn btn-lima btn-grande" href="/ajedrez/">Jugar ajedrez</a>
+            <a class="btn btn-borde btn-grande" href="#juegos">Explorar juegos</a>
+          </div>
+          <div class="hero-pulso entra" style="--d:.32s" data-pulso aria-live="polite"></div>
+        </div>
+        <div class="escena entra" style="--d:.2s" aria-hidden="true">
+          <div class="pantalla p-truco flota"><img src="/img/truco.webp" alt="" width="1280" height="800"></div>
+          <div class="pantalla p-ajedrez">
+            <div class="mini" data-mini></div>
+            <div class="mini-pie"><span>Ana <span style="color:var(--gris)">vs</span> Beto</span><span class="reloj" data-mini-reloj>4:59</span></div>
+          </div>
+          <span class="etiqueta e-vivo chip chip-vivo">Partida en vivo</span>
+          <div class="etiqueta e-marcador flota" style="animation-delay:-3s">Truco a 15 · <b>11</b> a 3</div>
         </div>
       </div>
-      <svg class="hero-arte" viewBox="0 0 400 400" role="img" aria-label="Las dos mitades de cadalado: un peón de ajedrez de un lado y un as de oro del otro">
-        <g class="mitad mitad-a">
-          <path d="M180 30a150 150 0 0 0 0 300z" fill="#ff5a1f"/>
-          <g fill="#f3eee4">
-            <circle cx="118" cy="138" r="21"/>
-            <path d="M96 168h44l-9 17 13 46H92l13-46z"/>
-            <rect x="78" y="231" width="80" height="18" rx="7"/>
-          </g>
-        </g>
-        <g class="mitad mitad-b">
-          <path d="M220 70a150 150 0 0 1 0 300z" fill="#3b5bff"/>
-          <g transform="rotate(10 290 225)">
-            <rect x="248" y="160" width="84" height="128" rx="10" fill="#f3eee4"/>
-            <circle cx="290" cy="226" r="27" fill="#ff5a1f"/>
-            <circle cx="290" cy="226" r="16" fill="none" stroke="#f3eee4" stroke-width="4"/>
-            <circle cx="290" cy="226" r="5" fill="#f3eee4"/>
-            <text x="258" y="182" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="20" fill="#3b5bff">1</text>
-          </g>
-        </g>
-      </svg>
     </section>
 
     <section class="seccion" id="juegos">
-      <div class="seccion-titulo">
-        <h2>Juegos</h2>
-        <p><span data-cantidad-juegos>2</span> juegos y contando. Cada uno lo arma alguien del grupo.</p>
-      </div>
-      <div class="juegos" data-juegos></div>
-    </section>
-
-    <section class="seccion">
-      <div class="seccion-titulo"><h2>Así de fácil</h2></div>
-      <ol class="pasos">
-        <li><b>1</b><h3>Elegí un juego</h3><p>Ajedrez hoy, truco muy pronto y lo que venga después.</p></li>
-        <li><b>2</b><h3>Mandá el link</h3><p>Creás la partida y le pasás el enlace a quien quieras, por WhatsApp o por donde sea.</p></li>
-        <li><b>3</b><h3>Cada uno de su lado</h3><p>Sin registrarse ni instalar nada. Se juega en la compu o en el celu.</p></li>
-      </ol>
-    </section>
-
-    <section class="seccion">
-      <a class="banda" href="/creadores">
-        <div>
-          <p class="kicker"><i></i>Creadores</p>
-          <h2>Hecho entre amigos.</h2>
-          <p>cadalado no es una empresa: es un grupo armando los juegos que queremos jugar. Conocé quién está detrás de cada uno.</p>
+      <div class="contenedor">
+        <div class="seccion-cabeza revela">
+          <div><span class="kicker">Juegos</span><h2>Elegí tu próxima partida</h2></div>
+          <p>Todos se juegan online con amigos. Sin descargas: mandás el link y listo.</p>
         </div>
-        <span class="btn btn-claro btn-grande">Conocé a los creadores →</span>
-      </a>
+        <div class="juegos" data-juegos></div>
+      </div>
+    </section>
+
+    <section class="seccion borde-arriba" id="mesas">
+      <div class="contenedor">
+        <div class="seccion-cabeza revela">
+          <div><span class="kicker">En este momento</span><h2>La mesa está abierta</h2></div>
+          <p>Desafíos que esperan rival y partidas para mirar. Se actualiza solo.</p>
+        </div>
+        <div class="mesas revela">
+          <div class="panel"><h3>Esperan rival <span class="mono" data-n-abiertas></span></h3><div class="filas" data-abiertas><div class="cargando"></div><div class="cargando"></div></div></div>
+          <div class="panel"><h3>Para mirar <span class="mono" data-n-vivo></span></h3><div class="filas" data-vivo><div class="cargando"></div><div class="cargando"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="seccion" id="como">
+      <div class="contenedor">
+        <div class="seccion-cabeza revela"><div><span class="kicker">Cómo jugar</span><h2>Entrás. Invitás. Jugás.</h2></div></div>
+        <ol class="pasos">
+          <li class="paso revela"><span class="ficha">01</span><div><h3>Entrás</h3><p>Elegí un juego. No hace falta descargar nada; con cuenta, además, guardás tu historial.</p></div></li>
+          <li class="paso revela" style="transition-delay:.08s"><span class="ficha">02</span><div><h3>Invitás</h3><p>Abrís la mesa y mandás el link por WhatsApp, o desafiás a un amigo desde el club.</p></div></li>
+          <li class="paso revela" style="transition-delay:.16s"><span class="ficha">03</span><div><h3>Jugás</h3><p>Cada uno desde su casa, en la compu o en el celu. La revancha, a un toque.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="seccion hidden" id="recientes">
+      <div class="contenedor">
+        <div class="seccion-cabeza revela"><div><span class="kicker">En este dispositivo</span><h2>Volvé a jugar</h2></div></div>
+        <div class="recientes" data-recientes></div>
+      </div>
+    </section>
+
+    <section class="seccion borde-arriba" id="novedades">
+      <div class="contenedor">
+        <div class="seccion-cabeza revela"><div><span class="kicker">Novedades</span><h2>Lo que se viene</h2></div><p>Lo que ya está y lo próximo. Sin promesas raras.</p></div>
+        <div class="novedades" data-novedades></div>
+      </div>
+    </section>
+
+    <section class="seccion" id="equipo">
+      <div class="contenedor">
+        <div class="equipo-intro revela">
+          <div><span class="kicker">El equipo</span><h2>Los que estamos de este lado</h2></div>
+          <p>Lo armamos entre amigos. Para jugar entre amigos. Cada juego lo arma alguien distinto del grupo, y lo probamos jugando entre nosotros. <a href="/equipo" style="color:var(--lima);font-weight:700">Conocé al equipo →</a></p>
+        </div>
+        <div class="equipo" data-equipo></div>
+      </div>
+    </section>
+
+    <section class="cierre casilleros">
+      <div class="contenedor revela">
+        <h2>¿Sale <em>una?</em></h2>
+        <p>Mandá el link. Se juega.</p>
+        <div class="hero-cta"><a class="btn btn-lima btn-grande" href="/ajedrez/">Jugar ajedrez</a><a class="btn btn-lima btn-grande" href="/truco/">Jugar truco</a></div>
+      </div>
     </section>
   </main>
 
-  <footer class="pie">
-    <a class="logo logo-chico" href="/"><img src="/marca.svg" alt=""><span>cadalado</span></a>
-    <nav class="nav"><a href="/#juegos">Juegos</a><a href="/creadores">Creadores</a></nav>
-    <p>Hecho entre amigos · © <span data-anio>2026</span> cadalado.com</p>
-  </footer>
-  <script type="module" src="/js/main.js"></script>
+  <div id="pie"></div>
+  <script type="module" src="/js/inicio.js"></script>
 </body>
 </html>

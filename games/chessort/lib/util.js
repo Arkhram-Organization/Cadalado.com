@@ -1,4 +1,4 @@
-import { StoreNotConfigured } from './store.js';
+import { StoreNotConfigured } from '../../../shared/store.js';
 
 export function cleanName(name) {
   const s = String(name ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 20);
