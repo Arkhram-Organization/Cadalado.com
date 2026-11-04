@@ -1,6 +1,14 @@
 // Motor de reglas del truco argentino (sin flor, sin muestra).
 // Es JavaScript puro: lo usan el servidor (Durable Object) y los tests. No importa nada.
 // Asientos 0..n-1 en orden de juego ("hacia la derecha"). Equipo = asiento % 2.
+//
+// Reparto: reparte `dealer`, corta el de su izquierda (dealer - 1), se reparte hacia la derecha
+// empezando por la mano (dealer + 1). En la mano siguiente reparte el que fue mano: el mazo va
+// pasando hacia la derecha.
+// En parejas y tríos el envido lo canta (y lo contesta) el pie de cada equipo: el que reparte
+// y el que corta.
+// Los puntos se anotan al terminar la mano. El que gana el envido tiene que mostrar las cartas;
+// si no las muestra y se lo reclaman, pierde los puntos del envido y los del truco.
 
 export const SUITS = ['E', 'B', 'O', 'C'];
 export const NUMS = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
@@ -58,6 +66,8 @@ export function tanto(cards) {
   return best;
 }
 
+export const validTanto = (v) => Number.isInteger(v) && ((v >= 0 && v <= 7) || (v >= 20 && v <= 33));
+
 export function shuffle(arr, rng = Math.random) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -66,6 +76,14 @@ export function shuffle(arr, rng = Math.random) {
   }
   return a;
 }
+
+// Asientos "pie" (los últimos de cada equipo): el que reparte y el que corta (su izquierda).
+export function pies(g) {
+  if (g.n === 2) return [0, 1];
+  return [g.dealer, (g.dealer - 1 + g.n) % g.n];
+}
+export const isPie = (g, seat) => pies(g).includes(seat);
+export const cutter = (g) => (g.dealer - 1 + g.n) % g.n;
 
 // ---------------------------------------------------------------- partida
 
@@ -111,17 +129,20 @@ export function deal(g, rng = Math.random) {
     r: 0,
     turn: mano,
     mazo: Array(n).fill(false),
+    pre: Array(n).fill(null), // carta de arriba de un "tiro doble", se juega sola en la ronda siguiente
     stacked: Array(n).fill(false),
     falseAccuse: Array(n).fill(false),
-    envido: { calls: [], by: null, bySeat: null, state: 'none', declare: null, winner: null, points: 0 },
+    envido: { calls: [], by: null, bySeat: null, state: 'none', declare: null, winner: null, winnerSeat: null, points: 0, needsShow: false, shown: false },
     truco: { level: 1, pending: null, holder: null },
+    pending: [], // puntos que se anotan al terminar la mano: { team, pts, why }
     phase: 'play',
+    show: null,
     result: null,
   };
-  event(g, { type: 'deal', seat: g.dealer, hand: g.handNo });
+  event(g, { type: 'deal', seat: g.dealer, cutter: cutter(g), mano, hand: g.handNo });
 }
 
-// El que reparte la mano siguiente es el que fue mano.
+// El que reparte la mano siguiente es el que fue mano (el mazo pasa a la derecha).
 export function nextHand(g, rng = Math.random) {
   if (g.status !== 'playing') return false;
   if (!g.h || g.h.phase !== 'ended') return false;
@@ -143,10 +164,20 @@ const played = (h, seat) => h.rounds[h.r].plays.some((p) => p.seat === seat);
 const active = (h, seat) => !h.mazo[seat];
 const teamSeats = (g, t) => Array.from({ length: g.n }, (_, i) => i).filter((i) => team(i) === t);
 
+// Quién de un equipo puede cantar/contestar el envido: el pie (o, si se fue al mazo, el que quede).
+function envidoVoices(g, t) {
+  const h = g.h;
+  const seats = teamSeats(g, t).filter((s) => active(h, s));
+  if (g.n === 2) return seats;
+  const pie = seats.filter((s) => isPie(g, s));
+  return pie.length ? pie : seats;
+}
+
 export function envidoOpenFor(g, seat) {
   const h = g.h;
   if (!h || h.phase !== 'play' || h.r !== 0 || h.envido.state !== 'none') return false;
   if (!active(h, seat) || played(h, seat)) return false;
+  if (!envidoVoices(g, team(seat)).includes(seat)) return false;
   const p = h.truco.pending;
   if (h.truco.level > 1) return false;
   if (p) return p.level === 2 && team(seat) !== p.byTeam; // "el envido está primero"
@@ -182,11 +213,10 @@ export function waitingFor(g) {
   const h = g.h;
   if (!h || g.status !== 'playing') return { kind: 'none', seats: [] };
   if (h.phase === 'ended') return { kind: 'next-hand', seats: [] };
+  if (h.phase === 'show') return { kind: 'show', seats: [h.show.seat] };
   const e = h.envido;
   if (e.state === 'declaring') return { kind: 'declare', seats: [e.declare.seat] };
-  if (e.state === 'pending') {
-    return { kind: 'envido', seats: teamSeats(g, otherTeam(e.by)).filter((s) => active(h, s)) };
-  }
+  if (e.state === 'pending') return { kind: 'envido', seats: envidoVoices(g, otherTeam(e.by)) };
   const p = h.truco.pending;
   if (p) return { kind: 'truco', seats: teamSeats(g, otherTeam(p.byTeam)).filter((s) => active(h, s)) };
   return { kind: 'play', seats: [h.turn] };
@@ -195,16 +225,27 @@ export function waitingFor(g) {
 // Acciones que puede hacer un asiento (para armar los botones del cliente).
 export function actionsFor(g, seat) {
   const h = g.h;
-  const out = { play: false, canStack: false, canDown: false, truco: null, envido: [], quiero: false, noquiero: false, cantar: false, buenas: false, mazo: false, denunciar: [] };
-  if (!h || g.status !== 'playing' || h.phase !== 'play' || seat == null || !active(h, seat)) return out;
+  const out = {
+    play: false, canDouble: false, canDown: false, truco: null, envido: [], quiero: false, noquiero: false,
+    cantar: false, buenas: false, mazo: false, denunciar: [], mostrar: false, reclamar: false,
+  };
+  if (!h || g.status !== 'playing' || seat == null) return out;
   const w = waitingFor(g);
+  if (h.phase === 'show') {
+    const s = h.show;
+    if (seat === s.seat && !h.mazo[seat]) out.mostrar = true;
+    if (team(seat) !== team(s.seat)) out.reclamar = true;
+    return out;
+  }
+  if (h.phase !== 'play' || !active(h, seat)) return out;
   const mine = w.seats.includes(seat);
   const e = h.envido;
   const t = h.truco;
   if (w.kind === 'declare' && mine) {
     const best = e.declare.best;
-    out.cantar = !best || tanto(h.cards[seat]).value > best.value;
+    out.cantar = true; // puede cantar lo que quiera (si miente y lo cazan, pierde)
     out.buenas = !!best;
+    out.minTanto = best ? best.value + 1 : 0;
     return out;
   }
   if (w.kind === 'envido') {
@@ -229,7 +270,7 @@ export function actionsFor(g, seat) {
   if (envidoOpenFor(g, seat)) out.envido = ['envido', 'real', 'falta'];
   if (h.turn === seat) {
     out.play = true;
-    out.canStack = h.table[seat].length > 0;
+    out.canDouble = h.inHand[seat].length >= 2 && h.r <= 1;
     out.canDown = h.r > 0;
   }
   for (let s = 0; s < g.n; s++) {
@@ -243,8 +284,10 @@ export function actionsFor(g, seat) {
 export function act(g, seat, a, rng = Math.random) {
   const h = g.h;
   if (g.status !== 'playing') return { error: 'La partida terminó' };
-  if (!h || h.phase !== 'play') return { error: 'Esperá la próxima mano' };
+  if (!h) return { error: 'Esperá la próxima mano' };
   if (seat == null || seat < 0 || seat >= g.n) return { error: 'No estás sentado' };
+  if (h.phase === 'show') return actShow(g, seat, a);
+  if (h.phase !== 'play') return { error: 'Esperá la próxima mano' };
   if (!active(h, seat)) return { error: 'Te fuiste al mazo' };
   const w = waitingFor(g);
   const mine = w.seats.includes(seat);
@@ -258,15 +301,34 @@ export function act(g, seat, a, rng = Math.random) {
       if (h.turn !== seat) return { error: 'No es tu turno' };
       const idx = h.inHand[seat].indexOf(a.card);
       if (idx < 0) return { error: 'No tenés esa carta' };
-      const mode = a.mode === 'stack' || a.mode === 'down' ? a.mode : 'normal';
-      if (mode === 'stack' && !h.table[seat].length) return { error: 'No hay carta para encimar' };
-      if (mode === 'down' && h.r === 0) return { error: 'En primera no se puede tirar tapada' };
+      const faceDown = a.mode === 'down';
+      if (faceDown && h.r === 0) return { error: 'En primera no se puede tirar tapada' };
       h.inHand[seat].splice(idx, 1);
-      const faceDown = mode === 'down';
-      h.table[seat].push({ c: a.card, faceDown, stacked: mode === 'stack', round: h.r });
+      h.table[seat].push({ c: a.card, faceDown, round: h.r });
       h.rounds[h.r].plays.push({ seat, c: a.card, faceDown });
-      if (mode === 'stack') h.stacked[seat] = true;
-      event(g, { type: 'play', seat, c: faceDown ? null : a.card, faceDown, stacked: mode === 'stack', round: h.r });
+      event(g, { type: 'play', seat, c: faceDown ? null : a.card, faceDown, round: h.r });
+      advanceTurn(g);
+      return { ok: true };
+    }
+
+    // Tirar dos cartas juntas, una encima de la otra. Según el reglamento cuentan en el orden en
+    // que quedan: la de abajo es la de esta ronda y la de arriba la de la siguiente. La de arriba
+    // es la que se ve: sirve para hacer creer que jugaste otra carta.
+    case 'play2': {
+      if (w.kind !== 'play') return { error: 'Hay que responder primero' };
+      if (h.turn !== seat) return { error: 'No es tu turno' };
+      if (h.r > 1) return { error: 'En tercera no hay ronda siguiente' };
+      const { bottom, top } = a;
+      if (bottom === top) return { error: 'Elegí dos cartas distintas' };
+      const hand = h.inHand[seat];
+      if (!hand.includes(bottom) || !hand.includes(top)) return { error: 'No tenés esas cartas' };
+      h.inHand[seat] = hand.filter((c) => c !== bottom && c !== top);
+      h.table[seat].push({ c: bottom, faceDown: false, round: h.r, under: true });
+      h.table[seat].push({ c: top, faceDown: false, round: h.r + 1, over: true });
+      h.rounds[h.r].plays.push({ seat, c: bottom, faceDown: false });
+      h.pre[seat] = top;
+      h.stacked[seat] = true;
+      event(g, { type: 'play', seat, c: top, double: true, round: h.r });
       advanceTurn(g);
       return { ok: true };
     }
@@ -275,13 +337,16 @@ export function act(g, seat, a, rng = Math.random) {
       const kind = a.kind;
       if (!ENVIDO_NAMES[kind]) return { error: 'Canto inválido' };
       if (w.kind === 'envido') {
-        if (!mine) return { error: 'No te toca' };
+        if (!mine) return { error: g.n > 2 ? 'El envido lo contesta el pie' : 'No te toca' };
         if (!envidoNextOptions(e.calls).includes(kind)) return { error: 'No se puede subir así' };
         e.calls.push(kind);
         e.by = T;
         e.bySeat = seat;
       } else {
-        if (!envidoOpenFor(g, seat)) return { error: 'Ya no se puede cantar envido' };
+        if (!envidoOpenFor(g, seat)) {
+          if (g.n > 2 && !isPie(g, seat) && h.r === 0 && e.state === 'none') return { error: 'En equipo el envido lo canta el pie' };
+          return { error: 'Ya no se puede cantar envido' };
+        }
         e.calls = [kind];
         e.by = T;
         e.bySeat = seat;
@@ -298,7 +363,7 @@ export function act(g, seat, a, rng = Math.random) {
         tr.level = tr.pending.level; // subir implica querer lo anterior
         tr.pending = { level: tr.pending.level + 1, byTeam: T, bySeat: seat };
         tr.holder = null;
-      } else if (w.kind === 'play' || w.kind === 'none') {
+      } else if (w.kind === 'play') {
         if (tr.level >= 4) return { error: 'Ya está en vale cuatro' };
         if (tr.holder !== null && tr.holder !== T) return { error: 'El quiero lo tiene el otro equipo' };
         tr.pending = { level: tr.level + 1, byTeam: T, bySeat: seat };
@@ -332,7 +397,7 @@ export function act(g, seat, a, rng = Math.random) {
         e.winner = e.by;
         e.points = pts;
         event(g, { type: 'call', seat, text: 'No quiero', kind: 'noquiero' });
-        addPoints(g, e.by, pts, 'envido');
+        h.pending.push({ team: e.by, pts, why: 'envido' });
         return { ok: true };
       }
       if (w.kind === 'truco') {
@@ -349,9 +414,11 @@ export function act(g, seat, a, rng = Math.random) {
     case 'buenas': {
       if (w.kind !== 'declare' || !mine) return { error: 'No te toca cantar los tantos' };
       const d = e.declare;
-      const v = tanto(h.cards[seat]).value;
       if (a.t === 'cantar') {
-        if (d.best && v <= d.best.value) return { error: 'Con eso no le ganás: son buenas' };
+        const real = tanto(h.cards[seat]).value;
+        const v = a.value === undefined || a.value === null ? real : Number(a.value);
+        if (!validTanto(v)) return { error: 'Ese número no existe en el envido' };
+        if (d.best && v <= d.best.value) return { error: `Tenés que cantar más de ${d.best.value}` };
         d.best = { seat, value: v, team: T };
         d.said.push({ seat, value: v });
         event(g, { type: 'tanto', seat, value: v });
@@ -369,16 +436,15 @@ export function act(g, seat, a, rng = Math.random) {
       if (w.kind === 'envido' || w.kind === 'declare') return { error: 'Primero resolvé el envido' };
       h.mazo[seat] = true;
       h.inHand[seat] = [];
+      h.pre[seat] = null;
       event(g, { type: 'mazo', seat });
       const left = teamSeats(g, T).filter((s) => active(h, s));
       if (!left.length) {
         const win = otherTeam(T);
         let pts = tr.pending && tr.pending.byTeam === win ? tr.pending.level - 1 : tr.level;
-        if (tr.pending && tr.pending.byTeam === T) pts = tr.level; // se fue después de cantar él
-        if (h.r === 0 && e.state === 'none') addPoints(g, win, 1, 'envido-mazo');
+        if (h.r === 0 && e.state === 'none') h.pending.push({ team: win, pts: 1, why: 'envido-mazo' });
         tr.pending = null;
-        if (g.status === 'playing') endHand(g, win, pts, 'mazo');
-        else h.phase = 'ended';
+        endHand(g, win, pts, 'mazo');
       } else if (h.turn === seat && w.kind === 'play') {
         advanceTurn(g);
       }
@@ -398,12 +464,43 @@ export function act(g, seat, a, rng = Math.random) {
       } else {
         h.falseAccuse[seat] = true;
         event(g, { type: 'denuncia', seat, target, ok: false });
-        addPoints(g, otherTeam(T), 1, 'denuncia-falsa');
+        h.pending.push({ team: otherTeam(T), pts: 1, why: 'denuncia-falsa' });
       }
       return { ok: true };
     }
   }
   return { error: 'Acción desconocida' };
+}
+
+// Después de la mano: mostrar los tantos o reclamar que no se mostraron.
+function actShow(g, seat, a) {
+  const h = g.h;
+  const s = h.show;
+  if (a?.t === 'mostrar') {
+    if (seat !== s.seat) return { error: 'Tiene que mostrar el que ganó el envido' };
+    if (h.mazo[seat]) return { error: 'Tus cartas ya están en el mazo' };
+    const real = tanto(h.cards[seat]);
+    h.envido.shown = true;
+    const ok = real.value === s.value;
+    event(g, { type: 'show', seat, value: real.value, said: s.value, cards: real.cards, ok });
+    finishHand(g, ok ? null : 'mal-cantado');
+    return { ok: true };
+  }
+  if (a?.t === 'reclamar') {
+    if (team(seat) === team(s.seat)) return { error: 'No te podés reclamar a vos mismo' };
+    event(g, { type: 'reclamo', seat, target: s.seat });
+    finishHand(g, 'no-mostro');
+    return { ok: true };
+  }
+  return { error: 'Ahora se muestran los tantos' };
+}
+
+// Si pasa el tiempo y nadie reclamó, los tantos valen igual (lo usa el servidor).
+export function closeShow(g) {
+  if (g.h?.phase !== 'show') return false;
+  event(g, { type: 'show-timeout', seat: g.h.show.seat });
+  finishHand(g, null);
+  return true;
 }
 
 function addPoints(g, t, pts, why) {
@@ -413,10 +510,6 @@ function addPoints(g, t, pts, why) {
   if (g.score[t] >= g.target) {
     g.status = 'ended';
     g.winner = t;
-    if (g.h) {
-      g.h.phase = 'ended';
-      g.h.result = g.h.result || { winner: t, pts: 0, reason: why, envidoShow: envidoShow(g) };
-    }
     event(g, { type: 'game-end', team: t });
   }
 }
@@ -443,13 +536,6 @@ function advanceDeclare(g) {
       d.idx++;
       continue;
     }
-    // Si no le puede ganar, dice "son buenas" solo (no hay nada que decidir).
-    if (d.best && tanto(h.cards[s]).value <= d.best.value) {
-      d.said.push({ seat: s, value: null });
-      event(g, { type: 'tanto', seat: s, value: null });
-      d.idx++;
-      continue;
-    }
     d.seat = s;
     return;
   }
@@ -457,15 +543,10 @@ function advanceDeclare(g) {
   e.state = 'done';
   e.winner = d.best.team;
   e.winnerSeat = d.best.seat;
+  e.saidValue = d.best.value;
   e.points = envidoAcceptedPoints(g, e.calls, e.winner);
-  addPoints(g, e.winner, e.points, 'envido');
-}
-
-function envidoShow(g) {
-  const e = g.h?.envido;
-  if (!e || e.winnerSeat == null) return null;
-  const t = tanto(g.h.cards[e.winnerSeat]);
-  return { seat: e.winnerSeat, value: t.value, cards: t.cards };
+  e.needsShow = true;
+  h.pending.push({ team: e.winner, pts: e.points, why: 'envido' });
 }
 
 function advanceTurn(g) {
@@ -475,19 +556,31 @@ function advanceTurn(g) {
     const s = (h.turn + k) % g.n;
     if (active(h, s) && !plays.some((p) => p.seat === s)) {
       h.turn = s;
+      autoPre(g);
       return;
     }
   }
   resolveRound(g);
 }
 
+// La carta de arriba de un tiro doble ya está en la mesa: se juega sola cuando le toca.
+function autoPre(g) {
+  const h = g.h;
+  if (h.phase !== 'play') return;
+  const s = h.turn;
+  const c = h.pre[s];
+  if (!c || h.rounds[h.r].plays.some((p) => p.seat === s)) return;
+  h.pre[s] = null;
+  h.rounds[h.r].plays.push({ seat: s, c, faceDown: false });
+  advanceTurn(g);
+}
+
 function resolveRound(g) {
   const h = g.h;
   const R = h.rounds[h.r];
-  const live = R.plays.filter((p) => active(h, p.seat) || true);
   let top = -1;
-  for (const p of live) top = Math.max(top, p.faceDown ? 0 : rank(p.c));
-  const tops = live.filter((p) => (p.faceDown ? 0 : rank(p.c)) === top);
+  for (const p of R.plays) top = Math.max(top, p.faceDown ? 0 : rank(p.c));
+  const tops = R.plays.filter((p) => (p.faceDown ? 0 : rank(p.c)) === top);
   const teams = new Set(tops.map((p) => team(p.seat)));
   if (teams.size === 1) {
     R.result = team(tops[0].seat);
@@ -511,6 +604,7 @@ function resolveRound(g) {
   }
   h.rounds.push({ plays: [], result: null, starter });
   h.turn = starter;
+  autoPre(g);
 }
 
 // Devuelve el equipo ganador de la mano o null si hay que seguir.
@@ -529,13 +623,48 @@ export function handWinner(rounds, manoTeam) {
   return manoTeam;
 }
 
+// Termina la parte de cartas. Si hay un envido cantado, el ganador tiene que mostrar.
 function endHand(g, winnerTeam, pts, reason, cheater = null) {
   const h = g.h;
-  if (h.phase === 'ended') return;
-  h.phase = 'ended';
-  h.result = { winner: winnerTeam, pts, reason, cheater, envidoShow: envidoShow(g) };
+  if (h.phase !== 'play') return;
+  h.truco.pending = null;
+  h.trucoResult = { team: winnerTeam, pts, reason, cheater };
   event(g, { type: 'hand-end', team: winnerTeam, pts, reason });
-  addPoints(g, winnerTeam, pts, 'truco');
+  const e = h.envido;
+  if (e.needsShow && !e.shown) {
+    h.phase = 'show';
+    h.show = { seat: e.winnerSeat, value: e.saidValue, since: Date.now() };
+    return;
+  }
+  finishHand(g, null);
+}
+
+// Anota todo lo de la mano. penalty: el que ganó el envido no mostró o cantó mal.
+function finishHand(g, penalty) {
+  const h = g.h;
+  const e = h.envido;
+  const tr = h.trucoResult;
+  const cheatTeam = penalty ? e.winner : null;
+  const entries = [];
+  for (const p of h.pending) {
+    if (penalty && p.why === 'envido') entries.push({ ...p, team: otherTeam(p.team), why: 'envido-' + penalty });
+    else entries.push(p);
+  }
+  let trucoTeam = tr.team;
+  if (penalty && trucoTeam === cheatTeam) trucoTeam = otherTeam(cheatTeam);
+  entries.push({ team: trucoTeam, pts: tr.pts, why: penalty && tr.team === cheatTeam ? 'truco-' + penalty : 'truco' });
+  h.phase = 'ended';
+  h.result = {
+    winner: trucoTeam,
+    pts: tr.pts,
+    reason: tr.reason,
+    cheater: tr.cheater,
+    penalty,
+    envido: e.winner !== null ? { team: e.winner, seat: e.winnerSeat, points: e.points, said: e.saidValue ?? null, shown: e.shown } : null,
+    envidoShow: e.shown ? { seat: e.winnerSeat, value: tanto(h.cards[e.winnerSeat]).value, cards: tanto(h.cards[e.winnerSeat]).cards } : null,
+  };
+  // primero el envido y las demás, después el truco
+  for (const p of entries) addPoints(g, p.team, p.pts, p.why);
 }
 
 // ---------------------------------------------------------------- vista por jugador
@@ -543,17 +672,26 @@ function endHand(g, winnerTeam, pts, reason, cheater = null) {
 // Lo que puede ver un asiento (o un espectador con seat = null): oculta las cartas ajenas.
 export function viewFor(g, seat) {
   const h = g.h;
+  const done = h && h.phase === 'ended';
   const vh = h && {
     mano: h.mano,
     r: h.r,
     turn: h.turn,
     phase: h.phase,
     mazo: h.mazo,
+    pies: pies(g),
+    cutter: cutter(g),
     handCounts: h.inHand.map((c) => c.length),
     myCards: seat != null ? h.inHand[seat] : [],
     myTanto: seat != null ? tanto(h.cards[seat]).value : null,
-    table: h.table.map((list, s) => list.map((p) => ({ ...p, c: p.faceDown && s !== seat && h.phase !== 'ended' ? null : p.c }))),
-    rounds: h.rounds.map((r) => ({ result: g.ayudas || h.phase === 'ended' ? r.result : undefined, starter: r.starter })),
+    table: h.table.map((list, s) =>
+      list.map((p) => {
+        // la tapada y la de abajo de un tiro doble no se ven hasta que termina la mano
+        const hidden = s !== seat && !done && (p.faceDown || p.under);
+        return { ...p, c: hidden ? null : p.c, hidden };
+      })
+    ),
+    rounds: h.rounds.map((r) => ({ result: g.ayudas || done ? r.result : undefined, starter: r.starter })),
     envido: {
       calls: h.envido.calls,
       by: h.envido.by,
@@ -564,6 +702,7 @@ export function viewFor(g, seat) {
       declare: h.envido.declare && { seat: h.envido.declare.seat, best: h.envido.declare.best, said: h.envido.declare.said },
     },
     truco: h.truco,
+    show: h.show,
     result: h.result,
   };
   return {

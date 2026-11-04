@@ -353,13 +353,17 @@ class RoomClient {
       $('#labels').innerHTML = '';
       for (const [s, t] of Object.entries(this.gaze)) scene.setGaze(Number(s), t);
     }
-    scene.setPlayers(seats, g?.h?.handCounts);
+    if (st.you != null && seats[st.you]) scene.setMyLook(lookFor(seats[st.you].name, st.you));
 
     if (g?.h) {
+      // mano nueva: se anima el mezclado, el corte y el reparto (las cartas aparecen de a una)
+      if (!first && this.handNo !== undefined && g.handNo !== this.handNo) this.startDeal(g);
+      this.handNo = g.handNo;
       scene.setDealer(g.dealer);
       if (this.selected && !g.h.myCards.includes(this.selected)) this.selected = null;
       if (!g.actions.play) this.selected = null;
-      scene.setMyCards(g.h.myCards, this.selected);
+      if (this.choosingTop && (!g.actions.canDouble || !g.h.myCards.includes(this.choosingTop))) this.choosingTop = null;
+      this.refreshHand();
       scene.syncTable(g.h.table, { animate: !first });
       // eventos nuevos
       const evs = g.ev || [];
@@ -371,6 +375,7 @@ class RoomClient {
       const myTurn = g.waiting.seats.includes(st.you) && g.h.phase === 'play';
       if (myTurn && !(prev?.game?.waiting.seats.includes(st.you) && prev.game.h?.phase === 'play')) ding();
     } else {
+      scene.setPlayers(seats, null);
       scene.setMyCards([], null);
       scene.syncTable([], { animate: false });
       this.lastEv = null;
@@ -382,6 +387,40 @@ class RoomClient {
       this.send({ t: 'start', fillBots: true });
     }
     this.render();
+  }
+
+  // Muestra mis cartas y las de los demás según lo que ya se repartió.
+  refreshHand() {
+    const st = this.st;
+    const g = st?.game;
+    if (!g?.h) return;
+    const counts = this.dealing ? this.dealing.counts : g.h.handCounts;
+    scene.setPlayers(st.room.seats, counts);
+    const mine = this.dealing ? g.h.myCards.slice(0, this.dealing.counts[st.you] ?? 0) : g.h.myCards;
+    scene.setMyCards(mine, this.selected);
+  }
+
+  startDeal(g) {
+    const counts = Array(g.n).fill(0);
+    this.dealing = { counts };
+    this.selected = null;
+    this.choosingTop = null;
+    scene.dealAnim({
+      dealer: g.dealer,
+      cutter: g.h.cutter,
+      mano: g.h.mano,
+      n: g.n,
+      onCard: (seat) => {
+        counts[seat]++;
+        flick(0.08, 0.05);
+        this.refreshHand();
+      },
+      onDone: () => {
+        this.dealing = null;
+        this.refreshHand();
+        this.render();
+      },
+    });
   }
 
   onEvent(e, g) {
@@ -416,28 +455,38 @@ class RoomClient {
       case 'denuncia':
         this.bubble(e.seat, '¡Trampa!', 'call', 2200);
         say('¡Trampa!');
-        if (e.ok) this.toast(`¡Era trampa! ${esc(this.nameOf(e.target))} había encimado una carta. Pierde la mano.`, 'good');
+        if (e.ok) this.toast(`¡Era trampa! ${esc(this.nameOf(e.target))} había tirado dos cartas juntas. Pierde la mano.`, 'good');
         else this.toast(`Denuncia falsa de ${esc(this.nameOf(e.seat))}: un punto para el otro equipo.`, 'bad');
         break;
       case 'hand-end': {
-        const res = g.h.result;
         const who = this.teamLabel(e.team);
         const why = { noquiero: 'no quisieron', mazo: 'se fueron al mazo', trampa: 'por trampa', cartas: '' }[e.reason] || '';
-        this.toast(`${who} ${e.team === team(me ?? 0) && me != null ? 'ganamos' : 'ganan'} la mano ${why} (+${e.pts})`, e.team === team(me ?? 0) && me != null ? 'good' : '');
-        if (res?.envidoShow) {
-          const s = res.envidoShow;
-          const imgs = s.cards.map((c) => `<img src="/truco/cards/${c}.webp" alt="${esc(cardName(c))}">`).join('');
-          this.toast(`${esc(this.nameOf(s.seat))} muestra sus ${s.value} de envido<br>${imgs}`, '', 5000);
-        }
+        const us = me != null && e.team === team(me);
+        this.toast(`${who} ${us ? 'ganamos' : 'ganan'} la mano ${why} (${e.pts} del truco)`, us ? 'good' : '');
         break;
       }
+      case 'show': {
+        const imgs = e.cards.map((c) => `<img src="/truco/cards/${c}.webp" alt="${esc(cardName(c))}">`).join('');
+        this.bubble(e.seat, e.ok ? `Mirá: ${e.value}` : `Tenía ${e.value}...`, 'call', 3000);
+        if (e.ok) this.toast(`${esc(this.nameOf(e.seat))} muestra sus ${e.value}<br>${imgs}`, 'good', 5000);
+        else this.toast(`${esc(this.nameOf(e.seat))} cantó ${e.said} pero tenía ${e.value}<br>${imgs}<br>Pierde el envido y el truco.`, 'bad', 6000);
+        break;
+      }
+      case 'reclamo':
+        this.bubble(e.seat, '¡A ver esos tantos!', 'call', 2600);
+        say('¡A ver esos tantos!');
+        this.toast(`${esc(this.nameOf(e.seat))} reclamó: ${esc(this.nameOf(e.target))} no mostró. Pierde el envido y el truco.`, 'bad', 5000);
+        break;
+      case 'show-timeout':
+        this.toast(`Nadie le pidió a ${esc(this.nameOf(e.seat))} que muestre: los tantos valen.`, '', 3500);
+        break;
       case 'deal':
         flick(0.12, 0.25);
         this.selected = null;
-        if (e.hand > 1) this.toast(`Mano ${e.hand} · reparte ${esc(this.nameOf(e.seat))}`, '', 1800);
+        this.toast(`Mano ${e.hand}: reparte ${esc(this.nameOf(e.seat))} y corta ${esc(this.nameOf(e.cutter))}`, '', 2200);
         break;
       case 'points':
-        if (e.why === 'envido') this.toast(`Envido: +${e.pts} para ${this.teamLabel(e.team)}`, '', 2500);
+        if (e.why.startsWith('envido')) this.toast(`Envido: ${e.pts} para ${this.teamLabel(e.team)}`, '', 2500);
         break;
     }
     void mine;
@@ -452,8 +501,24 @@ class RoomClient {
   // ---------------------------------------------------- cartas
   clickCard(id) {
     const g = this.st?.game;
+    if (this.dealing) return;
     if (!g?.actions.play) {
       this.toast('Todavía no es tu turno', '', 1200);
+      return;
+    }
+    // tiro doble: la primera elegida va abajo (juega ahora), la segunda arriba (la que se ve)
+    if (this.choosingTop) {
+      if (id === this.choosingTop) {
+        this.choosingTop = null;
+        this.selected = null;
+      } else {
+        const bottom = this.choosingTop;
+        this.choosingTop = null;
+        this.selected = null;
+        this.act({ t: 'play2', bottom, top: id });
+      }
+      scene.setMyCards(g.h.myCards, this.selected);
+      this.render();
       return;
     }
     this.selected = this.selected === id ? null : id;
@@ -463,7 +528,12 @@ class RoomClient {
 
   playCard(id, mode) {
     const g = this.st?.game;
-    if (!g?.actions.play || !id) return;
+    if (!g?.actions.play || !id || this.dealing) return;
+    if (mode === 'double') {
+      this.choosingTop = id;
+      this.render();
+      return;
+    }
     this.selected = null;
     this.act({ t: 'play', card: id, mode });
   }
@@ -576,6 +646,10 @@ class RoomClient {
     const g = this.st.game;
     el.classList.remove('mine');
     if (!g || this.st.room.status !== 'playing') return (el.textContent = '');
+    if (this.dealing) {
+      el.textContent = `Reparte ${this.nameOf(g.dealer)}, corta ${this.nameOf(g.h.cutter)}`;
+      return;
+    }
     const w = g.waiting;
     const me = this.you;
     const mine = w.seats.includes(me);
@@ -591,6 +665,11 @@ class RoomClient {
       t = mine ? `Te cantaron ${name}: ¿querés?` : `${name}: esperando respuesta`;
     } else if (w.kind === 'declare') t = mine ? 'Cantá tus tantos' : `${who(w.seats[0])} canta los tantos`;
     else if (w.kind === 'next-hand') t = 'Fin de la mano';
+    else if (w.kind === 'show') {
+      const sh = g.h.show;
+      t = mine ? `Ganaste el envido con ${sh.value}: mostrá las cartas` : `${who(sh.seat)} tiene que mostrar sus ${sh.value}`;
+    }
+    if (this.choosingTop) t = 'Tiro doble: elegí la carta que va ARRIBA (la que se ve)';
     if (g.h?.mazo[me]) t = 'Te fuiste al mazo: mirá cómo sigue tu equipo';
     el.textContent = t;
     if (mine) el.classList.add('mine');
@@ -612,17 +691,61 @@ class RoomClient {
       b.onclick = fn;
       box.appendChild(b);
     };
-    if (a.cantar) add(`Cantar mis tantos (${g.h.myTanto})`, 'call', () => this.act({ t: 'cantar' }));
+    if (this.dealing) return;
+    if (a.cantar) {
+      const min = a.minTanto ?? 0;
+      if (g.h.myTanto >= min) add(`Cantar ${g.h.myTanto}`, 'call', () => this.act({ t: 'cantar' }), 'Tus tantos de verdad');
+      // mentir: cantar otro número (si mostrás o te reclaman, perdés envido y truco)
+      const wrap = document.createElement('span');
+      wrap.className = 'lie';
+      wrap.innerHTML = `<input type="number" min="${min}" max="33" value="${Math.max(min, Math.min(33, g.h.myTanto + 3))}" title="Cantar otro número"><button class="btn small">Cantar este</button>`;
+      wrap.querySelector('button').onclick = () => {
+        const v = Number(wrap.querySelector('input').value);
+        this.act({ t: 'cantar', value: v });
+      };
+      box.appendChild(wrap);
+    }
     if (a.buenas) add('Son buenas', '', () => this.act({ t: 'buenas' }));
+    if (a.mostrar) add(`Mostrar mis cartas`, 'good', () => this.act({ t: 'mostrar' }), 'Si no mostrás y te reclaman, perdés el envido y el truco');
+    if (a.reclamar) add('¡A ver esos tantos!', 'call', () => this.act({ t: 'reclamar' }), 'Si no los mostró, pierde el envido y el truco');
     if (a.quiero) add('Quiero', 'good', () => this.act({ t: 'quiero' }));
     if (a.noquiero) add('No quiero', 'danger', () => this.act({ t: 'noquiero' }));
     if (a.truco) add(`¡${a.truco}!`, 'call', () => this.act({ t: 'truco' }));
     for (const k of a.envido) add(ENVIDO_NAMES[k], 'call', () => this.act({ t: 'envido', kind: k }), `Tenés ${g.h.myTanto} de envido`);
-    if (a.mazo) add('Irse al mazo', 'small', () => confirm('¿Te vas al mazo?') && this.act({ t: 'mazo' }));
+    if (a.mazo) {
+      // dos pasos: el primer toque pide confirmación (sin ventanas del navegador)
+      const b = document.createElement('button');
+      b.className = 'btn small' + (this.mazoArmed ? ' danger' : '');
+      b.textContent = this.mazoArmed ? '¿Seguro? Sí, me voy' : 'Irse al mazo';
+      b.onclick = () => {
+        if (this.mazoArmed) {
+          this.mazoArmed = false;
+          this.act({ t: 'mazo' });
+        } else {
+          this.mazoArmed = true;
+          clearTimeout(this.mazoT);
+          this.mazoT = setTimeout(() => {
+            this.mazoArmed = false;
+            this.render();
+          }, 3500);
+          this.render();
+        }
+      };
+      box.appendChild(b);
+    }
 
-    if (a.play && this.selected) {
+    if (a.play && this.choosingTop) {
+      const c = document.createElement('button');
+      c.className = 'btn small';
+      c.textContent = 'Cancelar tiro doble';
+      c.onclick = () => {
+        this.choosingTop = null;
+        this.render();
+      };
+      box.appendChild(c);
+    } else if (a.play && this.selected) {
       cardBox.classList.remove('hidden');
-      cardBox.querySelector('[data-play="stack"]').disabled = !a.canStack;
+      cardBox.querySelector('[data-play="double"]').disabled = !a.canDouble;
       cardBox.querySelector('[data-play="down"]').disabled = !a.canDown;
     } else if (a.play && !box.children.length) {
       const hint = document.createElement('span');
@@ -634,12 +757,12 @@ class RoomClient {
 
     // denuncias
     const tm = $('#trampa-menu');
-    tm.innerHTML = '<div class="tip">Si un rival tiró una carta <b>encimada</b> en esta mano y lo denunciás, pierde la mano. Si te equivocás, le das <b>1 punto</b> al otro equipo.</div>';
+    tm.innerHTML = '<div class="tip">Si un rival tiró <b>dos cartas juntas</b> (una encima de la otra) en esta mano y lo denunciás, pierde la mano. Si te equivocás, le das <b>1 punto</b> al otro equipo.</div>';
     if (!a.denunciar.length) tm.innerHTML += '<div class="tip">Ahora no se puede denunciar.</div>';
     for (const s of a.denunciar) {
       const b = document.createElement('button');
       b.className = 'item';
-      b.innerHTML = `<span>Denunciar a <b>${esc(this.nameOf(s))}</b><small>“¡Esa carta está encimada!”</small></span>`;
+      b.innerHTML = `<span>Denunciar a <b>${esc(this.nameOf(s))}</b><small>“¡Tiró dos cartas juntas!”</small></span>`;
       b.onclick = () => {
         tm.classList.add('hidden');
         this.act({ t: 'denuncia', target: s });
@@ -781,7 +904,7 @@ class RoomClient {
     const look = lookFor(store.get('truco-name') || 'Invitado', this.you);
     const full = document.createElement('canvas');
     full.width = 512;
-    full.height = 768;
+    full.height = 1200;
     drawCharacter(full.getContext('2d'), look, { expr: SENAS[id].expr, gx: 0, gy: 0, cards: 0 });
     const ctx = mirror.getContext('2d');
     ctx.clearRect(0, 0, mirror.width, mirror.height);
@@ -973,7 +1096,7 @@ function buildSenasMenu() {
     b.className = 'item';
     const full = document.createElement('canvas');
     full.width = 512;
-    full.height = 768;
+    full.height = 1200;
     drawCharacter(full.getContext('2d'), look, { expr: s.expr, cards: 0 });
     const cv = document.createElement('canvas');
     cv.width = cv.height = 120;
@@ -996,7 +1119,7 @@ function helpHtml() {
     <h3>Controles</h3>
     <ul>
       <li>Arrastrá con el mouse o el dedo para mirar a los costados y para abajo (a la mesa). También <kbd>A</kbd>/<kbd>D</kbd> y <kbd>W</kbd>/<kbd>S</kbd>, o los botones de la izquierda.</li>
-      <li>Tocá una carta para elegirla y después: <b>Tirar</b>, <b>Tirar encimada</b> (sobre tu carta anterior, para disimular cómo venía la mano) o <b>Tirar tapada</b> (boca abajo, desde segunda; no gana la ronda). Doble clic la tira directo. Atajos: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> y <kbd>Enter</kbd>.</li>
+      <li>Tocá una carta para elegirla y después: <b>Tirar</b>, <b>Tirar dos encimadas</b> (tirás dos juntas: la de abajo es la que juega ahora y la de arriba, la que todos ven, juega en la ronda siguiente; si un rival te denuncia, perdés la mano) o <b>Tirar tapada</b> (boca abajo, desde segunda; no gana la ronda). Doble clic la tira directo. Atajos: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> y <kbd>Enter</kbd>.</li>
       <li>“te mira” al lado de un nombre quiere decir que esa persona te está mirando. Las señas no avisan nada: hay que verlas en la cara.</li>
       <li>Mantené apretada la <kbd>Z</kbd> (o el botón Zoom) para hacer zoom y ver mejor la mesa o una cara.</li>
     </ul>
@@ -1004,6 +1127,8 @@ function helpHtml() {
     <h3>Puntos</h3>
     <ul>
       <li>Truco 2 (no querido 1) · Retruco 3 (2) · Vale cuatro 4 (3). Sin cantar: 1.</li>
+      <li>En 2 vs 2 y 3 vs 3 el envido lo canta y lo contesta el <b>pie</b> de cada equipo (el que reparte y el que corta).</li>
+      <li>Los puntos se anotan al terminar la mano. El que gana el envido tiene que <b>mostrar las cartas</b>: si no las muestra y le reclaman, pierde el envido y el truco. Si cantó un número falso y lo muestra, también pierde.</li>
       <li>Envido 2 · Real envido 3 · Falta envido: lo que le falta al que va ganando. No querido: 1, o lo que se había querido antes.</li>
       <li>El envido se canta en primera, antes de tirar tu carta. “El envido está primero”: si te cantan truco, podés cantar envido antes de contestar.</li>
       <li>Irse al mazo en primera sin envido cantado: el rival suma 1 de envido + lo del truco.</li>

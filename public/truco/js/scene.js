@@ -1,12 +1,13 @@
 // Escena 3D del truco: salón, mesa con paño, personajes 2D (recortes), cartas y cámara en primera persona.
 import * as THREE from 'three';
 import { drawCharacter, lookFor, SENAS, W as CW, H as CH } from './characters.js';
+import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
 
 const CARD_W = 0.1;
 const CARD_H = CARD_W * (788 / 512);
 const TABLE_Y = 0.74;
 const EYE_Y = 1.24;
-const CHAR_H = 1.15;
+const CHAR_H = 1.8; // canvas de 512x1200: del piso (abajo) a la cabeza (arriba)
 const CHAR_W = CHAR_H * (CW / CH);
 
 const texLoader = new THREE.TextureLoader();
@@ -15,6 +16,23 @@ let maxAniso = 4;
 
 function cardTex(id) {
   const key = id || 'back';
+  if (key === 'blank' && !texCache.has(key)) {
+    // carta de la que no se ve la cara (la de abajo de un tiro doble): blanca con el borde
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 197;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fbfaf6';
+    ctx.strokeStyle = '#8d8a80';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(1, 1, 126, 195, 8);
+    ctx.fill();
+    ctx.stroke();
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    texCache.set(key, t);
+  }
   if (!texCache.has(key)) {
     const t = texLoader.load(`/truco/cards/${key}.webp`);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -242,59 +260,129 @@ export class TableScene {
     this.tableCards.clear();
 
     const R = this.R;
+    // paño: verde con trama, costura alrededor y el nombre al centro
     const felt = canvasTex(1024, 1024, (ctx, w, h) => {
-      const grd = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, w / 2);
-      grd.addColorStop(0, '#2f7a46');
-      grd.addColorStop(1, '#1d5230');
+      const grd = ctx.createRadialGradient(w / 2, h / 2, 60, w / 2, h / 2, w / 2);
+      grd.addColorStop(0, '#2e7344');
+      grd.addColorStop(0.8, '#225a35');
+      grd.addColorStop(1, '#1a4529');
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, w, h);
-      noise(ctx, w, h, 18);
-      ctx.strokeStyle = 'rgba(240,220,150,0.18)';
-      ctx.lineWidth = 6;
+      ctx.globalAlpha = 0.06;
+      ctx.strokeStyle = '#000';
+      for (let y = 0; y < h; y += 3) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      noise(ctx, w, h, 14);
+      ctx.setLineDash([10, 8]);
+      ctx.strokeStyle = 'rgba(230,214,170,0.35)';
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(w / 2, h / 2, w * 0.36, 0, Math.PI * 2);
+      ctx.arc(w / 2, h / 2, w * 0.47, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(240,220,150,0.16)';
-      ctx.font = 'bold 72px Georgia';
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(230,214,170,0.12)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, w * 0.16, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(230,214,170,0.13)';
+      ctx.font = 'italic 46px Georgia';
       ctx.textAlign = 'center';
-      ctx.fillText('TRUCO', w / 2, h / 2 + 24);
-      ctx.font = 'italic 30px Georgia';
-      ctx.fillText('Cada Lado', w / 2, h / 2 + 70);
+      ctx.fillText('Cada Lado', w / 2, h / 2 + 14);
     });
-    const top = new THREE.Mesh(new THREE.CircleGeometry(R, 72), new THREE.MeshLambertMaterial({ map: felt }));
+    // madera con veta
+    const woodTex = canvasTex(512, 128, (ctx, w, h) => {
+      ctx.fillStyle = '#5b3418';
+      ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 46; i++) {
+        const y = Math.random() * h;
+        ctx.strokeStyle = Math.random() < 0.5 ? 'rgba(30,15,5,0.3)' : 'rgba(140,90,50,0.25)';
+        ctx.lineWidth = 1 + Math.random() * 2.5;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x <= w; x += 32) ctx.lineTo(x, y + Math.sin(x / 50 + i) * 4);
+        ctx.stroke();
+      }
+      noise(ctx, w, h, 10);
+    }, [6, 1]);
+    const leather = canvasTex(256, 64, (ctx, w, h) => {
+      ctx.fillStyle = '#3a1f14';
+      ctx.fillRect(0, 0, w, h);
+      noise(ctx, w, h, 22);
+      ctx.strokeStyle = 'rgba(210,170,120,0.35)';
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.5);
+      ctx.lineTo(w, h * 0.5);
+      ctx.stroke();
+    }, [24, 1]);
+    const top = new THREE.Mesh(new THREE.CircleGeometry(R, 96), new THREE.MeshLambertMaterial({ map: felt }));
     top.rotation.x = -Math.PI / 2;
     top.position.y = TABLE_Y;
     top.receiveShadow = true;
-    const wood = new THREE.MeshStandardMaterial({ color: '#5a3216', roughness: 0.45, metalness: 0.05 });
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(R + 0.03, 0.045, 16, 96), wood);
-    rim.rotation.x = Math.PI / 2;
-    rim.position.y = TABLE_Y + 0.005;
-    rim.castShadow = true;
-    const apron = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.02, R + 0.02, 0.1, 72, 1, true), wood);
-    apron.position.y = TABLE_Y - 0.05;
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.14, TABLE_Y - 0.05, 24), wood);
-    leg.position.y = (TABLE_Y - 0.05) / 2;
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, 0.05, 32), wood);
-    foot.position.y = 0.025;
-    for (const m of [leg, foot, apron]) m.castShadow = m.receiveShadow = true;
-    g.add(top, rim, apron, leg, foot);
-
-    // mazo
-    this.deck = new THREE.Group();
-    const deckBox = new THREE.Mesh(
-      new THREE.BoxGeometry(CARD_W, 0.02, CARD_H),
-      [
-        new THREE.MeshLambertMaterial({ color: '#eee' }),
-        new THREE.MeshLambertMaterial({ color: '#eee' }),
-        new THREE.MeshLambertMaterial({ map: cardTex('back') }),
-        new THREE.MeshLambertMaterial({ color: '#eee' }),
-        new THREE.MeshLambertMaterial({ color: '#eee' }),
-        new THREE.MeshLambertMaterial({ color: '#eee' }),
-      ]
+    const wood = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.42, metalness: 0.04 });
+    // baranda acolchada de cuero
+    const rail = new THREE.Mesh(new THREE.TorusGeometry(R + 0.04, 0.05, 20, 128), new THREE.MeshStandardMaterial({ map: leather, roughness: 0.55 }));
+    rail.rotation.x = Math.PI / 2;
+    rail.position.y = TABLE_Y + 0.012;
+    rail.scale.z = 0.7;
+    rail.castShadow = true;
+    // canto de madera debajo de la baranda
+    const edge = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.07, R + 0.05, 0.07, 128, 1, true), wood);
+    edge.position.y = TABLE_Y - 0.03;
+    const under = new THREE.Mesh(new THREE.CircleGeometry(R + 0.05, 64), wood);
+    under.rotation.x = Math.PI / 2;
+    under.position.y = TABLE_Y - 0.066;
+    // pie de la mesa: columna torneada y base con cuatro patas
+    const lathe = new THREE.LatheGeometry(
+      [[0.0, 0], [0.16, 0], [0.16, 0.04], [0.08, 0.1], [0.07, 0.25], [0.1, 0.33], [0.06, 0.45], [0.06, TABLE_Y - 0.14], [0.13, TABLE_Y - 0.08], [0.0, TABLE_Y - 0.07]].map(([x, y]) => new THREE.Vector2(x, y)),
+      32
     );
-    deckBox.castShadow = true;
-    deckBox.position.y = 0.01;
-    this.deck.add(deckBox);
+    const column = new THREE.Mesh(lathe, wood);
+    for (let k = 0; k < 4; k++) {
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.07), wood);
+      foot.position.set(0, 0.03, 0);
+      foot.rotation.y = (k * Math.PI) / 2 + Math.PI / 4;
+      foot.translateX(0.22);
+      foot.castShadow = true;
+      g.add(foot);
+    }
+    for (const m of [column, edge, under]) m.castShadow = m.receiveShadow = true;
+    g.add(top, rail, edge, under, column);
+
+    // vaso de vino y botella para ambientar
+    const glassMat = new THREE.MeshStandardMaterial({ color: '#dfe8ec', roughness: 0.05, transparent: true, opacity: 0.3 });
+    const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.026, 0.1, 20, 1, true), glassMat);
+    const wine = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.025, 0.05, 20), new THREE.MeshStandardMaterial({ color: '#4a0d18', roughness: 0.2 }));
+    glass.position.set(-R * 0.55, TABLE_Y + 0.05, R * 0.5);
+    wine.position.set(-R * 0.55, TABLE_Y + 0.026, R * 0.5);
+    const bottle = new THREE.Mesh(
+      new THREE.LatheGeometry([[0, 0], [0.04, 0], [0.04, 0.2], [0.015, 0.26], [0.014, 0.32], [0, 0.32]].map(([x, y]) => new THREE.Vector2(x, y)), 20),
+      new THREE.MeshStandardMaterial({ color: '#173a22', roughness: 0.15, metalness: 0.1 })
+    );
+    bottle.position.set(-R * 0.66, TABLE_Y, -R * 0.5);
+    bottle.castShadow = glass.castShadow = true;
+    g.add(glass, wine, bottle);
+
+    // mazo: dos mitades para poder animar el mezclado y el corte
+    this.deck = new THREE.Group();
+    const side = new THREE.MeshLambertMaterial({ color: '#efece4' });
+    const half = () => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(CARD_W, 0.01, CARD_H), [side, side, new THREE.MeshLambertMaterial({ map: cardTex('back') }), side, side, side]);
+      m.castShadow = true;
+      return m;
+    };
+    this.deckLow = half();
+    this.deckHigh = half();
+    this.deckLow.position.y = 0.005;
+    this.deckHigh.position.y = 0.015;
+    this.deck.add(this.deckLow, this.deckHigh);
     g.add(this.deck);
 
     // mate de decoración
@@ -344,7 +432,7 @@ export class TableScene {
     );
     const d = this.seatDir(seat);
     const r = this.R + 0.3;
-    mesh.position.set(d.x * r, 0.84 + 0.333 * CHAR_H, d.z * r);
+    mesh.position.set(d.x * r, CHAR_H / 2, d.z * r);
     this.scene.add(mesh);
     // silla
     const wood = new THREE.MeshStandardMaterial({ color: '#4a2a14', roughness: 0.6 });
@@ -621,42 +709,104 @@ export class TableScene {
   }
 
   // ------------------------------------------------------------ mis cartas (en la mano, pegadas a la cámara)
+  // Colores de tu propia mano y manga (los de tu personaje).
+  setMyLook(look) {
+    const sleeve = look.shirt === 'jacket' ? look.cloth2 : look.cloth;
+    const key = look.skin[0] + sleeve;
+    if (this.handKey === key) return;
+    this.handKey = key;
+    const mk = (canvas, w, h, order) => {
+      const t = new THREE.CanvasTexture(canvas);
+      t.colorSpace = THREE.SRGBColorSpace;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthTest: false, alphaTest: 0.05 }));
+      m.renderOrder = order;
+      return m;
+    };
+    if (this.palm) this.handGroup.remove(this.palm, this.thumb);
+    this.palm = mk(drawHoldBack(look.skin[0], sleeve), 0.36, 0.36, 9);
+    this.thumb = mk(drawHoldThumb(look.skin[0]), 0.1, 0.1, 40);
+    this.handGroup.add(this.palm, this.thumb);
+    this.reachTex?.dispose();
+    this.reachTex = new THREE.CanvasTexture(drawReach(look.skin[0], sleeve));
+    this.reachTex.colorSpace = THREE.SRGBColorSpace;
+  }
+
   setMyCards(cards, selected) {
     const ids = cards.join(',');
     if (ids !== this.handIds) {
       this.handIds = ids;
-      for (const c of this.handCards) this.handGroup.remove(c);
+      // guardo dónde estaba cada carta para que la mano la lleve desde ahí hasta la mesa
+      this.lastHandPos = {};
+      for (const c of this.handCards) {
+        this.lastHandPos[c.userData.id] = c.getWorldPosition(new THREE.Vector3());
+        this.handGroup.remove(c);
+      }
       this.handCards = cards.map((id) => {
         const c = makeCard(id, false);
         c.scale.setScalar(1.1);
-        c.renderOrder = 10;
         c.traverse((o) => {
           if (o.material) {
             o.material.depthTest = false;
             o.material.transparent = true;
           }
-          o.renderOrder = 10;
         });
         this.handGroup.add(c);
         return c;
       });
     }
     this.selected = selected;
+    this.choosing = null;
   }
 
   layoutHand(dt) {
     const n = this.handCards.length;
-    // cuanto más mirás para abajo, más se bajan las cartas (para ver la mesa)
+    // cuanto más mirás para abajo, más se baja la mano (para ver la mesa)
     const lowered = THREE.MathUtils.clamp((-this.pitch - 0.35) / 0.45, 0, 1);
+    const pivot = new THREE.Vector3(0.03, -0.32 - lowered * 0.1, -0.62);
+    const mid = (n - 1) / 2;
     this.handCards.forEach((c, i) => {
-      const mid = (n - 1) / 2;
-      const isSel = this.selected === c.userData.id;
+      const a = (mid - i) * 0.3;
+      const isSel = this.selected === c.userData.id || this.choosingTopId === c.userData.id;
       const isHover = this.hover === c;
-      const x = (i - mid) * 0.1;
-      const y = -0.27 - Math.abs(i - mid) * 0.012 + (isSel ? 0.06 : isHover ? 0.025 : 0) - lowered * 0.12;
-      const target = new THREE.Vector3(x, y, -0.62);
+      const len = 0.1 + (isSel ? 0.05 : isHover ? 0.02 : 0);
+      const target = new THREE.Vector3(pivot.x - Math.sin(a) * len, pivot.y + Math.cos(a) * len, pivot.z + i * 0.002);
       c.position.lerp(target, Math.min(1, dt * 14));
-      c.rotation.set(-0.18, 0, -(i - mid) * 0.09);
+      c.rotation.set(-0.15, 0, a);
+      c.traverse((o) => (o.renderOrder = 10 + i));
+    });
+    if (this.palm) {
+      this.palm.visible = this.thumb.visible = n > 0;
+      this.palm.position.set(pivot.x - 0.035, pivot.y - 0.035, pivot.z - 0.01);
+      this.thumb.position.set(pivot.x - 0.05, pivot.y + 0.0, pivot.z + 0.01);
+      this.thumb.rotation.z = 0.1;
+    }
+  }
+
+  // Mano derecha que acompaña a la carta hasta la mesa y después se retira.
+  reachWith(card, ms) {
+    if (!this.reachTex) return;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), new THREE.MeshBasicMaterial({ map: this.reachTex, transparent: true, alphaTest: 0.05, depthTest: false }));
+    m.renderOrder = 50;
+    this.scene.add(m);
+    const right = new THREE.Vector3();
+    const up = new THREE.Vector3();
+    const place = (extra = 0) => {
+      right.setFromMatrixColumn(this.camera.matrixWorld, 0);
+      up.setFromMatrixColumn(this.camera.matrixWorld, 1);
+      m.quaternion.copy(this.camera.quaternion);
+      m.position.copy(card.position).addScaledVector(right, 0.098 + extra).addScaledVector(up, -0.004 - extra);
+    };
+    this.tween(ms, () => place(0), () => {
+      const t0 = performance.now();
+      this.tween(320, (t) => {
+        place(t * 0.35);
+        m.material.opacity = 1 - t;
+      }, () => {
+        this.scene.remove(m);
+        m.geometry.dispose();
+        m.material.dispose();
+      });
+      void t0;
     });
   }
 
@@ -670,7 +820,7 @@ export class TableScene {
         const key = `${seat}:${idx}`;
         seen.add(key);
         let card = this.tableCards.get(key);
-        const face = p.c || 'back';
+        const face = p.c || (p.faceDown ? 'back' : 'blank');
         const pose = poses[idx];
         if (!card) {
           card = makeCard(face, true);
@@ -681,7 +831,9 @@ export class TableScene {
           const endQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), pose.rot));
           if (flip) endQ.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
           if (animate) {
-            const start = this.handOrigin(seat);
+            const mine = !this.spectator && seat === this.me;
+            const start = (mine && this.lastHandPos?.[p.c]) || this.handOrigin(seat);
+            if (mine) this.reachWith(card, 420);
             const q0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.4, this.seatAngle(seat), 0));
             card.position.copy(start);
             card.quaternion.copy(q0);
@@ -724,8 +876,8 @@ export class TableScene {
     let rot = a;
     list.forEach((p, idx) => {
       if (idx > 0) {
-        if (p.stacked) {
-          // encimada: casi la tapa, pero se nota un poquito
+        if (p.over) {
+          // tiro doble: la de arriba casi tapa la de abajo, pero se nota un poquito
           radial -= 0.013;
           side += 0.009;
           rot += 0.075;
@@ -752,14 +904,101 @@ export class TableScene {
     return d.multiplyScalar(this.R + 0.15).setY(0.95);
   }
 
-  setDealer(seat) {
-    if (!this.deck || seat == null) return;
+  deckSpot(seat) {
     const d = this.seatDir(seat);
     const a = this.seatAngle(seat);
     const tangent = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
-    const p = d.multiplyScalar(this.R * 0.72).addScaledVector(tangent, 0.26);
-    this.deck.position.set(p.x, TABLE_Y, p.z);
-    this.deck.rotation.y = a + 0.3;
+    const p = d.multiplyScalar(this.R * 0.74).addScaledVector(tangent, 0.24);
+    return { pos: new THREE.Vector3(p.x, TABLE_Y, p.z), rot: a + 0.3 };
+  }
+
+  setDealer(seat) {
+    if (!this.deck || seat == null || this.dealingAnim) return;
+    const { pos, rot } = this.deckSpot(seat);
+    this.deck.position.copy(pos);
+    this.deck.rotation.y = rot;
+    this.deck.visible = true;
+  }
+
+  // Animación de una mano nueva (dura lo mismo que la pausa del servidor):
+  // el mazo pasa al que reparte, se mezcla, corta el de la izquierda y se reparte de a una
+  // hacia la derecha empezando por la mano. onCard(asiento) se llama cuando llega cada carta.
+  dealAnim({ dealer, cutter, mano, n, onCard, onDone }) {
+    if (!this.deck) return;
+    this.dealingAnim = true;
+    const d = this.deck;
+    const lo = this.deckLow;
+    const hi = this.deckHigh;
+    const from = d.position.clone();
+    const fromRot = d.rotation.y;
+    const D = this.deckSpot(dealer);
+    const C = this.deckSpot(cutter);
+    lo.position.set(0, 0.005, 0);
+    hi.position.set(0, 0.015, 0);
+    d.visible = true;
+    // 1) el mazo llega al que reparte y se mezcla (dos mitades que se separan y se intercalan)
+    this.tween(1100, (t) => {
+      const k = Math.min(1, t * 4);
+      d.position.lerpVectors(from, D.pos, ease(k));
+      d.rotation.y = fromRot + (D.rot - fromRot) * ease(k);
+      if (t > 0.25) {
+        const ph = ((t - 0.25) / 0.75) * 3;
+        const f = Math.sin((ph % 1) * Math.PI);
+        lo.position.x = -f * 0.07;
+        hi.position.x = f * 0.07;
+        hi.position.y = 0.015 + f * 0.03;
+        hi.rotation.z = f * 0.25;
+        lo.rotation.z = -f * 0.25;
+      }
+    }, () => {
+      lo.position.set(0, 0.005, 0);
+      hi.position.set(0, 0.015, 0);
+      hi.rotation.z = lo.rotation.z = 0;
+      // 2) corta el de la izquierda: el mazo va hasta él, levanta la mitad de arriba y la pone abajo
+      this.tween(800, (t) => {
+        if (t < 0.3) d.position.lerpVectors(D.pos, C.pos, ease(t / 0.3));
+        else if (t < 0.55) {
+          const k = (t - 0.3) / 0.25;
+          hi.position.set(0.13 * ease(k), 0.015 + Math.sin(k * Math.PI) * 0.05, 0);
+        } else if (t < 0.75) {
+          const k = (t - 0.55) / 0.2;
+          lo.position.set(0, 0.005 + 0.01 * ease(k) + Math.sin(k * Math.PI) * 0.05, 0);
+          hi.position.set(0.13 * (1 - ease(k)), 0.015 - 0.01 * ease(k), 0);
+        } else d.position.lerpVectors(C.pos, D.pos, ease((t - 0.75) / 0.25));
+      }, () => {
+        const ly = lo.position.y;
+        lo.position.y = hi.position.y;
+        hi.position.y = ly;
+        [this.deckLow, this.deckHigh] = [hi, lo];
+        // 3) reparte de a una, hacia la derecha, empezando por la mano
+        const total = n * 3;
+        for (let k = 0; k < total; k++) {
+          const seat = (mano + (k % n)) % n;
+          setTimeout(() => this.flyCard(D.pos, seat, () => onCard?.(seat)), k * 170);
+        }
+        setTimeout(() => {
+          this.dealingAnim = false;
+          onDone?.();
+        }, total * 170 + 260);
+      });
+    });
+  }
+
+  flyCard(fromPos, seat, done) {
+    const card = makeCard('back', true);
+    card.rotation.set(-Math.PI / 2, 0, 0);
+    card.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI));
+    const start = fromPos.clone().setY(TABLE_Y + 0.03);
+    const end = this.handOrigin(seat);
+    card.position.copy(start);
+    this.scene.add(card);
+    this.tween(240, (t) => {
+      card.position.lerpVectors(start, end, ease(t));
+      card.position.y += Math.sin(Math.PI * t) * 0.06;
+    }, () => {
+      this.scene.remove(card);
+      done?.();
+    });
   }
 
   // ------------------------------------------------------------ utilidades
@@ -768,13 +1007,12 @@ export class TableScene {
   }
 
   // Posición en pantalla de la cabeza de un asiento (para nombres y globos de diálogo).
-  screenPos(seat, yOffset = 0.62) {
-    let p;
+  screenPos(seat) {
     if (!this.spectator && seat === this.me) return null;
     const c = this.chars.get(seat);
     if (!c) return null;
-    p = c.mesh.position.clone();
-    p.y += yOffset * CHAR_H * 0.5 + 0.08;
+    const p = c.mesh.position.clone();
+    p.y = 1.66; // un poco arriba de la cabeza
     p.project(this.camera);
     const behind = p.z > 1;
     const r = this.renderer.domElement.getBoundingClientRect();
@@ -802,7 +1040,10 @@ export class TableScene {
       if (k.has('s') || k.has('arrowdown')) this.pitch -= sp * 0.8;
       this.applyCamera();
     }
-    this.tweens = this.tweens.filter((tw) => {
+    // las animaciones que se encadenan (en done) se agregan a la lista nueva, no se pierden
+    const running = this.tweens;
+    this.tweens = [];
+    const keep = running.filter((tw) => {
       const t = Math.min(1, (now - tw.t0) / tw.ms);
       tw.fn(t);
       if (t >= 1) {
@@ -811,6 +1052,7 @@ export class TableScene {
       }
       return true;
     });
+    this.tweens = keep.concat(this.tweens);
     // zoom temporal manteniendo Z (o el botón de zoom)
     const baseFov = this.camera.aspect < 1 ? 78 : 62;
     const wantFov = (k && k.has('z')) || this.zoomHeld ? baseFov * 0.38 : baseFov;
@@ -824,7 +1066,7 @@ export class TableScene {
       // billboard: el recorte siempre mira a la cámara (solo gira en Y)
       c.mesh.rotation.y = Math.atan2(this.camera.position.x - c.mesh.position.x, this.camera.position.z - c.mesh.position.z);
       // respira un poquito
-      c.mesh.position.y = 0.84 + 0.333 * CHAR_H + Math.sin(now / 900 + c.seat) * 0.004;
+      c.mesh.position.y = CHAR_H / 2 + Math.sin(now / 900 + c.seat) * 0.003;
       this.updateCharacter(c, now);
     }
     const target = this.computeLookTarget();

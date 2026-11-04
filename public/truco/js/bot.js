@@ -64,19 +64,28 @@ function chooseCard(g, seat, rng) {
   let mode = 'normal';
   const a = actionsFor(g, seat);
   if (a.canDown && tb.count && !hand.some((c) => rank(c) > tb.theirs) && pick(rng, 0.25)) mode = 'down';
-  else if (a.canStack && pick(rng, 0.06)) mode = 'stack';
+  // de vez en cuando tira dos juntas: abajo la que juega, arriba una alta para asustar
+  if (mode === 'normal' && a.canDouble && h.r === 0 && hand.length === 3 && pick(rng, 0.05)) {
+    const top = highest !== card ? highest : hand.find((c) => c !== card);
+    return { t: 'play2', bottom: card, top };
+  }
   return { t: 'play', card, mode };
 }
 
 export function botAction(g, seat, rng = Math.random) {
   const h = g.h;
-  if (!h || h.phase !== 'play' || g.status !== 'playing') return null;
+  if (!h || g.status !== 'playing') return null;
+  if (h.phase === 'show') return h.show.seat === seat && !h.mazo[seat] ? { t: 'mostrar' } : null;
+  if (h.phase !== 'play') return null;
   const w = waitingFor(g);
   if (!w.seats.includes(seat)) return null;
   const a = actionsFor(g, seat);
   const t = tanto(h.cards[seat]).value;
 
-  if (w.kind === 'declare') return a.cantar ? { t: 'cantar' } : { t: 'buenas' };
+  if (w.kind === 'declare') {
+    const best = h.envido.declare.best;
+    return !best || t > best.value ? { t: 'cantar' } : { t: 'buenas' };
+  }
 
   if (w.kind === 'envido') {
     const calls = h.envido.calls;
@@ -116,6 +125,12 @@ export function botAction(g, seat, rng = Math.random) {
 }
 
 // Seña que haría un bot para su compañero al principio de la mano.
+// ¿El bot le reclama al rival que no mostró los tantos?
+export function botClaims(g, seat, rng = Math.random) {
+  const h = g.h;
+  return h?.phase === 'show' && team(seat) !== team(h.show.seat) && rng() < 0.75;
+}
+
 export function botSena(g, seat) {
   const h = g.h;
   const cards = h.inHand[seat];

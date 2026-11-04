@@ -3,7 +3,8 @@
 // (de frente, de tres cuartos o casi de perfil), hacia dónde mira y qué cara pone (señas, hablar, parpadear).
 
 export const W = 512;
-export const H = 768;
+export const H = 1200;
+const WAIST = 730; // cintura (el resto es cadera, piernas y zapatos, sentado)
 
 // Señas: id -> { label, expr, desc }.
 export const SENAS = {
@@ -106,6 +107,7 @@ export function drawCharacter(ctx, look, state) {
   const hy = 214 + down * 10;
 
   if (look.style === 'long') drawLongHairBack(ctx, look, hx, hy, headYaw);
+  drawLegs(ctx, look, bx, bodyYaw);
   drawTorso(ctx, look, bx, bodyYaw);
   drawNeck(ctx, look, bx, hx, hy);
   drawHead(ctx, look, hx, hy, headYaw, down, expr, talking, blink);
@@ -126,8 +128,8 @@ function drawTorso(ctx, look, bx, yaw) {
   ctx.beginPath();
   ctx.moveTo(bx - 34, top - 4);
   ctx.bezierCurveTo(bx - 70, top + 4, bx - sw + 18, top + 8, bx - sw, top + 52);
-  ctx.bezierCurveTo(bx - sw - 14, top + 120, bx - sw - 22, top + 260, bx - sw - 26, H + 10);
-  ctx.lineTo(bx + sw + 26, H + 10);
+  ctx.bezierCurveTo(bx - sw - 14, top + 120, bx - sw - 22, top + 260, bx - sw * 0.9, WAIST);
+  ctx.quadraticCurveTo(bx, WAIST + 14, bx + sw * 0.9, WAIST);
   ctx.bezierCurveTo(bx + sw + 22, top + 260, bx + sw + 14, top + 120, bx + sw, top + 52);
   ctx.bezierCurveTo(bx + sw - 18, top + 8, bx + 70, top + 4, bx + 34, top - 4);
   ctx.closePath();
@@ -141,7 +143,7 @@ function drawTorso(ctx, look, bx, yaw) {
   ctx.save();
   ctx.clip();
   ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.fillRect(0, 600, W, 200);
+  ctx.fillRect(0, 600, W, WAIST - 590);
   ctx.restore();
 
   const mid = bx + s * 34; // línea central del pecho (se corre al girar)
@@ -162,7 +164,7 @@ function drawTorso(ctx, look, bx, yaw) {
       }
       ctx.beginPath();
       ctx.moveTo(mid, top + 34);
-      ctx.lineTo(mid + s * 6, look.shirt === 'polo' ? top + 90 : H);
+      ctx.lineTo(mid + s * 6, look.shirt === 'polo' ? top + 90 : WAIST);
       ctx.stroke();
       ctx.fillStyle = mix(cloth, 0.55);
       for (let y = top + 60; y < (look.shirt === 'polo' ? top + 90 : 620); y += 46) {
@@ -200,8 +202,8 @@ function drawTorso(ctx, look, bx, yaw) {
       ctx.strokeStyle = mix(cloth, 0.85);
       for (let x = -sw + 30; x < sw - 20; x += 14) {
         ctx.beginPath();
-        ctx.moveTo(bx + x, 700);
-        ctx.lineTo(bx + x, 760);
+        ctx.moveTo(bx + x * 0.9, WAIST - 50);
+        ctx.lineTo(bx + x * 0.9, WAIST);
         ctx.stroke();
       }
       break;
@@ -239,6 +241,66 @@ function drawNeck(ctx, look, bx, hx, hy) {
   ctx.fillStyle = 'rgba(60,30,20,0.25)';
   ctx.fill();
   void skin;
+}
+
+// Sentado: cadera, muslos que vienen hacia adelante (hacia la mesa), piernas y zapatos.
+function drawLegs(ctx, look, bx, yaw) {
+  const s = Math.sin(yaw);
+  const c = Math.cos(yaw);
+  const pants = ['#2b2d33', '#3b3a36', '#2f3a4a', '#4a3f33', '#2a2a2a'][(look.fw + look.fh) % 5];
+  const pantsD = mix(pants, 0.75);
+  const shoe = '#1e1714';
+  const hipW = 118 * (0.7 + 0.3 * c);
+  const kneeY = 880;
+  const ankleY = 1135;
+  // cadera
+  ctx.beginPath();
+  ctx.moveTo(bx - hipW, WAIST - 12);
+  ctx.lineTo(bx + hipW, WAIST - 12);
+  ctx.quadraticCurveTo(bx + hipW + 10, 800, bx + hipW - 6, 830);
+  ctx.lineTo(bx - hipW + 6, 830);
+  ctx.quadraticCurveTo(bx - hipW - 10, 800, bx - hipW, WAIST - 12);
+  fillStroke(ctx, pants, INK, 3);
+  // cinturón
+  ctx.fillStyle = '#2a1d16';
+  ctx.fillRect(bx - hipW + 4, WAIST - 10, hipW * 2 - 8, 14);
+  ctx.fillStyle = '#b9a272';
+  ctx.fillRect(bx + s * 30 - 10, WAIST - 10, 20, 14);
+  for (const side of [-1, 1]) {
+    // muslo hacia adelante (las rodillas apuntan al centro de la mesa)
+    const hx = bx + side * hipW * 0.5;
+    const kx = bx + side * 62 * (0.6 + 0.4 * c) + s * 46;
+    ctx.beginPath();
+    ctx.moveTo(hx - 46, 800);
+    ctx.quadraticCurveTo(kx - 56, 840, kx - 44, kneeY + 10);
+    ctx.quadraticCurveTo(kx, kneeY + 34, kx + 44, kneeY + 10);
+    ctx.quadraticCurveTo(kx + 56, 840, hx + 46, 800);
+    ctx.closePath();
+    fillStroke(ctx, side < 0 ? pants : pantsD, INK, 3);
+    // pierna
+    const ax = kx + s * 10 + side * 4;
+    ctx.beginPath();
+    ctx.moveTo(kx - 36, kneeY + 14);
+    ctx.lineTo(ax - 28, ankleY);
+    ctx.lineTo(ax + 28, ankleY);
+    ctx.lineTo(kx + 36, kneeY + 14);
+    ctx.closePath();
+    fillStroke(ctx, side < 0 ? mix(pants, 0.9) : mix(pants, 0.7), INK, 3);
+    // zapato
+    ctx.beginPath();
+    ctx.moveTo(ax - 32, ankleY - 4);
+    ctx.quadraticCurveTo(ax - 40 + s * 30, ankleY + 50, ax + s * 34, ankleY + 54);
+    ctx.quadraticCurveTo(ax + 44 + s * 30, ankleY + 50, ax + 32, ankleY - 4);
+    ctx.closePath();
+    fillStroke(ctx, shoe, INK, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ellipse(ctx, ax - 10 + s * 20, ankleY + 18, 10, 5);
+    ctx.fill();
+  }
+  // sombra en el piso
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ellipse(ctx, bx + s * 40, ankleY + 56, 150, 12);
+  ctx.fill();
 }
 
 // ------------------------------------------------------------------ cabeza

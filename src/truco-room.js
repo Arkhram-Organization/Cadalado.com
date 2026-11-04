@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
-import { MODES, newGame, act, nextHand, rematch, viewFor, waitingFor, team } from '../public/truco/js/engine.js';
-import { botAction, botSena } from '../public/truco/js/bot.js';
+import { MODES, newGame, act, nextHand, rematch, viewFor, waitingFor, team, closeShow } from '../public/truco/js/engine.js';
+import { botAction, botSena, botClaims } from '../public/truco/js/bot.js';
 import { cleanName, cleanPid } from './util.js';
 
 export const SENAS = [
@@ -11,6 +11,9 @@ const BOT_NAMES = ['Tito', 'Coca', 'El Ruso', 'Chacho', 'Pocha', 'Beto', 'Nené'
 const MAX_CHAT = 120;
 const HAND_PAUSE = 5200; // ms para ver cómo terminó la mano
 const AFK_MS = 40_000; // si un humano desconectado tiene que jugar, juega el bot por él
+const SHOW_MS = 15_000; // tiempo para mostrar los tantos o reclamar; después valen igual
+// mezclar + cortar + repartir de a una (lo mismo que anima el cliente)
+const dealMs = (n) => 1900 + n * 3 * 170 + 300;
 
 const rng = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
 
@@ -162,6 +165,7 @@ export class TrucoRoom extends DurableObject {
 
       case 'act': {
         if (r.status !== 'playing' || seat == null) return;
+        if (Date.now() < (r.dealUntil || 0)) return this.send(ws, { t: 'error', msg: 'Esperá que terminen de repartir' });
         const res = act(r.game, seat, msg.a, rng);
         if (res.error) {
           this.send(ws, { t: 'error', msg: res.error });
@@ -247,7 +251,20 @@ export class TrucoRoom extends DurableObject {
       nextHand(g, rng);
       this.afterDeal();
       changed = true;
-    } else if (g.h.phase === 'play') {
+    } else if (g.h.phase === 'show') {
+      // el que ganó el envido muestra (si es bot); los bots rivales reclaman si no muestra; al rato vale igual
+      const sh = g.h.show;
+      const since = r.showSince || now;
+      const winnerBot = r.seats[sh.seat]?.bot || this.isAway(sh.seat, now);
+      if (winnerBot && now - since > 1200 && !g.h.mazo[sh.seat]) {
+        changed = act(g, sh.seat, { t: 'mostrar' }, rng).ok;
+      } else if (r.botClaimAt && now >= r.botClaimAt) {
+        changed = act(g, r.botClaimer, { t: 'reclamar' }, rng).ok;
+      } else if (now - since >= SHOW_MS) {
+        changed = closeShow(g);
+      }
+      if (changed) this.onGameChange();
+    } else if (g.h.phase === 'play' && now >= (r.dealUntil || 0)) {
       const actor = this.autoActor();
       if (actor != null) {
         const a = botAction(g, actor, rng);
@@ -267,12 +284,23 @@ export class TrucoRoom extends DurableObject {
   afterDeal() {
     const r = this.room;
     r.handEndedAt = 0;
+    r.showSince = 0;
+    r.botClaimAt = 0;
+    r.dealUntil = Date.now() + dealMs(r.game.n);
     r.botSenaDue = {};
     if (r.game.n > 2) {
       r.seats.forEach((s, i) => {
-        if (s?.bot) r.botSenaDue[i] = Date.now() + 900 + Math.floor(rng() * 2500);
+        if (s?.bot) r.botSenaDue[i] = r.dealUntil + 400 + Math.floor(rng() * 2500);
       });
     }
+  }
+
+  isAway(seat, now = Date.now()) {
+    const r = this.room;
+    const p = r.seats[seat];
+    if (!p || p.bot) return !!p;
+    if (this.online().has(p.pid)) return false;
+    return now - (r.afkSince[seat] || now) >= AFK_MS;
   }
 
   onGameChange() {
@@ -284,6 +312,16 @@ export class TrucoRoom extends DurableObject {
       this.addSystemChat(`Ganaron ${names} (${r.game.score[t]} a ${r.game.score[1 - t]})`);
     } else if (r.game.h.phase === 'ended' && !r.handEndedAt) {
       r.handEndedAt = Date.now();
+    } else if (r.game.h.phase === 'show' && !r.showSince) {
+      r.showSince = Date.now();
+      // si el que tiene que mostrar es humano, algún bot rival puede reclamarle
+      const sh = r.game.h.show;
+      const claimers = r.seats.map((s, i) => (s?.bot && team(i) !== team(sh.seat) ? i : null)).filter((i) => i != null);
+      r.botClaimAt = 0;
+      if (!r.seats[sh.seat]?.bot && claimers.length && botClaims(r.game, claimers[0], rng)) {
+        r.botClaimer = claimers[0];
+        r.botClaimAt = r.showSince + 6000 + Math.floor(rng() * 4000);
+      }
     }
   }
 
@@ -394,6 +432,11 @@ export class TrucoRoom extends DurableObject {
     let at = now + 2500; // latido para miradas de los bots
     const g = r.game;
     if (g.h.phase === 'ended') at = Math.min(at, r.handEndedAt + HAND_PAUSE);
+    else if (g.h.phase === 'show') {
+      const since = r.showSince || now;
+      at = Math.min(at, since + SHOW_MS, since + 1300);
+      if (r.botClaimAt) at = Math.min(at, r.botClaimAt);
+    } else if (now < (r.dealUntil || 0)) at = Math.min(at, r.dealUntil + 50);
     else if (this.autoActor() != null) at = Math.min(at, now + 900 + Math.floor(rng() * 900));
     else {
       const w = waitingFor(g);

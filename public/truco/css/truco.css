@@ -203,3 +203,6 @@ code { background: #0003; padding: 1px 5px; border-radius: 4px; }
   .btn.call { font-size: 14px; }
   .seats { grid-template-columns: 1fr; }
 }
+
+.lie { display: inline-flex; gap: 4px; align-items: center; background: #0008; border: 1px solid var(--line); border-radius: 10px; padding: 3px 4px 3px 8px; }
+.lie input { width: 56px; background: #120c08; color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 5px; font-size: 15px; }
