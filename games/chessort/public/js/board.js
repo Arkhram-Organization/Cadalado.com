@@ -147,7 +147,7 @@ export class Board {
       } else {
         const el = div('piece');
         el.dataset.code = code;
-        el.style.backgroundImage = `url(/pieces/${code}.svg)`;
+        el.style.backgroundImage = `url(pieces/${code}.svg)`;
         placeEl(el, this.xy(sq), false);
         this.piecesEl.append(el);
         newEls.set(sq, el);
@@ -248,7 +248,7 @@ export class Board {
     const pieces = ['q', 'n', 'r', 'b'];
     for (const p of pieces) {
       const b = div('promo-piece');
-      b.style.backgroundImage = `url(/pieces/${color}${p}.svg)`;
+      b.style.backgroundImage = `url(pieces/${color}${p}.svg)`;
       b.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         this.closePromo();

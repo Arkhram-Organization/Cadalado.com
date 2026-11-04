@@ -1,4 +1,4 @@
-import { Chess } from '/vendor/chess.js';
+import { Chess } from '../vendor/chess.js';
 import { Board } from './board.js';
 import { createCore, REASON_TEXT, other } from './core.js';
 import { playSound, soundForMove } from './sound.js';
@@ -256,7 +256,7 @@ export function mountGame(root, ctrl, { gameId = null, navigate }) {
     let html = '';
     for (const t of ['p', 'b', 'n', 'r', 'q']) {
       const n = Math.max(0, START_COUNT[t] - counts[opp][t]);
-      if (n) html += `<span class="cap-group">${`<img src="/pieces/${opp}${t}.svg" alt="">`.repeat(n)}</span>`;
+      if (n) html += `<span class="cap-group">${`<img src="pieces/${opp}${t}.svg" alt="">`.repeat(n)}</span>`;
     }
     const score = (c) => Object.entries(counts[c]).reduce((s, [t, n]) => s + VALUES[t] * n, 0);
     return { captured: html, diff: score(color) - score(opp) };
@@ -343,7 +343,7 @@ export function mountGame(root, ctrl, { gameId = null, navigate }) {
     // Invitación mientras se espera rival
     const invite = $('.invite');
     if (g.status === 'waiting' && isOnline) {
-      const link = `${location.origin}/game/${gameId}`;
+      const link = new URL(`game/${gameId}`, document.baseURI).href;
       invite.classList.remove('hidden');
       if (!invite.dataset.ready) {
         invite.dataset.ready = '1';

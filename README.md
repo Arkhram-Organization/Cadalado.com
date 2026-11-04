@@ -6,14 +6,22 @@ La identidad (logo, colores, tipografía, tono) está en [`MARCA.md`](MARCA.md).
 
 ## Qué hay en el repo
 
-| Qué | Carpeta | Rama | Dirección | Proyecto de Vercel |
-|---|---|---|---|---|
-| 🏠 Portal (inicio, juegos, creadores) | [`portal`](portal) | `main` | `cadalado.com` | `cadalado` |
-| ♟️ Ajedrez | [`games/chessort`](games/chessort) | `chessort` | `ajedrez.cadalado.com` | `chessort` |
-| 🃏 Truco | `games/truco` | `truco` | `truco.cadalado.com` | `truco` |
+Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 
-Todo se publica en **Vercel**. Cada juego es una app independiente: tiene su carpeta, su rama y su propio proyecto.
-El portal solo lista los juegos y los linkea.
+| Qué | Carpeta | Rama de trabajo | Dirección |
+|---|---|---|---|
+| 🏠 Portal (inicio, juegos, creadores) | [`portal`](portal) | `main` | `cadalado.com` |
+| ♟️ Ajedrez | [`games/chessort`](games/chessort) | `chessort` | `cadalado.com/ajedrez` |
+| 🃏 Truco | `games/truco` | `truco` | `cadalado.com/truco` |
+
+```
+portal/public/         el portal (estático)
+games/<juego>/         cada juego: public/ (lo que ve el navegador), api/ y lib/ (servidor), test/
+api/<ruta>/            puntos de entrada de Vercel: solo llaman al código de games/<juego>/api/
+scripts/build.mjs      arma dist/: portal en la raíz y cada juego en /<ruta>
+vercel.json            configuración del sitio (rutas de cada juego)
+dev-server.js          todo el sitio en tu compu (npm run dev)
+```
 
 ## Cómo trabajamos
 
@@ -37,11 +45,15 @@ git pull
 git checkout -b truco
 ```
 
-1. Creá `games/truco/` con todo el juego (su `package.json`, `vercel.json`, etc.).
-   Podés copiar `games/chessort` como punto de partida: ya trae salas multijugador guardadas en Redis
-   (`lib/room.js`, `api/`), lobby, presencia y chat, y un servidor para probar en tu compu (`npm run dev`).
-2. Usá el logo de cadalado (`portal/public/favicon.svg`) y poné un link de vuelta a `https://cadalado.com`.
-3. Para que aparezca en el portal, agregalo (o cambiá su `estado` a `'disponible'`) en
+1. Creá `games/truco/public/` con lo que ve el navegador. Va a quedar en `cadalado.com/truco/`, así que usá
+   rutas relativas (o `<base href="/truco/">` en el HTML, como hace el ajedrez).
+2. Si tiene servidor (salas online), poné el código en `games/truco/api/` y `games/truco/lib/`.
+   Vercel no tiene WebSockets: copiá el esquema del ajedrez (`games/chessort/lib/room.js`), que guarda las salas en Redis
+   y los navegadores consultan el estado cada ~1 segundo. Después agregá sus puntos de entrada en `api/truco/`.
+3. Sumalo a `scripts/build.mjs`, a `vercel.json` (sus rutas) y a `dev-server.js`.
+   Si necesita paquetes de npm, van en el `package.json` de la raíz.
+4. Usá el logo de cadalado y poné un link de vuelta a `/` (el portal).
+5. Para que aparezca en el portal, cambiá su `estado` a `'disponible'` en
    [`portal/public/js/datos.js`](portal/public/js/datos.js). En ese mismo archivo se suman los creadores.
 
 ```bash
@@ -50,28 +62,21 @@ git push -u origin truco
 
 ## Publicar (Vercel)
 
-Cada carpeta es un proyecto distinto de Vercel, todos desde este mismo repo.
-**Add New → Project**, importá el repo y configurá:
+Un solo proyecto para todo el sitio:
 
-| Campo | Portal | Ajedrez | Truco |
-|---|---|---|---|
-| Root Directory | `portal` | `games/chessort` | `games/truco` |
-| Framework Preset | Other | Other | (lo que use) |
-| Production Branch (Settings → Git) | `main` | `chessort` | `truco` |
-| Dominio (Settings → Domains) | `cadalado.com` y `www.cadalado.com` | `ajedrez.cadalado.com` | `truco.cadalado.com` |
+1. **Add New → Project**, importá este repo. **Root Directory:** vacío (la raíz). **Framework Preset:** Other.
+   El resto lo toma de `vercel.json`.
+2. **Settings → Git → Production Branch:** `main`.
+3. Pestaña **Storage** → conectá una base **Redis** (Upstash, plan gratis). Crea sola la variable `REDIS_URL`
+   (o `KV_URL`), que es la que usan los juegos. Después: **Deployments → Redeploy**.
+4. **Settings → Domains:** `cadalado.com` y `www.cadalado.com`.
 
-El ajedrez además necesita una base **Redis** conectada desde la pestaña **Storage** (Upstash tiene plan gratis).
-Los detalles están en [`games/chessort/README.md`](games/chessort/README.md).
-
-Como el dominio `cadalado.com` ya está en Vercel, los subdominios se agregan directo en cada proyecto.
+Cada push a `main` publica el sitio. Las ramas de cada juego (`chessort`, `truco`) generan
+**previews** con su propia dirección, para probar antes de pasar a `main`.
 
 ## Probar en tu compu
 
-El ajedrez (abre en http://localhost:3000):
-
-```bash
-cd games/chessort
-```
+Necesitás [Node.js](https://nodejs.org) 22 o superior. Desde la raíz del repo:
 
 ```bash
 npm install
@@ -81,8 +86,5 @@ npm install
 npm run dev
 ```
 
-El portal es estático:
-
-```bash
-npx serve portal/public
-```
+Abrí http://localhost:3000 (portal) y http://localhost:3000/ajedrez/ (ajedrez).
+Sin Redis, las partidas se guardan en memoria. Los tests: `npm test`.

@@ -1,4 +1,4 @@
-import { Chess } from '/vendor/chess.js';
+import { Chess } from '../vendor/chess.js';
 import { createCore, findTimeControl } from './core.js';
 import { getPid, getName } from './settings.js';
 
@@ -24,7 +24,7 @@ export class OnlineController extends Emitter {
     this.gameId = gameId;
     this.online = true;
     this.closed = false;
-    this.base = `/api/game/${gameId}`;
+    this.base = `api/game/${gameId}`;
     this.lastChatId = null;
     this.lastNow = 0;
     this.lastPing = 0;

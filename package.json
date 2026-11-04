@@ -1,0 +1,19 @@
+{
+  "name": "cadalado",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "cadalado.com: juegos online entre amigos",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "build": "node scripts/build.mjs",
+    "test": "node --test --test-force-exit games/*/test/*.test.js"
+  },
+  "dependencies": {
+    "chess.js": "1.4.0",
+    "redis": "6.3.1"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

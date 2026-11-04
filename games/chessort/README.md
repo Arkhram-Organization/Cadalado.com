@@ -3,8 +3,8 @@
 Ajedrez online de [cadalado.com](../../README.md) para jugar con amigos en tiempo real. Corre en **Vercel**.
 
 > Se trabaja en la rama **`chessort`** y todo vive en esta carpeta (`games/chessort`).
-> "chessort" es el nombre interno (carpeta, rama y proyecto de Vercel); para la gente el juego es **Ajedrez**.
-> Dirección: `ajedrez.cadalado.com`.
+> "chessort" es el nombre interno (carpeta y rama); para la gente el juego es **Ajedrez**.
+> Dirección: `cadalado.com/ajedrez`.
 
 ## Qué incluye
 
@@ -28,7 +28,7 @@ Vercel no tiene WebSockets, así que el navegador consulta el estado de la parti
 Las partidas se guardan en **Redis**. Si a alguien se le acaba el tiempo, la primera consulta que llega lo detecta y cierra la partida.
 
 ```
-api/                  ← funciones de Vercel
+api/                  ← funciones (las publica /api/ajedrez/ en la raíz del repo)
   games.js            POST /api/games          crear partida
   lobby.js            GET  /api/lobby          desafíos abiertos y partidas en vivo
   game/[id].js        GET/POST /api/game/:id   estado y acciones de una partida
@@ -41,40 +41,13 @@ public/               ← lo que ve el navegador (HTML/CSS/JS sin frameworks)
   js/game-view.js     pantalla de partida
   js/controllers.js   conexión con el servidor / partida local
   js/app.js           portada, navegación y ajustes
-dev-server.js         servidor para probar en tu compu
-test/                 tests (npm test)
+test/                 tests (npm test, desde la raíz)
 ```
 
-## Probar en tu compu
+## Probar y publicar
 
-Necesitás [Node.js](https://nodejs.org) 22 o superior.
-
-```bash
-cd games/chessort
-```
-
-```bash
-npm install
-```
-
-```bash
-npm run dev
-```
-
-Abrí http://localhost:3000. Sin Redis, las partidas se guardan en memoria (se borran al cerrar el servidor).
-Para probar el multijugador, abrí el enlace de la partida en otra ventana de incógnito.
-
-## Publicar en Vercel
-
-1. **Add New → Project**, importá el repo y configurá:
-   - **Root Directory:** `games/chessort`
-   - **Framework Preset:** Other (el resto, por defecto)
-2. En **Settings → Git → Production Branch** poné `chessort`.
-3. En la pestaña **Storage**, conectá una base **Redis** (por ejemplo Upstash, desde el Marketplace; tiene plan gratis).
-   Vercel crea sola la variable `REDIS_URL` (o `KV_URL`), que es la que usa el juego. Después hacé **Redeploy**.
-4. En **Settings → Domains** agregá `ajedrez.cadalado.com`.
-
-Sin el paso 3 el juego abre, pero crear partidas da el error "Falta conectar Redis".
+Se hace desde la raíz del repo, para todo el sitio a la vez: ver el [README principal](../../README.md).
+En tu compu queda en http://localhost:3000/ajedrez/ (`npm run dev`).
 
 ## Licencias
 

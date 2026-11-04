@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install",
+  "buildCommand": "node scripts/build.mjs",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/ajedrez/api/:path*", "destination": "/api/ajedrez/:path*" },
+    { "source": "/ajedrez/game/:id", "destination": "/ajedrez/index.html" },
+    { "source": "/ajedrez/local", "destination": "/ajedrez/index.html" }
+  ]
+}

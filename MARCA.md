@@ -9,7 +9,7 @@ Por eso el lema es **"Elegí tu lado."**
 ## Nombre
 
 - Se escribe **cadalado**, todo junto y en minúscula, también al principio de una frase.
-- El dominio es `cadalado.com`. Cada juego vive en un subdominio: `ajedrez.cadalado.com`, `truco.cadalado.com`.
+- El dominio es `cadalado.com`. Cada juego vive en su ruta: `cadalado.com/ajedrez`, `cadalado.com/truco`.
 - Los juegos se nombran por lo que son ("Ajedrez", "Truco"). Nombres internos como `chessort` no se muestran.
 
 ## Logo

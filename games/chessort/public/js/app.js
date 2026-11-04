@@ -10,17 +10,26 @@ const app = document.getElementById('app');
 let cleanup = null;
 
 // ---------- navegación ----------
+// El juego vive en una subcarpeta (cadalado.com/ajedrez): la define <base href> en index.html.
+// Las rutas internas ('/', '/game/abc', '/local') son relativas a esa carpeta.
+const BASE = new URL(document.baseURI).pathname.replace(/\/$/, '');
+const appPath = () => location.pathname.slice(BASE.length).replace(/\/$/, '') || '/';
+
 export function navigate(path, replace = false) {
-  if (replace) history.replaceState(null, '', path);
-  else history.pushState(null, '', path);
+  const url = BASE + path;
+  if (replace) history.replaceState(null, '', url);
+  else history.pushState(null, '', url);
   route();
 }
 
 function route() {
   cleanup?.();
   cleanup = null;
-  const path = location.pathname;
-  document.querySelectorAll('.nav-item').forEach((a) => a.classList.toggle('active', a.getAttribute('href') === path));
+  const path = appPath();
+  document.querySelectorAll('.nav-item[data-link]').forEach((a) => {
+    const target = new URL(a.href).pathname.slice(BASE.length).replace(/\/$/, '') || '/';
+    a.classList.toggle('active', target === path);
+  });
   const m = path.match(/^\/game\/([a-z0-9]{4,16})$/);
   if (m) return showOnlineGame(m[1]);
   if (path === '/local') return showLocalGame(new URLSearchParams(location.search).get('tc') || '10+0');
@@ -32,7 +41,8 @@ document.addEventListener('click', (e) => {
   const a = e.target.closest('a[data-link]');
   if (!a || e.metaKey || e.ctrlKey) return;
   e.preventDefault();
-  navigate(a.getAttribute('href'));
+  const url = new URL(a.href);
+  navigate((url.pathname.slice(BASE.length) || '/') + url.search);
 });
 
 // ---------- portada ----------
@@ -70,9 +80,9 @@ function showHome() {
 
           <div class="field-label">Juegas con</div>
           <div class="color-pick">
-            <button data-color="w" title="Blancas"><img src="/pieces/wk.svg" alt="Blancas"></button>
-            <button data-color="random" class="selected" title="Al azar"><span class="half-king"><img src="/pieces/wk.svg" alt=""><img src="/pieces/bk.svg" alt=""></span></button>
-            <button data-color="b" title="Negras"><img src="/pieces/bk.svg" alt="Negras"></button>
+            <button data-color="w" title="Blancas"><img src="pieces/wk.svg" alt="Blancas"></button>
+            <button data-color="random" class="selected" title="Al azar"><span class="half-king"><img src="pieces/wk.svg" alt=""><img src="pieces/bk.svg" alt=""></span></button>
+            <button data-color="b" title="Negras"><img src="pieces/bk.svg" alt="Negras"></button>
           </div>
 
           <button class="btn btn-green btn-xl" data-create>Crear partida</button>
@@ -122,7 +132,7 @@ function showHome() {
     setName(nameInput.value);
     e.target.disabled = true;
     try {
-      const res = await fetch('/api/games', {
+      const res = await fetch('api/games', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ tc, color, pid: getPid(), name: getName() }),
@@ -151,7 +161,7 @@ function showHome() {
   async function loadLobby() {
     if (!alive) return;
     try {
-      const res = await fetch('/api/lobby');
+      const res = await fetch('api/lobby');
       const data = await res.json();
       renderLobby(data);
     } catch {
@@ -173,7 +183,7 @@ function showHome() {
           .map((g) => {
             const host = g.white || g.black;
             const hostColor = g.white ? 'w' : 'b';
-            return `<a class="lobby-row" href="/game/${g.id}" data-link>
+            return `<a class="lobby-row" href="game/${g.id}" data-link>
               <span class="lr-player">${avatarHtml(host, hostColor)}<span>${esc(host)}${host === me ? ' <small>(tú)</small>' : ''}</span></span>
               <span class="lr-tc">${tcLabel(g.tc)}</span>
               <span class="btn btn-green btn-sm">Unirse</span></a>`;
@@ -183,7 +193,7 @@ function showHome() {
     liveEl.innerHTML = live.length
       ? live
           .map(
-            (g) => `<a class="lobby-row" href="/game/${g.id}" data-link>
+            (g) => `<a class="lobby-row" href="game/${g.id}" data-link>
               <span class="lr-vs"><i class="dot w"></i>${esc(g.white)} <em>vs</em> <i class="dot b"></i>${esc(g.black)}</span>
               <span class="lr-tc">${tcLabel(g.tc)}</span>
               <span class="btn btn-gray btn-sm">${icon('eye')} Ver</span></a>`,

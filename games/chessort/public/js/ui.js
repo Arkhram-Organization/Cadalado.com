@@ -10,7 +10,7 @@ export function avatarHtml(name, color, big = false) {
   for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const bg = AVATAR_COLORS[h % AVATAR_COLORS.length];
   const letter = esc((String(name).trim()[0] || '?').toUpperCase());
-  return `<div class="avatar ${big ? 'avatar-lg' : ''}" style="--av:${bg}"><span>${letter}</span><i class="avatar-piece" style="background-image:url(/pieces/${color}p.svg)"></i></div>`;
+  return `<div class="avatar ${big ? 'avatar-lg' : ''}" style="--av:${bg}"><span>${letter}</span><i class="avatar-piece" style="background-image:url(pieces/${color}p.svg)"></i></div>`;
 }
 
 const ICONS = {
