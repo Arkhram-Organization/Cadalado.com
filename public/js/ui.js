@@ -14,6 +14,7 @@ export function avatarHtml(name, color, big = false) {
 }
 
 const ICONS = {
+  cards: '<rect x="3" y="5" width="11" height="15" rx="2" transform="rotate(-10 8.5 12.5)"/><rect x="10" y="4" width="11" height="15" rx="2" transform="rotate(8 15.5 11.5)"/>',
   list: '<path d="M4 6h16M4 12h16M4 18h10"/>',
   chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   send: '<path d="M4 12l16-8-6 16-2-7z"/>',

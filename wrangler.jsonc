@@ -8,16 +8,18 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/truco/sala/*"]
   },
   "durable_objects": {
     "bindings": [
       { "name": "GAME_ROOM", "class_name": "GameRoom" },
-      { "name": "LOBBY", "class_name": "Lobby" }
+      { "name": "LOBBY", "class_name": "Lobby" },
+      { "name": "TRUCO_ROOM", "class_name": "TrucoRoom" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["GameRoom", "Lobby"] }
+    { "tag": "v1", "new_sqlite_classes": ["GameRoom", "Lobby"] },
+    { "tag": "v2", "new_sqlite_classes": ["TrucoRoom"] }
   ],
   "observability": { "enabled": true }
 }

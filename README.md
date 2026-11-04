@@ -19,6 +19,33 @@ en tiempo real. Corre entera en **Cloudflare Workers** (`*.workers.dev`), gratis
 - Reconexión automática: si recargas la página o se corta internet, vuelves a tu asiento.
 - Diseño adaptable a móvil.
 
+## 🃏 Truco argentino (en `/truco`)
+
+Truco online en 3D para **1 vs 1, 2 vs 2 y 3 vs 3**, sin flor, con las reglas del reglamento argentino.
+
+- **Escena 3D en primera persona**: estás sentado a la mesa. Arrastrá (o usá A/D y W/S) para mirar a los costados
+  y para abajo. Al mirar la mesa te inclinás sobre ella. Los jugadores son personajes 2D ilustrados dentro del salón 3D.
+- **Señas con la cara**: menú desplegable con todas las señas (ancho de espada = cejas, ancho de basto = guiño,
+  7 de espada/oro = boca torcida, 3 = morderse el labio, 2 = trompita, ancho falso = lengua, ciego = ojos cerrados,
+  envido = inflar los cachetes, 30+ = fruncir la nariz…). **El servidor solo se la manda a quien te esté mirando en ese
+  momento**, así que un rival te puede cazar una seña si te está mirando. Se ve hacia dónde mira cada uno (y el 👁 si te mira a vos).
+- **Cartas encimadas** para disimular cómo venía la mano (se nota un poquito), **cartas tapadas** desde segunda,
+  y botón **¡Trampa!** para denunciar: si había una encimada, el tramposo pierde la mano; si no, 1 punto para el rival.
+- Truco / retruco / vale cuatro, envido / real envido / falta envido, “el envido está primero”, son buenas,
+  irse al mazo, pardas, malas y buenas, anotador con fósforos.
+- **Online** con salas por código de 5 letras: crear sala (privada o pública), unirse con código, enlace directo
+  `/truco/sala/CÓDIGO`, WhatsApp / compartir, **partida rápida** (te sienta en una mesa pública), lista de mesas
+  públicas, **mirar** partidas en vivo y **practicar con bots**. Los bots completan lugares y juegan si alguien se desconecta.
+- Chat con frases rápidas, globos de diálogo sobre cada jugador, voz que canta los cantos y revancha.
+
+Código: `src/truco-room.js` (sala, Durable Object), `public/truco/js/engine.js` (reglas, compartidas con los tests),
+`public/truco/js/bot.js`, `public/truco/js/scene.js` (Three.js), `public/truco/js/characters.js` (personajes y caras),
+`public/truco/js/main.js` (interfaz). Tests: `test/truco.test.js`.
+
+Cartas: diseño “Naipes Libres” de [Basquetteur](https://commons.wikimedia.org/wiki/User:Basquetteur) (Wikimedia Commons),
+vectorizado por [gjenkins20](https://github.com/gjenkins20/spanish-playing-cards-svg), [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/);
+convertidas a WebP. [Three.js](https://threejs.org) (MIT, `public/truco/vendor/three.LICENSE.txt`).
+
 ## Estructura
 
 ```

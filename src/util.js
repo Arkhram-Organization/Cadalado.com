@@ -20,3 +20,9 @@ export function json(data, status = 200) {
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
   });
 }
+
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export function newRoomCode(len = 5) {
+  const bytes = crypto.getRandomValues(new Uint8Array(len));
+  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
+}
