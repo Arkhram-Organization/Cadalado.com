@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/game/:id", "destination": "/index.html" },
+    { "source": "/local", "destination": "/index.html" }
+  ]
+}

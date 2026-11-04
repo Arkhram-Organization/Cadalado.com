@@ -16,62 +16,126 @@ class Emitter {
   }
 }
 
-// Conexión WebSocket con la sala en el servidor (con reconexión automática).
+// Conexión con la sala en el servidor (Vercel no tiene WebSockets: consultamos el estado
+// cada ~1 segundo y mandamos las acciones por POST).
 export class OnlineController extends Emitter {
   constructor(gameId) {
     super();
     this.gameId = gameId;
     this.online = true;
     this.closed = false;
-    this.retry = 0;
-    this.connect();
+    this.base = `/api/game/${gameId}`;
+    this.lastChatId = null;
+    this.lastNow = 0;
+    this.lastPing = 0;
+    this.presence = null;
+    this.failures = 0;
+    this.connected = true;
+    this.onVisible = () => {
+      if (!document.hidden) this.schedule(0);
+    };
+    document.addEventListener('visibilitychange', this.onVisible);
+    this.post({ t: 'join' }).then(() => this.schedule(this.interval()));
   }
 
-  connect() {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${proto}//${location.host}/api/games/${this.gameId}/ws`);
-    this.ws = ws;
-    ws.onopen = () => {
-      this.retry = 0;
-      this.emit('connection', true);
-      ws.send(JSON.stringify({ t: 'join', pid: getPid(), name: getName() }));
-      clearInterval(this.pingTimer);
-      this.pingTimer = setInterval(() => this.send({ t: 'ping' }), 25000);
-    };
-    ws.onmessage = (e) => {
-      let msg;
-      try {
-        msg = JSON.parse(e.data);
-      } catch {
-        return;
-      }
-      if (msg.t === 'state') this.emit('state', msg);
-      else if (msg.t === 'chat') this.emit('chat', msg.msg);
-      else if (msg.t === 'chat-history') this.emit('chat-history', msg.messages);
-      else if (msg.t === 'error') this.emit('error', msg.msg);
-      else if (msg.t === 'notfound') {
-        this.emit('notfound');
-        this.close();
-      }
-    };
-    ws.onclose = () => {
-      clearInterval(this.pingTimer);
-      if (this.closed) return;
-      this.emit('connection', false);
-      const delay = Math.min(8000, 500 * 2 ** this.retry++);
-      this.reconnectTimer = setTimeout(() => this.connect(), delay);
-    };
+  // Cada cuánto preguntar: rápido cuando mueve el rival, más lento si la pestaña está oculta.
+  interval() {
+    if (document.hidden) return 5000;
+    const g = this.game;
+    if (!g) return 1000;
+    if (g.status === 'playing') {
+      const turn = g.moves.length % 2 === 0 ? 'w' : 'b';
+      return this.you === turn ? 2000 : 700;
+    }
+    return g.status === 'waiting' ? 1500 : 2500;
+  }
+
+  schedule(ms) {
+    clearTimeout(this.timer);
+    if (!this.closed) this.timer = setTimeout(() => this.poll(), ms);
+  }
+
+  setConnected(ok) {
+    if (ok === this.connected) return;
+    this.connected = ok;
+    this.emit('connection', ok);
+  }
+
+  async poll() {
+    if (this.closed) return;
+    const ping = Date.now() - this.lastPing > 8000;
+    try {
+      const res = await fetch(`${this.base}?pid=${encodeURIComponent(getPid())}${ping ? '&ping=1' : ''}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 404) return this.notFound();
+      if (data.t === 'state') {
+        if (ping) this.lastPing = Date.now();
+        if (!this.pending) this.handle(data);
+      } else if (data.error) this.emit('error', data.error);
+      this.failures = 0;
+      this.setConnected(true);
+    } catch {
+      if (++this.failures >= 2) this.setConnected(false);
+    }
+    this.schedule(this.interval());
+  }
+
+  async post(msg) {
+    this.pending = (this.pending || 0) + 1;
+    try {
+      const res = await fetch(this.base, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...msg, pid: getPid(), name: getName() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 404) return this.notFound();
+      if (data.error) this.emit('error', data.error);
+      if (data.t === 'state') this.handle(data);
+      this.setConnected(true);
+    } catch {
+      this.setConnected(false);
+      this.emit('error', 'Sin conexión con el servidor');
+    } finally {
+      this.pending--;
+    }
+  }
+
+  handle(data) {
+    // Ignora respuestas viejas que llegan tarde (por ejemplo, una consulta anterior a tu jugada).
+    if (data.now < this.lastNow) return;
+    this.lastNow = data.now;
+    const g = data.game;
+    // La presencia (quién está conectado) no viene en todas las respuestas: se completa con la última.
+    if (g.spectators === null) {
+      g.spectators = this.presence?.spectators ?? 0;
+      for (const c of ['w', 'b']) if (g.players[c] && g.players[c].online === null) g.players[c].online = this.presence?.[c] ?? true;
+    } else {
+      this.presence = { spectators: g.spectators, w: g.players.w?.online, b: g.players.b?.online };
+    }
+    const chat = data.chat || [];
+    if (this.lastChatId === null) this.emit('chat-history', chat);
+    else for (const m of chat) if (m.id > this.lastChatId) this.emit('chat', m);
+    if (chat.length) this.lastChatId = chat[chat.length - 1].id;
+    else this.lastChatId ??= 0;
+    this.game = g;
+    this.you = data.you;
+    this.emit('state', data);
+  }
+
+  notFound() {
+    this.emit('notfound');
+    this.close();
   }
 
   send(msg) {
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ ...msg, name: getName() }));
+    this.post(msg).then(() => this.schedule(this.interval()));
   }
 
   close() {
     this.closed = true;
-    clearInterval(this.pingTimer);
-    clearTimeout(this.reconnectTimer);
-    this.ws?.close();
+    clearTimeout(this.timer);
+    document.removeEventListener('visibilitychange', this.onVisible);
   }
 }
 

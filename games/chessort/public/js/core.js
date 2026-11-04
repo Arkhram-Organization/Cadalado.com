@@ -1,4 +1,4 @@
-// Lógica de partida compartida entre el servidor (Durable Object) y el navegador (modo local).
+// Lógica de partida compartida entre el servidor (funciones de Vercel) y el navegador (modo local).
 // No importa nada: recibe la clase Chess (chess.js) por parámetro para funcionar en ambos lados.
 
 export const TIME_CONTROLS = [

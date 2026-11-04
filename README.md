@@ -6,13 +6,13 @@ La identidad (logo, colores, tipografía, tono) está en [`MARCA.md`](MARCA.md).
 
 ## Qué hay en el repo
 
-| Qué | Carpeta | Rama | Dirección | Worker de Cloudflare |
+| Qué | Carpeta | Rama | Dirección | Proyecto de Vercel |
 |---|---|---|---|---|
 | 🏠 Portal (inicio, juegos, creadores) | [`portal`](portal) | `main` | `cadalado.com` | `cadalado` |
 | ♟️ Ajedrez | [`games/chessort`](games/chessort) | `chessort` | `ajedrez.cadalado.com` | `chessort` |
 | 🃏 Truco | `games/truco` | `truco` | `truco.cadalado.com` | `truco` |
 
-Cada juego es una app independiente: tiene su carpeta, su rama y su propio Worker.
+Todo se publica en **Vercel**. Cada juego es una app independiente: tiene su carpeta, su rama y su propio proyecto.
 El portal solo lista los juegos y los linkea.
 
 ## Cómo trabajamos
@@ -37,9 +37,9 @@ git pull
 git checkout -b truco
 ```
 
-1. Creá `games/truco/` con todo el juego (su `package.json`, `wrangler.jsonc`, etc.).
-   Podés copiar `games/chessort` como punto de partida: ya trae salas multijugador por WebSocket, lobby y chat.
-   Cambiá el `"name"` de `wrangler.jsonc` (por ejemplo `"truco"`).
+1. Creá `games/truco/` con todo el juego (su `package.json`, `vercel.json`, etc.).
+   Podés copiar `games/chessort` como punto de partida: ya trae salas multijugador guardadas en Redis
+   (`lib/room.js`, `api/`), lobby, presencia y chat, y un servidor para probar en tu compu (`npm run dev`).
 2. Usá el logo de cadalado (`portal/public/favicon.svg`) y poné un link de vuelta a `https://cadalado.com`.
 3. Para que aparezca en el portal, agregalo (o cambiá su `estado` a `'disponible'`) en
    [`portal/public/js/datos.js`](portal/public/js/datos.js). En ese mismo archivo se suman los creadores.
@@ -48,30 +48,30 @@ git checkout -b truco
 git push -u origin truco
 ```
 
-## Publicar (Cloudflare)
+## Publicar (Vercel)
 
-Cada carpeta es un Worker distinto. En el panel: **Workers & Pages → Create → Import a repository**,
-elegí este repo y configurá:
+Cada carpeta es un proyecto distinto de Vercel, todos desde este mismo repo.
+**Add New → Project**, importá el repo y configurá:
 
 | Campo | Portal | Ajedrez | Truco |
 |---|---|---|---|
-| Production branch | `main` | `chessort` | `truco` |
-| Root directory | `portal` | `games/chessort` | `games/truco` |
-| Build watch paths | `portal/*` | `games/chessort/*` | `games/truco/*` |
-| Deploy command | `npx wrangler deploy` | `npx wrangler deploy` | `npx wrangler deploy` |
+| Root Directory | `portal` | `games/chessort` | `games/truco` |
+| Framework Preset | Other | Other | (lo que use) |
+| Production Branch (Settings → Git) | `main` | `chessort` | `truco` |
+| Dominio (Settings → Domains) | `cadalado.com` y `www.cadalado.com` | `ajedrez.cadalado.com` | `truco.cadalado.com` |
 
-## Dominios
+El ajedrez además necesita una base **Redis** conectada desde la pestaña **Storage** (Upstash tiene plan gratis).
+Los detalles están en [`games/chessort/README.md`](games/chessort/README.md).
 
-`cadalado.com` tiene que estar agregado a la cuenta de Cloudflare (**Add a domain**, y cambiar los nameservers
-donde se compró). Después, en cada Worker: **Settings → Domains & Routes → Add → Custom domain**:
-
-- Worker `cadalado` → `cadalado.com` y `www.cadalado.com`
-- Worker `chessort` → `ajedrez.cadalado.com`
-- Worker `truco` → `truco.cadalado.com`
+Como el dominio `cadalado.com` ya está en Vercel, los subdominios se agregan directo en cada proyecto.
 
 ## Probar en tu compu
 
-Dentro de la carpeta que quieras (`portal` o `games/chessort`):
+El ajedrez (abre en http://localhost:3000):
+
+```bash
+cd games/chessort
+```
 
 ```bash
 npm install
@@ -79,4 +79,10 @@ npm install
 
 ```bash
 npm run dev
+```
+
+El portal es estático:
+
+```bash
+npx serve portal/public
 ```
