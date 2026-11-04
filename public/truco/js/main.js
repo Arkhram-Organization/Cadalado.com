@@ -241,6 +241,10 @@ class RoomClient {
     scene.onCardClick = (id) => this.clickCard(id);
     scene.onCardDouble = (id) => this.playCard(id, 'normal');
     scene.onFrame = () => this.updateLabels();
+    if (store.get('truco-zoom-tip') !== '1') {
+      store.set('truco-zoom-tip', '1');
+      setTimeout(() => this.toast('Mantené apretada la <b>Z</b> para hacer zoom. Arrastrá las cartas de tu mano para ordenarlas.', '', 6000), 1500);
+    }
     this.connect();
   }
 
@@ -435,7 +439,7 @@ class RoomClient {
       }
       case 'tanto': {
         const txt = e.value == null ? 'Son buenas' : `${e.value}`;
-        this.bubble(e.seat, txt, 'call', 2600);
+        this.bubble(e.seat, txt, 'call', 4000);
         say(e.value == null ? 'Son buenas' : `${e.value}`);
         break;
       }
@@ -470,6 +474,12 @@ class RoomClient {
         this.bubble(e.seat, e.ok ? `Mirá: ${e.value}` : `Tenía ${e.value}...`, 'call', 3000);
         if (e.ok) this.toast(`${esc(this.nameOf(e.seat))} muestra sus ${e.value}<br>${imgs}`, 'good', 5000);
         else this.toast(`${esc(this.nameOf(e.seat))} cantó ${e.said} pero tenía ${e.value}<br>${imgs}<br>Pierde el envido y el truco.`, 'bad', 6000);
+        break;
+      }
+      case 'envido-done': {
+        const parts = e.said.map((x) => `${esc(this.nameOf(x.seat))}: ${x.value == null ? 'son buenas' : x.value}`).join(' · ');
+        const us = me != null && e.team === team(me);
+        this.toast(`Envido para ${this.teamLabel(e.team).toLowerCase()} (${esc(this.nameOf(e.seat))} con ${e.value}). ${parts}`, us ? 'good' : '', 5000);
         break;
       }
       case 'reclamo':
@@ -681,78 +691,81 @@ class RoomClient {
     const cardBox = $('#card-actions');
     box.innerHTML = '';
     cardBox.classList.add('hidden');
-    if (!g || this.you == null || this.st.room.status !== 'playing') return;
+    if (!g || this.you == null || this.st.room.status !== 'playing' || this.dealing) return;
     const a = g.actions;
-    const add = (label, cls, fn, title) => {
+    // grupos con rótulo: tantos, responder, cantar, mano
+    const groups = {};
+    const group = (key, label) => {
+      if (!groups[key]) {
+        const el = document.createElement('div');
+        el.className = 'act-group';
+        el.innerHTML = `<span class="lbl">${label}</span><div class="btns"></div>`;
+        groups[key] = el;
+      }
+      return groups[key].querySelector('.btns');
+    };
+    const add = (key, label, text, cls, fn, title) => {
       const b = document.createElement('button');
       b.className = 'btn ' + cls;
-      b.textContent = label;
+      b.textContent = text;
       if (title) b.title = title;
       b.onclick = fn;
-      box.appendChild(b);
+      group(key, label).appendChild(b);
+      return b;
     };
-    if (this.dealing) return;
+
     if (a.cantar) {
       const min = a.minTanto ?? 0;
-      if (g.h.myTanto >= min) add(`Cantar ${g.h.myTanto}`, 'call', () => this.act({ t: 'cantar' }), 'Tus tantos de verdad');
+      if (g.h.myTanto >= min) add('tantos', 'Tus tantos', `Cantar ${g.h.myTanto}`, 'call', () => this.act({ t: 'cantar' }), 'Tus tantos de verdad');
       // mentir: cantar otro número (si mostrás o te reclaman, perdés envido y truco)
       const wrap = document.createElement('span');
       wrap.className = 'lie';
-      wrap.innerHTML = `<input type="number" min="${min}" max="33" value="${Math.max(min, Math.min(33, g.h.myTanto + 3))}" title="Cantar otro número"><button class="btn small">Cantar este</button>`;
-      wrap.querySelector('button').onclick = () => {
-        const v = Number(wrap.querySelector('input').value);
-        this.act({ t: 'cantar', value: v });
-      };
-      box.appendChild(wrap);
+      wrap.title = 'Cantar otro número. Si te piden que muestres, perdés el envido y el truco.';
+      wrap.innerHTML = `<input type="number" min="${min}" max="33" value="${Math.max(min, Math.min(33, g.h.myTanto + 3))}"><button class="btn small">Cantar otro</button>`;
+      wrap.querySelector('button').onclick = () => this.act({ t: 'cantar', value: Number(wrap.querySelector('input').value) });
+      group('tantos', 'Tus tantos').appendChild(wrap);
     }
-    if (a.buenas) add('Son buenas', '', () => this.act({ t: 'buenas' }));
-    if (a.mostrar) add(`Mostrar mis cartas`, 'good', () => this.act({ t: 'mostrar' }), 'Si no mostrás y te reclaman, perdés el envido y el truco');
-    if (a.reclamar) add('¡A ver esos tantos!', 'call', () => this.act({ t: 'reclamar' }), 'Si no los mostró, pierde el envido y el truco');
-    if (a.quiero) add('Quiero', 'good', () => this.act({ t: 'quiero' }));
-    if (a.noquiero) add('No quiero', 'danger', () => this.act({ t: 'noquiero' }));
-    if (a.truco) add(`¡${a.truco}!`, 'call', () => this.act({ t: 'truco' }));
-    for (const k of a.envido) add(ENVIDO_NAMES[k], 'call', () => this.act({ t: 'envido', kind: k }), `Tenés ${g.h.myTanto} de envido`);
+    if (a.buenas) add('tantos', 'Tus tantos', 'Son buenas', '', () => this.act({ t: 'buenas' }));
+    if (a.mostrar) add('mostrar', 'Envido', 'Mostrar mis cartas', 'good', () => this.act({ t: 'mostrar' }), 'Si no mostrás y te reclaman, perdés el envido y el truco');
+    if (a.reclamar) add('mostrar', 'Envido', 'A ver esos tantos', 'call', () => this.act({ t: 'reclamar' }), 'Si no los muestra, pierde el envido y el truco');
+    if (a.quiero) add('resp', 'Responder', 'Quiero', 'good', () => this.act({ t: 'quiero' }));
+    if (a.noquiero) add('resp', 'Responder', 'No quiero', 'danger', () => this.act({ t: 'noquiero' }));
+    if (a.truco) add('cantar', 'Cantar', a.truco, 'call', () => this.act({ t: 'truco' }));
+    for (const k of a.envido) add('cantar', 'Cantar', ENVIDO_NAMES[k], 'call', () => this.act({ t: 'envido', kind: k }), `Tenés ${g.h.myTanto} de envido`);
     if (a.mazo) {
-      // dos pasos: el primer toque pide confirmación (sin ventanas del navegador)
-      const b = document.createElement('button');
-      b.className = 'btn small' + (this.mazoArmed ? ' danger' : '');
-      b.textContent = this.mazoArmed ? '¿Seguro? Sí, me voy' : 'Irse al mazo';
-      b.onclick = () => {
+      // dos toques: el primero pide confirmación (sin ventanas del navegador)
+      add('mano', 'Mano', this.mazoArmed ? 'Sí, me voy' : 'Irse al mazo', this.mazoArmed ? 'danger' : '', () => {
         if (this.mazoArmed) {
           this.mazoArmed = false;
           this.act({ t: 'mazo' });
-        } else {
-          this.mazoArmed = true;
-          clearTimeout(this.mazoT);
-          this.mazoT = setTimeout(() => {
-            this.mazoArmed = false;
-            this.render();
-          }, 3500);
-          this.render();
+          return;
         }
-      };
-      box.appendChild(b);
+        this.mazoArmed = true;
+        clearTimeout(this.mazoT);
+        this.mazoT = setTimeout(() => {
+          this.mazoArmed = false;
+          this.render();
+        }, 3500);
+        this.render();
+      });
     }
-
     if (a.play && this.choosingTop) {
-      const c = document.createElement('button');
-      c.className = 'btn small';
-      c.textContent = 'Cancelar tiro doble';
-      c.onclick = () => {
+      add('mano', 'Mano', 'Cancelar tiro doble', '', () => {
         this.choosingTop = null;
         this.render();
-      };
-      box.appendChild(c);
-    } else if (a.play && this.selected) {
+      });
+    }
+    for (const k of ['tantos', 'mostrar', 'resp', 'cantar', 'mano']) if (groups[k]) box.appendChild(groups[k]);
+
+    if (a.play && this.selected && !this.choosingTop) {
       cardBox.classList.remove('hidden');
       cardBox.querySelector('[data-play="double"]').disabled = !a.canDouble;
       cardBox.querySelector('[data-play="down"]').disabled = !a.canDown;
-    } else if (a.play && !box.children.length) {
+    } else if (a.play && !this.choosingTop && !groups.resp && !groups.tantos) {
       const hint = document.createElement('span');
-      hint.className = 'muted';
-      hint.style.textShadow = '0 1px 3px #000';
-      hint.textContent = 'Tocá una carta para elegirla (doble clic para tirarla)';
-      box.appendChild(hint);
+      hint.className = 'act-hint';
+      hint.textContent = 'Elegí una carta · arrastrala para ordenar';
+      box.prepend(hint);
     }
 
     // denuncias
@@ -860,6 +873,7 @@ class RoomClient {
         <div class="field">Puntos ${seg('target', [[30, '30'], [15, '15']], cfg.target)}</div>
         <div class="field">Sala ${seg('isPublic', [[0, 'Privada'], [1, 'Pública']], cfg.isPublic ? 1 : 0)}</div>
         <label class="check"><input type="checkbox" data-ayudas ${cfg.ayudas ? 'checked' : ''}> Mostrar quién gana cada ronda</label>
+        ${cfg.mode !== '1v1' ? `<label class="check"><input type="checkbox" data-trucoseg ${cfg.trucoDesdeSegunda !== false ? 'checked' : ''}> En equipos, el truco se canta recién desde segunda</label>` : ''}
         <div class="row">
           <button class="btn primary big" data-start="0" ${full ? '' : 'disabled'}>Empezar</button>
           <button class="btn big" data-start="1">Empezar llenando con bots</button>
@@ -1055,6 +1069,7 @@ function bindGameUI() {
   });
   $('#waiting').addEventListener('change', (e) => {
     if (e.target.matches('[data-ayudas]')) room?.send({ t: 'config', cfg: { ayudas: e.target.checked } });
+    if (e.target.matches('[data-trucoseg]')) room?.send({ t: 'config', cfg: { trucoDesdeSegunda: e.target.checked } });
   });
   $('#result').addEventListener('click', (e) => {
     const b = e.target.closest('button');

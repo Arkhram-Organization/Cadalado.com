@@ -7,6 +7,9 @@
   <meta name="description" content="Truco argentino online en 3D: 1 vs 1, 2 vs 2 y 3 vs 3, con señas, chat y salas privadas.">
   <meta name="theme-color" content="#1a120c">
   <link rel="icon" href="/truco/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,700;1,500;1,700&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="/truco/css/truco.css">
   <script type="importmap">{ "imports": { "three": "/truco/vendor/three.module.min.js" } }</script>
 </head>
@@ -95,7 +98,7 @@
             <div class="spacer"></div>
       <span id="spect" class="muted"></span>
       <button class="btn small ghost" id="voice-toggle" title="Voz de los cantos">Voz: sí</button>
-      <button class="btn small ghost" id="zoom-btn" title="Mantener apretado (o la tecla Z)">Zoom</button>
+      <button class="btn small ghost" id="zoom-btn" title="Mantené apretada la tecla Z (o este botón) para hacer zoom">Zoom <kbd>Z</kbd></button>
       <button class="btn small ghost" id="help-btn" title="Ayuda">?</button>
       <button class="btn small ghost" id="chat-toggle" title="Chat">Chat<i id="chat-badge" class="badge hidden"></i></button>
     </div>
@@ -106,21 +109,21 @@
     <div id="look-bar"></div>
 
     <div id="bottom">
+      <div id="tools">
+        <div class="dropdown" id="senas-dd">
+          <button class="btn" id="senas-btn">Señas</button>
+          <div class="menu hidden" id="senas-menu"></div>
+        </div>
+        <div class="dropdown" id="trampa-dd">
+          <button class="btn danger" id="trampa-btn">Denunciar</button>
+          <div class="menu hidden" id="trampa-menu"></div>
+        </div>
+      </div>
+      <div id="actions"></div>
       <div id="card-actions" class="hidden">
         <button class="btn primary" data-play="normal">Tirar</button>
         <button class="btn" data-play="double" title="Tirás dos juntas: la de abajo juega ahora y la de arriba (la que se ve) en la ronda siguiente">Tirar dos encimadas</button>
         <button class="btn" data-play="down" title="Boca abajo: no gana la ronda">Tirar tapada</button>
-      </div>
-      <div id="actions"></div>
-      <div id="tools">
-        <div class="dropdown" id="senas-dd">
-          <button class="btn" id="senas-btn">Señas ▾</button>
-          <div class="menu hidden" id="senas-menu"></div>
-        </div>
-        <div class="dropdown" id="trampa-dd">
-          <button class="btn danger" id="trampa-btn">¡Trampa! ▾</button>
-          <div class="menu hidden" id="trampa-menu"></div>
-        </div>
       </div>
     </div>
 

@@ -104,55 +104,98 @@ export function drawHoldThumb(skin) {
   });
 }
 
-// Mano derecha que agarra la carta desde arriba y el antebrazo que va hacia abajo a la derecha.
+// Mano derecha vista desde arriba, con la palma hacia abajo, apoyando la carta con las yemas.
+// Los dedos apuntan hacia arriba a la izquierda (donde está la carta: punto 104, 250 del canvas)
+// y el antebrazo sale hacia abajo a la derecha, fuera de la pantalla.
 export function drawReach(skin, sleeve) {
   return canvas(512, 512, (ctx) => {
-    // antebrazo con manga
+    const shade = mix(skin, 0.86);
+    const cloth = sleeve.startsWith('#') ? sleeve : '#4a4a4a';
+    // antebrazo (piel) y manga
     ctx.beginPath();
-    ctx.moveTo(300, 290);
-    ctx.lineTo(512, 470);
-    ctx.lineTo(512, 512);
-    ctx.lineTo(430, 512);
-    ctx.lineTo(240, 330);
+    ctx.moveTo(250, 300);
+    ctx.lineTo(330, 250);
+    ctx.lineTo(420, 360);
+    ctx.lineTo(352, 420);
     ctx.closePath();
-    stroke(ctx, sleeve, 5);
+    stroke(ctx, shade, 4);
     ctx.beginPath();
-    ctx.moveTo(238, 300);
-    ctx.lineTo(300, 260);
-    ctx.lineTo(320, 300);
-    ctx.lineTo(262, 344);
+    ctx.moveTo(352, 330);
+    ctx.lineTo(420, 280);
+    ctx.lineTo(540, 420);
+    ctx.lineTo(540, 540);
+    ctx.lineTo(460, 540);
+    ctx.lineTo(330, 400);
     ctx.closePath();
-    stroke(ctx, skin, 4);
+    stroke(ctx, cloth, 5);
+    ctx.beginPath();
+    ctx.moveTo(352, 330);
+    ctx.lineTo(420, 280);
+    ctx.lineTo(432, 296);
+    ctx.lineTo(362, 348);
+    ctx.closePath();
+    stroke(ctx, mix(cloth, 1.18), 3);
     // dorso de la mano
+    const g = ctx.createLinearGradient(160, 180, 320, 320);
+    g.addColorStop(0, skin);
+    g.addColorStop(1, shade);
     ctx.beginPath();
-    ctx.moveTo(150, 240);
-    ctx.bezierCurveTo(150, 190, 220, 170, 268, 196);
-    ctx.bezierCurveTo(312, 220, 306, 290, 262, 318);
-    ctx.bezierCurveTo(220, 340, 170, 310, 150, 240);
+    ctx.moveTo(176, 236);
+    ctx.bezierCurveTo(186, 196, 236, 176, 276, 192);
+    ctx.bezierCurveTo(318, 210, 336, 256, 318, 292);
+    ctx.bezierCurveTo(300, 324, 258, 332, 226, 316);
+    ctx.bezierCurveTo(196, 300, 170, 270, 176, 236);
     ctx.closePath();
-    stroke(ctx, skin, 5);
-    // dedos sobre la carta (índice y mayor) y pulgar abajo
-    const fingers = [
-      [150, 230, 96, 214],
-      [160, 262, 102, 252],
-      [178, 290, 124, 290],
-    ];
-    for (const [x1, y1, x2, y2] of fingers) {
-      ctx.beginPath();
-      ctx.moveTo(x1, y1 - 14);
-      ctx.quadraticCurveTo((x1 + x2) / 2, y1 - 22, x2, y2 - 10);
-      ctx.quadraticCurveTo(x2 - 16, y2 + 2, x2, y2 + 12);
-      ctx.quadraticCurveTo((x1 + x2) / 2, y1 + 8, x1, y1 + 14);
-      ctx.closePath();
-      stroke(ctx, skin, 4);
-    }
-    ctx.strokeStyle = 'rgba(80,40,30,0.35)';
+    stroke(ctx, g, 4.5);
+    // nudillos
+    ctx.strokeStyle = 'rgba(90,50,35,0.35)';
     ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
+    for (let k = 0; k < 4; k++) {
       ctx.beginPath();
-      ctx.moveTo(200 + i * 18, 210 + i * 10);
-      ctx.lineTo(214 + i * 18, 236 + i * 10);
+      ctx.arc(196 + k * 10, 222 + k * 18, 5, 0.6, 2.4);
       ctx.stroke();
     }
+    // cuatro dedos estirados hacia la carta (índice arriba, meñique abajo)
+    const fingers = [
+      { x: 196, y: 210, len: 92, w: 17, a: -2.62 },
+      { x: 194, y: 232, len: 98, w: 17, a: -2.82 },
+      { x: 198, y: 256, len: 88, w: 16, a: -3.0 },
+      { x: 208, y: 280, len: 70, w: 14, a: 3.05 },
+    ];
+    for (const f of fingers) {
+      const ex = f.x + Math.cos(f.a) * f.len;
+      const ey = f.y + Math.sin(f.a) * f.len;
+      const nx = -Math.sin(f.a) * f.w * 0.5;
+      const ny = Math.cos(f.a) * f.w * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(f.x + nx, f.y + ny);
+      ctx.lineTo(ex + nx, ey + ny);
+      ctx.arc(ex, ey, f.w * 0.5, f.a + Math.PI / 2, f.a - Math.PI / 2, true);
+      ctx.lineTo(f.x - nx, f.y - ny);
+      ctx.closePath();
+      stroke(ctx, skin, 3.5);
+      // uña y pliegue de la falange
+      ctx.beginPath();
+      ctx.ellipse(ex - Math.cos(f.a) * 6, ey - Math.sin(f.a) * 6, f.w * 0.3, f.w * 0.22, f.a, 0, Math.PI * 2);
+      ctx.fillStyle = mix(skin, 1.08);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(90,50,35,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      const mx = f.x + Math.cos(f.a) * f.len * 0.55;
+      const my = f.y + Math.sin(f.a) * f.len * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(mx + nx * 0.7, my + ny * 0.7);
+      ctx.lineTo(mx - nx * 0.7, my - ny * 0.7);
+      ctx.stroke();
+    }
+    // pulgar por debajo
+    ctx.beginPath();
+    ctx.moveTo(214, 300);
+    ctx.quadraticCurveTo(170, 316, 140, 300);
+    ctx.quadraticCurveTo(128, 290, 140, 282);
+    ctx.quadraticCurveTo(176, 284, 206, 274);
+    ctx.closePath();
+    stroke(ctx, shade, 3.5);
   });
 }

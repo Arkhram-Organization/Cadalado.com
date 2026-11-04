@@ -34,7 +34,7 @@ export class TrucoRoom extends DurableObject {
     const n = MODES[mode] ? MODES[mode] : 2;
     this.room = {
       code,
-      cfg: { mode: MODES[mode] ? mode : '1v1', target: target === 15 ? 15 : 30, ayudas: !!ayudas, isPublic: !!isPublic },
+      cfg: { mode: MODES[mode] ? mode : '1v1', target: target === 15 ? 15 : 30, ayudas: !!ayudas, isPublic: !!isPublic, trucoDesdeSegunda: true },
       seats: Array(n).fill(null),
       host: pid,
       status: 'lobby',
@@ -143,6 +143,7 @@ export class TrucoRoom extends DurableObject {
         if ([15, 30].includes(c.target)) r.cfg.target = c.target;
         if (typeof c.ayudas === 'boolean') r.cfg.ayudas = c.ayudas;
         if (typeof c.isPublic === 'boolean') r.cfg.isPublic = c.isPublic;
+        if (typeof c.trucoDesdeSegunda === 'boolean') r.cfg.trucoDesdeSegunda = c.trucoDesdeSegunda;
         if (MODES[c.mode] && c.mode !== r.cfg.mode) {
           const people = r.seats.filter((s) => s && !s.bot);
           r.cfg.mode = c.mode;
@@ -157,7 +158,7 @@ export class TrucoRoom extends DurableObject {
         if (msg.fillBots) r.seats = r.seats.map((s) => s || { bot: true, name: this.botName() });
         if (r.seats.some((s) => !s)) return this.send(ws, { t: 'error', msg: 'Faltan jugadores (o llená con bots)' });
         r.status = 'playing';
-        r.game = newGame({ mode: r.cfg.mode, target: r.cfg.target, ayudas: r.cfg.ayudas, dealer: Math.floor(rng() * r.seats.length) }, rng);
+        r.game = newGame({ mode: r.cfg.mode, target: r.cfg.target, ayudas: r.cfg.ayudas, trucoDesdeSegunda: r.cfg.trucoDesdeSegunda !== false, dealer: Math.floor(rng() * r.seats.length) }, rng);
         this.addSystemChat('¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);
         this.afterDeal();
         return this.commit();

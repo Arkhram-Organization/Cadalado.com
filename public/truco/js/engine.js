@@ -87,13 +87,15 @@ export const cutter = (g) => (g.dealer - 1 + g.n) % g.n;
 
 // ---------------------------------------------------------------- partida
 
-export function newGame({ mode = '1v1', target = 30, ayudas = false, dealer = 0 } = {}, rng = Math.random) {
+// trucoDesdeSegunda: en equipos, el truco recién se puede cantar desde la segunda ronda (regla de la mesa).
+export function newGame({ mode = '1v1', target = 30, ayudas = false, dealer = 0, trucoDesdeSegunda = false } = {}, rng = Math.random) {
   const n = MODES[mode] || 2;
   const g = {
     mode,
     n,
     target: target === 15 ? 15 : 30,
     ayudas: !!ayudas,
+    trucoDesdeSegunda: !!trucoDesdeSegunda && n > 2,
     score: [0, 0],
     dealer: dealer % n,
     handNo: 0,
@@ -152,7 +154,7 @@ export function nextHand(g, rng = Math.random) {
 }
 
 export function rematch(g, rng = Math.random) {
-  const ng = newGame({ mode: g.mode, target: g.target, ayudas: g.ayudas, dealer: (g.dealer + 1) % g.n }, rng);
+  const ng = newGame({ mode: g.mode, target: g.target, ayudas: g.ayudas, trucoDesdeSegunda: g.trucoDesdeSegunda, dealer: (g.dealer + 1) % g.n }, rng);
   ng.evId = g.evId;
   Object.assign(g, ng);
   return true;
@@ -266,7 +268,8 @@ export function actionsFor(g, seat) {
   }
   // fase de juego normal
   out.mazo = true;
-  if (t.level < 4 && (t.holder === null || t.holder === team(seat))) out.truco = TRUCO_NAMES[t.level + 1];
+  const trucoOk = !(g.trucoDesdeSegunda && h.r === 0);
+  if (trucoOk && t.level < 4 && (t.holder === null || t.holder === team(seat))) out.truco = TRUCO_NAMES[t.level + 1];
   if (envidoOpenFor(g, seat)) out.envido = ['envido', 'real', 'falta'];
   if (h.turn === seat) {
     out.play = true;
@@ -364,6 +367,7 @@ export function act(g, seat, a, rng = Math.random) {
         tr.pending = { level: tr.pending.level + 1, byTeam: T, bySeat: seat };
         tr.holder = null;
       } else if (w.kind === 'play') {
+        if (g.trucoDesdeSegunda && h.r === 0) return { error: 'En esta mesa el truco se canta desde segunda' };
         if (tr.level >= 4) return { error: 'Ya está en vale cuatro' };
         if (tr.holder !== null && tr.holder !== T) return { error: 'El quiero lo tiene el otro equipo' };
         tr.pending = { level: tr.level + 1, byTeam: T, bySeat: seat };
@@ -547,6 +551,7 @@ function advanceDeclare(g) {
   e.points = envidoAcceptedPoints(g, e.calls, e.winner);
   e.needsShow = true;
   h.pending.push({ team: e.winner, pts: e.points, why: 'envido' });
+  event(g, { type: 'envido-done', seat: d.best.seat, value: d.best.value, team: e.winner, said: d.said, points: e.points });
 }
 
 function advanceTurn(g) {
@@ -710,6 +715,7 @@ export function viewFor(g, seat) {
     n: g.n,
     target: g.target,
     ayudas: g.ayudas,
+    trucoDesdeSegunda: g.trucoDesdeSegunda,
     score: g.score,
     dealer: g.dealer,
     handNo: g.handNo,

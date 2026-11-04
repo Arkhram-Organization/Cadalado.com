@@ -212,6 +212,15 @@ test('en 3 vs 3 los pies son el que reparte y el que corta', () => {
   assert.deepEqual([0, 1, 2, 3, 4, 5].filter((s) => isPie(g, s)), [3, 4]);
 });
 
+test('regla de la mesa: en equipos el truco se canta desde segunda', () => {
+  const g = newGame({ mode: '2v2', dealer: 1, trucoDesdeSegunda: true });
+  assert.equal(actionsFor(g, 2).truco, null);
+  assert.ok(act(g, 2, { t: 'truco' }).error);
+  const h = g.h;
+  for (let k = 0; k < 4; k++) ok(act(g, h.turn, { t: 'play', card: h.inHand[h.turn][0] }));
+  if (g.h.phase === 'play') assert.ok(actionsFor(g, g.h.turn).truco);
+});
+
 test('al mazo en primera sin envido: 1 + 1', () => {
   const g = fixed([['7E', '6E', '4C'], ['5O', '4O', '12B']]);
   ok(act(g, 0, { t: 'mazo' }));
