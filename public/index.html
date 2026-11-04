@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ChessORT</title>
+  <meta name="description" content="Juega al ajedrez online con tus amigos.">
+  <meta name="theme-color" content="#312e2b">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="sidebar">
+    <a class="logo" href="/" data-link>
+      <img src="/favicon.svg" alt="">
+      <span>Chess<b>ORT</b></span>
+    </a>
+    <a class="nav-item" href="/" data-link data-icon="play"><span>Jugar</span></a>
+    <a class="nav-item" href="/local" data-link data-icon="users"><span>Local</span></a>
+    <button class="nav-item" data-settings data-icon="gear"><span>Ajustes</span></button>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-user"></div>
+  </nav>
+  <main id="app"></main>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
