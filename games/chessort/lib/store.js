@@ -1,11 +1,57 @@
-// Almacenamiento de partidas.
-// - En Vercel: Redis (variable REDIS_URL o KV_URL, la crea la integración de Redis/Upstash del Marketplace).
-// - En tu compu sin Redis: memoria (sirve para probar con `npm run dev`).
+// Almacenamiento de partidas. Usa lo primero que encuentre:
+// 1. Upstash por HTTP: KV_REST_API_URL + KV_REST_API_TOKEN (o UPSTASH_REDIS_REST_URL + _TOKEN).
+// 2. Redis común: REDIS_URL o KV_URL.
+//    (Las variables las crea Vercel al conectar Redis/Upstash en la pestaña Storage.)
+// 3. En tu compu sin nada de eso: memoria (sirve para probar con `npm run dev`).
 import { createClient } from 'redis';
 
-const REDIS_URL = process.env.REDIS_URL || process.env.KV_URL || '';
+const env = process.env;
+const REST_URL = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL || '';
+const REST_TOKEN = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN || '';
+const REDIS_URL = env.REDIS_URL || env.KV_URL || '';
 
 export class StoreNotConfigured extends Error {}
+
+// ---------- Upstash REST (HTTP: ideal para funciones serverless) ----------
+async function rest(...command) {
+  const res = await fetch(REST_URL, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${REST_TOKEN}`, 'content-type': 'application/json' },
+    body: JSON.stringify(command.map(String)),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(`Redis (HTTP ${res.status}): ${data.error || 'respuesta inválida'}`);
+  return data.result;
+}
+
+const restStore = {
+  get: (key) => rest('GET', key),
+  async set(key, value, ttlSec) {
+    if (ttlSec) await rest('SET', key, value, 'EX', ttlSec);
+    else await rest('SET', key, value);
+  },
+  async setNX(key, value, ttlMs) {
+    return (await rest('SET', key, value, 'NX', 'PX', ttlMs)) === 'OK';
+  },
+  async del(key) {
+    await rest('DEL', key);
+  },
+  async hset(key, field, value, ttlSec) {
+    await rest('HSET', key, field, value);
+    if (ttlSec) await rest('EXPIRE', key, ttlSec);
+  },
+  async hgetall(key) {
+    const res = (await rest('HGETALL', key)) || [];
+    if (!Array.isArray(res)) return res; // por si llega como objeto
+    const obj = {}; // Upstash lo devuelve como lista plana: [campo, valor, campo, valor…]
+    for (let i = 0; i < res.length; i += 2) obj[res[i]] = res[i + 1];
+    return obj;
+  },
+  async hdel(key, fields) {
+    if (fields.length) await rest('HDEL', key, ...fields);
+  },
+  ping: () => rest('PING'),
+};
 
 // ---------- Redis ----------
 let clientPromise = null;
@@ -45,6 +91,7 @@ const redisStore = {
   async hdel(key, fields) {
     if (fields.length) await (await redis()).hDel(key, fields);
   },
+  ping: async () => (await redis()).ping(),
 };
 
 // ---------- memoria (solo desarrollo local) ----------
@@ -82,13 +129,21 @@ const memoryStore = {
     const e = alive(key);
     if (e) for (const f of fields) delete e.v[f];
   },
+  ping: async () => 'PONG',
 };
 
+export function storeKind() {
+  if (REST_URL && REST_TOKEN) return 'upstash-http';
+  if (REDIS_URL) return 'redis';
+  return process.env.VERCEL ? 'ninguno' : 'memoria';
+}
+
 export function getStore() {
+  if (REST_URL && REST_TOKEN) return restStore;
   if (REDIS_URL) return redisStore;
   // En Vercel cada función puede correr en una máquina distinta: la memoria no sirve.
   if (process.env.VERCEL) {
-    throw new StoreNotConfigured('Falta conectar Redis al proyecto en Vercel (Storage → Redis).');
+    throw new StoreNotConfigured('Falta conectar Redis al proyecto en Vercel (pestaña Storage → Redis) y hacer Redeploy.');
   }
   return memoryStore;
 }

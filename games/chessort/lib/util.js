@@ -39,5 +39,6 @@ export async function readJson(request) {
 export function serverError(e) {
   if (e instanceof StoreNotConfigured) return json({ error: e.message }, 503);
   console.error(e);
-  return json({ error: 'Error del servidor' }, 500);
+  // Mostramos el motivo (sin datos sensibles) para poder diagnosticar desde el navegador.
+  return json({ error: 'Error del servidor: ' + String(e?.message || e).slice(0, 200) }, 500);
 }

@@ -137,11 +137,11 @@ function showHome() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ tc, color, pid: getPid(), name: getName() }),
       });
-      if (!res.ok) throw new Error();
-      const { id } = await res.json();
-      navigate('/game/' + id);
-    } catch {
-      toast('No se pudo crear la partida', 'error');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.id) throw new Error(data.error || `Error ${res.status}`);
+      navigate('/game/' + data.id);
+    } catch (err) {
+      toast('No se pudo crear la partida. ' + (err.message || ''), 'error');
       e.target.disabled = false;
     }
   };

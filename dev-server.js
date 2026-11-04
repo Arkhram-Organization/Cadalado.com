@@ -8,6 +8,7 @@ import { extname, join, normalize } from 'node:path';
 import * as ajedrezGames from './games/chessort/api/games.js';
 import * as ajedrezLobby from './games/chessort/api/lobby.js';
 import * as ajedrezGame from './games/chessort/api/game/[id].js';
+import * as ajedrezEstado from './games/chessort/api/estado.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = import.meta.dirname;
@@ -27,6 +28,7 @@ const JUEGOS = [
       [/^\/games$/, ajedrezGames],
       [/^\/lobby$/, ajedrezLobby],
       [/^\/game\/[^/]+$/, ajedrezGame],
+      [/^\/estado$/, ajedrezEstado],
     ],
   },
 ];

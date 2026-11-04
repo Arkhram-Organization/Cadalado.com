@@ -59,5 +59,5 @@ export function toast(text, kind = 'info') {
   el.dataset.kind = kind;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  toastTimer = setTimeout(() => el.classList.remove('show'), kind === 'error' ? 7000 : 2600);
 }
