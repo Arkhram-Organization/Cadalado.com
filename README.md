@@ -18,7 +18,7 @@ en tiempo real. Corre entera en **Cloudflare Workers** (`*.workers.dev`), gratis
 - **Ajustes**: 7 colores de tablero, sonidos, coordenadas, mostrar jugadas legales y animaciones.
 - Reconexión automática: si recargas la página o se corta internet, vuelves a tu asiento.
 - Diseño adaptable a móvil.
-
+ 
 ## Estructura
 
 ```
