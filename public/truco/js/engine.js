@@ -84,6 +84,8 @@ export function pies(g) {
 }
 export const isPie = (g, seat) => pies(g).includes(seat);
 export const cutter = (g) => (g.dealer - 1 + g.n) % g.n;
+// En equipos el truco recién se canta desde segunda (regla de la mesa, activada por defecto).
+const trucoBlocked = (g) => g.n > 2 && (g.trucoDesdeSegunda ?? true) && g.h.r === 0;
 
 // ---------------------------------------------------------------- partida
 
@@ -268,7 +270,7 @@ export function actionsFor(g, seat) {
   }
   // fase de juego normal
   out.mazo = true;
-  const trucoOk = !(g.trucoDesdeSegunda && h.r === 0);
+  const trucoOk = !trucoBlocked(g);
   if (trucoOk && t.level < 4 && (t.holder === null || t.holder === team(seat))) out.truco = TRUCO_NAMES[t.level + 1];
   if (envidoOpenFor(g, seat)) out.envido = ['envido', 'real', 'falta'];
   if (h.turn === seat) {
@@ -277,7 +279,7 @@ export function actionsFor(g, seat) {
     out.canDown = h.r > 0;
   }
   for (let s = 0; s < g.n; s++) {
-    if (team(s) !== team(seat) && !h.falseAccuse[seat]) out.denunciar.push(s);
+    if (team(s) !== team(seat)) out.denunciar.push(s);
   }
   return out;
 }
@@ -367,7 +369,7 @@ export function act(g, seat, a, rng = Math.random) {
         tr.pending = { level: tr.pending.level + 1, byTeam: T, bySeat: seat };
         tr.holder = null;
       } else if (w.kind === 'play') {
-        if (g.trucoDesdeSegunda && h.r === 0) return { error: 'En esta mesa el truco se canta desde segunda' };
+        if (trucoBlocked(g)) return { error: 'En equipo el truco se canta desde segunda' };
         if (tr.level >= 4) return { error: 'Ya está en vale cuatro' };
         if (tr.holder !== null && tr.holder !== T) return { error: 'El quiero lo tiene el otro equipo' };
         tr.pending = { level: tr.level + 1, byTeam: T, bySeat: seat };
@@ -438,10 +440,13 @@ export function act(g, seat, a, rng = Math.random) {
 
     case 'mazo': {
       if (w.kind === 'envido' || w.kind === 'declare') return { error: 'Primero resolvé el envido' };
-      h.mazo[seat] = true;
-      h.inHand[seat] = [];
-      h.pre[seat] = null;
-      event(g, { type: 'mazo', seat });
+      // en equipo uno se va al mazo por todo el equipo
+      for (const s of teamSeats(g, T)) {
+        h.mazo[s] = true;
+        h.inHand[s] = [];
+        h.pre[s] = null;
+      }
+      event(g, { type: 'mazo', seat, team: T });
       const left = teamSeats(g, T).filter((s) => active(h, s));
       if (!left.length) {
         const win = otherTeam(T);
@@ -455,21 +460,18 @@ export function act(g, seat, a, rng = Math.random) {
       return { ok: true };
     }
 
+    // "Mostrá las dos": se le pide a un rival que levante la carta de arriba de su tiro doble
+    // para que todos vean la de abajo. No suma ni resta puntos.
     case 'denuncia': {
       const target = a.target;
       if (typeof target !== 'number' || team(target) === T || target < 0 || target >= g.n) return { error: 'Denuncia inválida' };
-      if (h.falseAccuse[seat]) return { error: 'Ya denunciaste mal en esta mano' };
-      if (w.kind !== 'play') return { error: 'Esperá a que respondan' };
-      if (h.stacked[target]) {
-        event(g, { type: 'denuncia', seat, target, ok: true });
-        const pts = Math.max(tr.level, tr.pending ? tr.pending.level : 1);
-        tr.pending = null;
-        endHand(g, T, pts, 'trampa', target);
-      } else {
-        h.falseAccuse[seat] = true;
+      const under = h.table[target].filter((p) => p.under && !p.revealed);
+      if (!under.length) {
         event(g, { type: 'denuncia', seat, target, ok: false });
-        h.pending.push({ team: otherTeam(T), pts: 1, why: 'denuncia-falsa' });
+        return { ok: true };
       }
+      for (const p of under) p.revealed = true;
+      event(g, { type: 'denuncia', seat, target, ok: true, cards: under.map((p) => p.c) });
       return { ok: true };
     }
   }
@@ -655,9 +657,9 @@ function finishHand(g, penalty) {
     if (penalty && p.why === 'envido') entries.push({ ...p, team: otherTeam(p.team), why: 'envido-' + penalty });
     else entries.push(p);
   }
-  let trucoTeam = tr.team;
-  if (penalty && trucoTeam === cheatTeam) trucoTeam = otherTeam(cheatTeam);
-  entries.push({ team: trucoTeam, pts: tr.pts, why: penalty && tr.team === cheatTeam ? 'truco-' + penalty : 'truco' });
+  const trucoTeam = tr.team;
+  void cheatTeam;
+  entries.push({ team: trucoTeam, pts: tr.pts, why: 'truco' });
   h.phase = 'ended';
   h.result = {
     winner: trucoTeam,
@@ -692,7 +694,7 @@ export function viewFor(g, seat) {
     table: h.table.map((list, s) =>
       list.map((p) => {
         // la tapada y la de abajo de un tiro doble no se ven hasta que termina la mano
-        const hidden = s !== seat && !done && (p.faceDown || p.under);
+        const hidden = s !== seat && !done && (p.faceDown || (p.under && !p.revealed));
         return { ...p, c: hidden ? null : p.c, hidden };
       })
     ),

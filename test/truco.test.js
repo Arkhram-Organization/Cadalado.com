@@ -109,13 +109,13 @@ test('envido querido: se anota al final y hay que mostrar', () => {
   assert.deepEqual(g.score, [3, 0]); // 2 de envido + 1 del truco sin cantar
 });
 
-test('si no muestra y le reclaman, pierde envido y truco', () => {
+test('si no muestra y le reclaman, pierde solo el envido', () => {
   const g = fixed([['7E', '6E', '4C'], ['5O', '4O', '12B']]);
   envidoQuerido(g);
   mazoAll(g, 1);
   ok(act(g, 1, { t: 'reclamar' }));
   assert.equal(g.h.result.penalty, 'no-mostro');
-  assert.deepEqual(g.score, [0, 3]);
+  assert.deepEqual(g.score, [1, 2]); // el truco (1) sigue siendo suyo, el envido (2) pasa al rival
 });
 
 test('si nadie reclama, los tantos valen aunque no muestre', () => {
@@ -137,7 +137,7 @@ test('mentir los tantos: si muestra, lo cazan', () => {
   mazoAll(g, 1);
   ok(act(g, 0, { t: 'mostrar' }));
   assert.equal(g.h.result.penalty, 'mal-cantado');
-  assert.deepEqual(g.score, [0, 3]);
+  assert.deepEqual(g.score, [1, 2]);
 });
 
 test('el que se fue al mazo no puede mostrar', () => {
@@ -147,7 +147,7 @@ test('el que se fue al mazo no puede mostrar', () => {
   assert.equal(g.h.phase, 'show');
   assert.ok(act(g, 0, { t: 'mostrar' }).error);
   ok(act(g, 1, { t: 'reclamar' }));
-  assert.deepEqual(g.score, [0, 3]); // los 2 del envido y el 1 del truco pasan al rival
+  assert.deepEqual(g.score, [0, 3]); // envido 2 (no mostró) + truco 1 (se fue al mazo)
 });
 
 test('envido envido real envido no querido = 4', () => {
@@ -206,6 +206,12 @@ test('en 2 vs 2 el envido lo canta y lo contesta el pie', () => {
   ok(act(g, 1, { t: 'quiero' }));
 });
 
+test('partidas viejas sin el dato también aplican truco desde segunda', () => {
+  const g = newGame({ mode: '3v3', dealer: 2 });
+  delete g.trucoDesdeSegunda;
+  assert.equal(actionsFor(g, g.h.mano).truco, null);
+});
+
 test('en 3 vs 3 los pies son el que reparte y el que corta', () => {
   const g = newGame({ mode: '3v3', dealer: 4 });
   assert.equal(g.h.mano, 5);
@@ -246,20 +252,28 @@ test('tirar dos encimadas: la de abajo juega ahora, la de arriba en la siguiente
   assert.deepEqual(g.score, [0, 1]); // el 1 ganó primera y tercera
 });
 
-test('denunciar el tiro doble', () => {
+test('pedir que muestre las dos: se ve la de abajo y no hay puntos', () => {
   const g = fixed([['1E', '4E', '5C'], ['3O', '6O', '12B']]);
   ok(act(g, 0, { t: 'play2', bottom: '4E', top: '1E' }));
+  assert.equal(viewFor(g, 1).h.table[0][0].c, null);
   ok(act(g, 1, { t: 'denuncia', target: 0 }));
-  assert.equal(g.h.phase, 'ended');
-  assert.deepEqual(g.score, [0, 1]);
+  assert.equal(viewFor(g, 1).h.table[0][0].c, '4E');
+  assert.equal(g.h.phase, 'play');
+  assert.deepEqual(g.score, [0, 0]);
 });
 
-test('denuncia falsa le da un punto al rival', () => {
+test('pedir que muestre a quien no tiró dos no cambia nada', () => {
   const g = fixed([['3E', '4E', '5C'], ['4O', '3O', '12B']]);
   ok(act(g, 1, { t: 'denuncia', target: 0 }));
-  assert.ok(act(g, 1, { t: 'denuncia', target: 0 }).error);
-  mazoAll(g, 1);
-  assert.deepEqual(g.score, [3, 0]); // 1 denuncia + 1 envido + 1 truco
+  assert.equal(g.h.phase, 'play');
+  assert.deepEqual(g.score, [0, 0]);
+});
+
+test('en equipo, irse al mazo es por todo el equipo', () => {
+  const g = newGame({ mode: '2v2', dealer: 1 });
+  ok(act(g, 2, { t: 'mazo' }));
+  assert.equal(g.h.phase, 'ended');
+  assert.deepEqual(g.h.mazo, [true, false, true, false]);
 });
 
 test('carta tapada no vale en primera y pierde la ronda', () => {
