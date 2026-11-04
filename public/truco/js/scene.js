@@ -36,8 +36,8 @@ const cardGeo = new THREE.PlaneGeometry(CARD_W, CARD_H);
 function makeCard(id, lit = true) {
   const g = new THREE.Group();
   const Mat = lit ? THREE.MeshLambertMaterial : THREE.MeshBasicMaterial;
-  const front = new THREE.Mesh(cardGeo, new Mat({ map: cardTex(id), alphaTest: 0.4 }));
-  const back = new THREE.Mesh(cardGeo, new Mat({ map: cardTex('back'), alphaTest: 0.4 }));
+  const front = new THREE.Mesh(cardGeo, new Mat({ map: cardTex(id), alphaTest: 0.5 }));
+  const back = new THREE.Mesh(cardGeo, new Mat({ map: cardTex('back'), alphaTest: 0.5 }));
   back.rotation.y = Math.PI;
   front.position.z = 0.0003;
   back.position.z = -0.0003;
@@ -364,7 +364,7 @@ export class TableScene {
     chair.position.set(d.x * cr, 0, d.z * cr);
     chair.rotation.y = this.seatAngle(seat);
     this.scene.add(chair);
-    const c = { seat, mesh, chair, canvas, ctx, tex, look: lookFor('?', seat), name: '?', state: { expr: 'neutral', talking: false, gx: 0, gy: 0, cards: 0 }, gaze: null, exprUntil: 0, talkUntil: 0, dirty: true };
+    const c = { seat, mesh, chair, canvas, ctx, tex, look: lookFor('?', seat), name: '?', state: { expr: 'neutral', talking: false, cards: 0 }, gaze: 'table', exprUntil: 0, talkUntil: 0, dirty: true };
     this.chars.set(seat, c);
   }
 
@@ -393,7 +393,7 @@ export class TableScene {
     c.dirty = true;
   }
 
-  showSena(seat, sena, ms = 1700) {
+  showSena(seat, sena, ms = 2200) {
     const c = this.chars.get(seat);
     const s = SENAS[sena];
     if (!c || !s) return;
@@ -408,38 +408,64 @@ export class TableScene {
     c.talkUntil = performance.now() + ms;
   }
 
-  // Dirección de la mirada de un personaje en coordenadas de su imagen, vista desde la cámara.
-  gazeVector(c) {
+  // Ángulo (visto desde la cámara) de una dirección horizontal en la que apunta el personaje:
+  // 0 = hacia la cámara, positivo = hacia la derecha de la imagen.
+  viewYaw(c, dir) {
+    const toCam = this.camera.position.clone().sub(c.mesh.position);
+    toCam.y = 0;
+    toCam.normalize();
+    const right = new THREE.Vector3(toCam.z, 0, -toCam.x);
+    return Math.atan2(dir.dot(right), dir.dot(toCam));
+  }
+
+  // Cuerpo mirando al centro de la mesa (como en el truco real: todos enfrentados) y
+  // cabeza girada hacia quien está mirando.
+  poseFor(c) {
+    const center = new THREE.Vector3(0, c.mesh.position.y, 0);
+    const bodyDir = center.sub(c.mesh.position).setY(0).normalize();
+    const bodyYaw = this.viewYaw(c, bodyDir);
     const t = c.gaze;
-    if (t === null || t === undefined) return [0, 0.1];
-    if (t === 'table') {
-      const toCenter = new THREE.Vector3().sub(c.mesh.position).normalize();
-      const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
-      return [THREE.MathUtils.clamp(toCenter.dot(right) * 0.6, -0.6, 0.6), 0.85];
+    let target = null;
+    let down = 0;
+    if (t === 'table' || t === null || t === undefined) {
+      down = 1;
+    } else if (!this.spectator && t === this.me) {
+      target = this.camera.position.clone();
+    } else if (this.chars.get(t)) {
+      target = this.chars.get(t).mesh.position.clone();
     }
-    if (!this.spectator && t === this.me) return [0, 0]; // te está mirando a vos
-    const other = this.chars.get(t);
-    if (!other) return [0, 0];
-    const dir = other.mesh.position.clone().sub(c.mesh.position).normalize();
-    const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0);
-    const x = dir.dot(right);
-    return [THREE.MathUtils.clamp(x * 1.4, -1, 1), 0.05];
+    let headYaw = bodyYaw;
+    if (target) {
+      const dir = target.sub(c.mesh.position).setY(0).normalize();
+      headYaw = this.viewYaw(c, dir);
+    } else {
+      headYaw = bodyYaw * 0.9;
+    }
+    return { bodyYaw, headYaw, down };
   }
 
   updateCharacter(c, now) {
     const expr = now < c.exprUntil ? c.state.expr : 'neutral';
     const talking = now < c.talkUntil && Math.floor(now / 130) % 2 === 0;
-    const [gx, gy] = this.gazeVector(c);
+    if (!c.nextBlink || now > c.nextBlink + 140) c.nextBlink = now + 2500 + Math.random() * 4000;
+    const blink = expr === 'neutral' && now > c.nextBlink && now < c.nextBlink + 130;
+    const pose = this.poseFor(c);
     const st = c.state;
-    if (!c.dirty && expr === c.drawnExpr && talking === c.drawnTalk && Math.abs(gx - st.gx) < 0.02 && Math.abs(gy - st.gy) < 0.02) return;
-    st.gx += (gx - st.gx) * 0.5;
-    st.gy += (gy - st.gy) * 0.5;
-    if (Math.abs(gx - st.gx) < 0.02) st.gx = gx;
-    if (Math.abs(gy - st.gy) < 0.02) st.gy = gy;
-    drawCharacter(c.ctx, c.look, { ...st, expr, talking });
+    st.bodyYaw = pose.bodyYaw;
+    const near = (a, b) => Math.abs(a - b) < 0.015;
+    const settled = near(st.headYaw ?? 99, pose.headYaw) && near(st.down ?? 99, pose.down);
+    if (!c.dirty && settled && expr === c.drawnExpr && talking === c.drawnTalk && blink === c.drawnBlink && near(c.drawnBody ?? 99, pose.bodyYaw)) return;
+    // la cabeza gira suave
+    st.headYaw = st.headYaw === undefined ? pose.headYaw : st.headYaw + (pose.headYaw - st.headYaw) * 0.25;
+    st.down = st.down === undefined ? pose.down : st.down + (pose.down - st.down) * 0.25;
+    if (near(st.headYaw, pose.headYaw)) st.headYaw = pose.headYaw;
+    if (near(st.down, pose.down)) st.down = pose.down;
+    drawCharacter(c.ctx, c.look, { ...st, expr, talking, blink });
     c.tex.needsUpdate = true;
     c.drawnExpr = expr;
     c.drawnTalk = talking;
+    c.drawnBlink = blink;
+    c.drawnBody = pose.bodyYaw;
     c.dirty = false;
   }
 
@@ -639,14 +665,13 @@ export class TableScene {
   syncTable(table, { animate = true } = {}) {
     const seen = new Set();
     table.forEach((list, seat) => {
-      let slot = -1;
+      const poses = this.tablePoses(seat, list);
       list.forEach((p, idx) => {
-        if (!p.stacked) slot++;
         const key = `${seat}:${idx}`;
         seen.add(key);
         let card = this.tableCards.get(key);
         const face = p.c || 'back';
-        const pose = this.tablePose(seat, Math.max(0, slot), p.stacked, idx);
+        const pose = poses[idx];
         if (!card) {
           card = makeCard(face, true);
           card.userData.faceDown = p.faceDown;
@@ -683,20 +708,40 @@ export class TableScene {
     }
   }
 
-  tablePose(seat, slot, stacked, idx) {
+  // Como en la mesa de verdad: cada carta nueva va encima de la anterior, corrida hacia el centro,
+  // así se ve un pedazo de la de primera y de segunda. La "encimada" casi la tapa entera.
+  tablePoses(seat, list) {
     const d = this.seatDir(seat);
     const a = this.seatAngle(seat);
     const tangent = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
-    const radial = this.R * (this.n === 2 ? 0.42 : 0.5);
-    const pos = d.clone().multiplyScalar(radial).addScaledVector(tangent, (slot - 1) * (CARD_W + 0.018));
+    const start = this.R * (this.n === 2 ? 0.55 : 0.62);
+    const step = CARD_H * 0.36;
+    const jitter = [0, 0.006, -0.005];
+    const tilt = [0.02, -0.05, 0.04];
+    const out = [];
+    let radial = start;
+    let side = 0;
     let rot = a;
-    pos.y = TABLE_Y + 0.003 + idx * 0.0016;
-    if (stacked) {
-      // encimada: casi tapa la anterior, pero se nota un poquito
-      pos.addScaledVector(tangent, 0.012).addScaledVector(d, -0.016);
-      rot += 0.13;
-    }
-    return { pos, rot };
+    list.forEach((p, idx) => {
+      if (idx > 0) {
+        if (p.stacked) {
+          // encimada: casi la tapa, pero se nota un poquito
+          radial -= 0.013;
+          side += 0.009;
+          rot += 0.075;
+        } else {
+          radial -= step;
+          side = jitter[idx % 3];
+          rot = a + tilt[idx % 3];
+        }
+      } else {
+        rot = a + tilt[0];
+      }
+      const pos = d.clone().multiplyScalar(radial).addScaledVector(tangent, side);
+      pos.y = TABLE_Y + 0.002 + idx * 0.0018;
+      out.push({ pos, rot });
+    });
+    return out;
   }
 
   handOrigin(seat) {
@@ -741,7 +786,6 @@ export class TableScene {
     const h = this.container.clientHeight || window.innerHeight;
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
-    this.camera.fov = w < h ? 78 : 62;
     this.camera.updateProjectionMatrix();
   }
 
@@ -767,6 +811,14 @@ export class TableScene {
       }
       return true;
     });
+    // zoom temporal manteniendo Z (o el botón de zoom)
+    const baseFov = this.camera.aspect < 1 ? 78 : 62;
+    const wantFov = (k && k.has('z')) || this.zoomHeld ? baseFov * 0.38 : baseFov;
+    if (Math.abs(this.camera.fov - wantFov) > 0.05) {
+      this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 12);
+      this.camera.updateProjectionMatrix();
+    }
+    this.handGroup.visible = this.camera.fov > baseFov * 0.7;
     this.layoutHand(dt);
     for (const c of this.chars.values()) {
       // billboard: el recorte siempre mira a la cámara (solo gira en Y)

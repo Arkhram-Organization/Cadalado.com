@@ -101,7 +101,8 @@ code { background: #0003; padding: 1px 5px; border-radius: 4px; }
 .nameplate.turn { box-shadow: 0 0 0 3px #fff8, 0 0 18px var(--accent); }
 .nameplate .chip { font-size: 10px; padding: 1px 6px; border-radius: 6px; background: #fff2; text-transform: uppercase; letter-spacing: 0.5px; }
 .nameplate .off { color: #f88; font-size: 11px; }
-.nameplate .eye { font-size: 12px; opacity: 0.85; }
+.nameplate .chip.eye { background: rgba(232,184,74,0.25); color: #f3d9a0; }
+#look-bar small { color: var(--muted); font-weight: 500; margin-right: 3px; }
 .bubble { background: #fffdf5; color: #1e130c; font-family: var(--serif); font-weight: 700; padding: 8px 14px; border-radius: 16px; font-size: 18px; position: relative; box-shadow: 0 6px 20px #0008; animation: pop 0.25s ease-out; max-width: 240px; text-align: center; }
 .bubble::after { content: ''; position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%); border: 10px solid transparent; border-top-color: #fffdf5; border-bottom: 0; }
 .bubble.call { background: #ffe9a8; font-size: 24px; text-transform: uppercase; }
@@ -114,13 +115,13 @@ code { background: #0003; padding: 1px 5px; border-radius: 4px; }
 .code-chip { background: #000a; border: 1px dashed var(--accent); color: var(--text); border-radius: 10px; padding: 4px 10px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
 .code-chip span { font-size: 11px; color: var(--muted); text-transform: uppercase; }
 .code-chip b { font-family: monospace; letter-spacing: 3px; font-size: 17px; color: var(--accent); }
-#score { display: flex; gap: 6px; background: #000a; border-radius: 12px; padding: 4px 8px; border: 1px solid #fff1; }
-.score-team { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 8px; }
-.score-team .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.score-team .pts { font-weight: 800; font-size: 20px; min-width: 26px; text-align: center; }
-.score-team.t0 .pts { color: var(--team0); }
-.score-team.t1 .pts { color: var(--team1); }
-.score-team svg { height: 30px; }
+#anotador { position: absolute; right: 12px; top: 64px; background: rgba(18, 13, 9, 0.82); border: 1px solid rgba(236,230,216,0.14); border-radius: 10px; padding: 8px 10px 6px; color: #ece6d8; font-family: var(--serif); min-width: 96px; z-index: 2; }
+.an-head, .an-foot { display: grid; grid-template-columns: 1fr 1fr; text-align: center; gap: 6px; }
+.an-head span { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #b9ad97; padding-bottom: 4px; border-bottom: 1px solid rgba(236,230,216,0.25); }
+.an-body { display: flex; justify-content: center; gap: 6px; padding-top: 6px; }
+.an-sep { width: 1px; background: rgba(236,230,216,0.25); }
+.an-foot { margin-top: 2px; border-top: 1px solid rgba(236,230,216,0.25); padding-top: 4px; font-size: 18px; }
+.an-foot small { grid-column: 1 / -1; font-size: 10px; color: #8f8574; font-family: var(--font); }
 .badge { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); margin-left: 3px; vertical-align: top; }
 
 #status-line { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background: #000b; padding: 6px 16px; border-radius: 999px; font-weight: 600; font-size: 15px; pointer-events: none; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis; }
@@ -148,7 +149,7 @@ code { background: #0003; padding: 1px 5px; border-radius: 4px; }
 
 #mirror { position: absolute; right: 12px; bottom: 80px; width: 120px; height: 120px; background: radial-gradient(#3a2a1e, #1a120c); border: 2px solid var(--accent); border-radius: 12px; }
 
-#chat { position: absolute; right: 12px; top: 60px; bottom: 90px; width: min(340px, calc(100vw - 24px)); background: #120c08ee; border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; backdrop-filter: blur(6px); z-index: 4; }
+#chat { position: absolute; right: 12px; top: 60px; z-index: 5; bottom: 90px; width: min(340px, calc(100vw - 24px)); background: #120c08ee; border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; backdrop-filter: blur(6px); z-index: 4; }
 .chat-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
 #chat-log { flex: 1; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; }
 #chat-log .sys { color: var(--muted); font-style: italic; font-size: 13px; }
@@ -191,12 +192,11 @@ code { background: #0003; padding: 1px 5px; border-radius: 4px; }
 @media (max-width: 760px) {
   .menu-grid { grid-template-columns: 1fr; }
   #look-bar { display: none; }
-  #score .lbl { display: none; }
   .code-chip span { display: none; }
   #topbar { gap: 5px; padding-left: 8px; padding-right: 8px; }
   #topbar .btn.small { padding: 5px 8px; }
   .code-chip b { letter-spacing: 1px; font-size: 15px; }
-  .score-team svg { display: none; }
+  #anotador { top: 54px; right: 8px; padding: 6px; min-width: 0; transform: scale(0.78); transform-origin: top right; }
   #tools { position: static; flex-direction: row; align-self: center; order: -1; }
   #mirror { width: 80px; height: 80px; bottom: 150px; }
   #status-line { top: 56px; font-size: 13px; }

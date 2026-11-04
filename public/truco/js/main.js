@@ -169,7 +169,7 @@ async function loadPublic() {
         <div class="top"><span class="mode">${esc(r.mode.replace('v', ' vs '))}</span><span class="muted">${r.target} pts · ${isLive ? 'jugando' : `${r.free} lugar${r.free === 1 ? '' : 'es'}`}</span></div>
         <div class="players">${esc(r.players.filter(Boolean).join(', ') || '—')}</div>
         ${isLive && r.score ? `<div class="muted">Van ${r.score[0]} a ${r.score[1]}</div>` : ''}
-        <button class="btn ${isLive ? '' : 'primary'} small" data-code="${esc(r.code)}" ${isLive ? 'data-spectate="1"' : ''}>${isLive ? '👀 Mirar' : 'Sentarme'}</button>
+        <button class="btn ${isLive ? '' : 'primary'} small" data-code="${esc(r.code)}" ${isLive ? 'data-spectate="1"' : ''}>${isLive ? 'Mirar' : 'Sentarme'}</button>
       </div>`;
     const html = open.map((r) => card(r, false)).join('') + live.map((r) => card(r, true)).join('');
     el.innerHTML = html || '<p class="hint">No hay mesas públicas ahora. ¡Abrí una con “Partida rápida”!</p>';
@@ -325,16 +325,9 @@ class RoomClient {
   onSena(m) {
     const s = SENAS[m.sena];
     if (!s) return;
-    if (m.self) {
-      const seen = (m.seenBy || []).map((x) => this.nameOf(x, true));
-      const rivals = (m.seenBy || []).filter((x) => team(x) !== team(this.you));
-      if (!seen.length) this.toast(`Hiciste “${s.label}”, pero nadie te estaba mirando`, '');
-      else this.toast(`Te vieron: ${seen.join(', ')}${rivals.length ? ' — ⚠️ ¡te vio un rival!' : ''}`, rivals.length ? 'bad' : 'good');
-      return;
-    }
+    // Sin carteles: la seña solo se ve en la cara del que la hace (si lo estabas mirando).
+    if (m.self) return;
     scene.showSena(m.seat, m.sena);
-    const partner = team(m.seat) === team(this.you);
-    this.toast(`👀 ${partner ? 'Tu compañero' : 'Un rival'} ${esc(this.nameOf(m.seat))} hizo una seña: ${s.label}`, partner ? 'good' : '');
   }
 
   nameOf(seat, rel = false) {
@@ -423,8 +416,8 @@ class RoomClient {
       case 'denuncia':
         this.bubble(e.seat, '¡Trampa!', 'call', 2200);
         say('¡Trampa!');
-        if (e.ok) this.toast(`🚨 ¡Era trampa! ${esc(this.nameOf(e.target))} había encimado una carta. Pierde la mano.`, 'good');
-        else this.toast(`❌ Denuncia falsa de ${esc(this.nameOf(e.seat))}: un punto para el otro equipo.`, 'bad');
+        if (e.ok) this.toast(`¡Era trampa! ${esc(this.nameOf(e.target))} había encimado una carta. Pierde la mano.`, 'good');
+        else this.toast(`Denuncia falsa de ${esc(this.nameOf(e.seat))}: un punto para el otro equipo.`, 'bad');
         break;
       case 'hand-end': {
         const res = g.h.result;
@@ -557,7 +550,7 @@ class RoomClient {
     this.renderPlates();
     this.renderWaiting();
     this.renderResult();
-    $('#spect').textContent = st.room.spectators ? `👀 ${st.room.spectators} mirando` : '';
+    $('#spect').textContent = st.room.spectators ? `${st.room.spectators} mirando` : '';
     $('#tools').classList.toggle('hidden', this.you == null || !g || st.room.status !== 'playing');
   }
 
@@ -567,9 +560,15 @@ class RoomClient {
     const score = g?.score || [0, 0];
     const target = g?.target || st.room.cfg.target;
     const order = this.you != null ? [team(this.you), 1 - team(this.you)] : [0, 1];
-    $('#score').innerHTML = order
-      .map((t) => `<div class="score-team t${t}"><span class="lbl">${esc(this.teamLabel(t))}</span>${fosforos(score[t], target)}<span class="pts">${score[t]}</span></div>`)
-      .join('');
+    const names = this.you != null ? ['Nosotros', 'Ellos'] : order.map((t) => (t === 0 ? 'Equipo A' : 'Equipo B'));
+    const key = `${score}|${target}|${order}`;
+    const el = $('#anotador');
+    if (el.dataset.key === key) return;
+    el.dataset.key = key;
+    el.innerHTML = `
+      <div class="an-head">${order.map((t, i) => `<span class="t${t}">${names[i]}</span>`).join('')}</div>
+      <div class="an-body">${order.map((t) => palitos(score[t], target)).join('<i class="an-sep"></i>')}</div>
+      <div class="an-foot">${order.map((t) => `<b>${score[t]}</b>`).join('')}<small>a ${target}</small></div>`;
   }
 
   renderStatus() {
@@ -640,7 +639,7 @@ class RoomClient {
     for (const s of a.denunciar) {
       const b = document.createElement('button');
       b.className = 'item';
-      b.innerHTML = `🚨 <span>Denunciar a <b>${esc(this.nameOf(s))}</b><small>“¡Esa carta está encimada!”</small></span>`;
+      b.innerHTML = `<span>Denunciar a <b>${esc(this.nameOf(s))}</b><small>“¡Esa carta está encimada!”</small></span>`;
       b.onclick = () => {
         tm.classList.add('hidden');
         this.act({ t: 'denuncia', target: s });
@@ -657,10 +656,10 @@ class RoomClient {
     let html = '<span class="lbl">Mirar a</span>';
     seats.forEach((p, s) => {
       if (s === this.you || !p) return;
-      const rel = team(s) === team(this.you) ? '🤝' : '⚔️';
-      html += `<button class="btn small ghost ${cur === s ? 'on' : ''}" data-look="${s}">${rel} ${esc(p.name)}</button>`;
+      const rel = team(s) === team(this.you) ? 'Compañero' : 'Rival';
+      html += `<button class="btn small ghost ${cur === s ? 'on' : ''}" data-look="${s}"><small>${rel}</small> ${esc(p.name)}</button>`;
     });
-    html += `<button class="btn small ghost ${cur === 'table' ? 'on' : ''}" data-look="table">🂠 La mesa</button>`;
+    html += `<button class="btn small ghost ${cur === 'table' ? 'on' : ''}" data-look="table">La mesa</button>`;
     if (bar.dataset.html !== html) {
       bar.innerHTML = html;
       bar.dataset.html = html;
@@ -684,11 +683,11 @@ class RoomClient {
         if (g.h.mano === seat) chips.push('mano');
         if (g.h.mazo[seat]) chips.push('al mazo');
       }
-      const rel = this.you == null ? '' : team(seat) === team(this.you) ? '🤝' : '';
-      const looking = this.gaze[seat] === this.you && this.you != null ? '<span class="eye" title="Te está mirando">👁</span>' : '';
+      const rel = this.you == null ? '' : team(seat) === team(this.you) ? '<span class="chip">compañero</span>' : '';
+      const looking = this.gaze[seat] === this.you && this.you != null ? '<span class="chip eye">te mira</span>' : '';
       const turn = g && st.room.status === 'playing' && g.waiting.seats.includes(seat);
       l.plate.className = `nameplate t${t} ${turn ? 'turn' : ''}`;
-      l.plate.innerHTML = `${rel} ${esc(p.name)} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online ? '' : '<span class="off">desconectado</span>'}`;
+      l.plate.innerHTML = `${esc(p.name)} ${p.bot ? '<span class="chip">bot</span>' : ''} ${rel} ${looking} ${chips.map((c) => `<span class="chip">${c}</span>`).join('')} ${p.online ? '' : '<span class="off">desconectado</span>'}`;
     });
   }
 
@@ -706,9 +705,9 @@ class RoomClient {
       if (!p) {
         return `<div class="seat empty"><span class="nm">Lugar libre</span>
           <button class="btn small" data-sit="${i}">Sentarme</button>
-          ${host ? `<button class="btn small" data-bot="${i}">🤖 Bot</button>` : ''}</div>`;
+          ${host ? `<button class="btn small" data-bot="${i}">Agregar bot</button>` : ''}</div>`;
       }
-      return `<div class="seat ${me ? 'me' : ''}"><span class="nm">${esc(p.name)}${p.host ? ' 👑' : ''}${me ? ' (vos)' : ''}</span>
+      return `<div class="seat ${me ? 'me' : ''}"><span class="nm">${esc(p.name)}${p.bot ? ' <span class="muted">(bot)</span>' : ''}${p.host ? ' <span class="muted">(anfitrión)</span>' : ''}${me ? ' (vos)' : ''}</span>
         ${!p.online ? '<span class="muted">desconectado</span>' : ''}
         ${host && p.bot ? `<button class="btn small" data-unbot="${i}">Sacar</button>` : ''}
         ${host && !p.bot && !me && !p.host ? `<button class="btn small" data-kick="${i}">Echar</button>` : ''}</div>`;
@@ -725,10 +724,10 @@ class RoomClient {
       `<div class="seg" data-cfg="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     el.innerHTML = `<div class="card-box">
       <h2>Sala ${esc(r.code)} · ${esc(cfg.mode.replace('v', ' vs '))}</h2>
-      <div class="muted">${cfg.target} puntos · ${cfg.isPublic ? '🌎 pública' : '🔒 privada'}${cfg.ayudas ? ' · con ayudas' : ''}</div>
+      <div class="muted">${cfg.target} puntos · ${cfg.isPublic ? 'pública' : 'privada'}${cfg.ayudas ? ' · con ayudas' : ''}</div>
       <div class="share">
         <span class="big-code">${esc(r.code)}</span>
-        <button class="btn small" data-copy="${esc(link)}">📋 Copiar enlace</button>
+        <button class="btn small" data-copy="${esc(link)}">Copiar enlace</button>
         <button class="btn small" data-copy="${esc(r.code)}">Copiar código</button>
         <a class="btn small" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('¿Un truquito? Entrá a mi mesa: ' + link)}">WhatsApp</a>
         ${navigator.share ? '<button class="btn small" data-share="1">Compartir…</button>' : ''}
@@ -736,12 +735,12 @@ class RoomClient {
       <div class="seats">${cols}</div>
       ${host ? `<div class="field">Modo ${seg('mode', [['1v1', '1 vs 1'], ['2v2', '2 vs 2'], ['3v3', '3 vs 3']], cfg.mode)}</div>
         <div class="field">Puntos ${seg('target', [[30, '30'], [15, '15']], cfg.target)}</div>
-        <div class="field">Sala ${seg('isPublic', [[0, '🔒 Privada'], [1, '🌎 Pública']], cfg.isPublic ? 1 : 0)}</div>
+        <div class="field">Sala ${seg('isPublic', [[0, 'Privada'], [1, 'Pública']], cfg.isPublic ? 1 : 0)}</div>
         <label class="check"><input type="checkbox" data-ayudas ${cfg.ayudas ? 'checked' : ''}> Mostrar quién gana cada ronda</label>
         <div class="row">
           <button class="btn primary big" data-start="0" ${full ? '' : 'disabled'}>Empezar</button>
-          <button class="btn big" data-start="1">Empezar llenando con bots 🤖</button>
-        </div>` : '<p class="hint">Esperando que el anfitrión 👑 empiece la partida…</p>'}
+          <button class="btn big" data-start="1">Empezar llenando con bots</button>
+        </div>` : '<p class="hint">Esperando que el anfitrión empiece la partida…</p>'}
       ${st.you == null ? '<p class="hint">Estás mirando. Tocá “Sentarme” en un lugar libre para jugar.</p>' : ''}
     </div>`;
   }
@@ -756,7 +755,7 @@ class RoomClient {
     const won = this.you != null && team(this.you) === w;
     const names = st.room.seats.filter((_, i) => team(i) === w).map((s) => s?.name).join(' y ');
     el.innerHTML = `<div class="card-box">
-      <h2>${this.you == null ? '¡Terminó!' : won ? '¡Ganaron! 🏆' : 'Perdieron 😔'}</h2>
+      <h2>${this.you == null ? '¡Terminó!' : won ? '¡Ganaron!' : 'Perdieron'}</h2>
       <div class="muted">Ganan ${esc(names)}</div>
       <div class="final">${g.score[w]} – ${g.score[1 - w]}</div>
       <div class="row" style="justify-content:center">
@@ -793,33 +792,43 @@ class RoomClient {
   }
 }
 
-// Fósforos: cada cuadrado con diagonal son 5 puntos. Línea entre malas y buenas.
-function fosforos(pts, target) {
+// Palitos como en el anotador de verdad: cuatro palitos forman un cuadrado y el quinto lo cruza.
+// Los grupos van uno debajo del otro; en partidas a 30 una raya separa las malas de las buenas.
+function palitos(pts, target) {
   const groups = Math.ceil(target / 5);
-  const w = 22;
-  let svg = `<svg viewBox="0 0 ${groups * w + (target === 30 ? 6 : 0)} 22" width="${groups * 12}">`;
+  const gap = 8;
+  const size = 22;
+  const rule = target === 30 ? 12 : 0;
+  const h = groups * (size + gap) + rule;
+  let svg = `<svg viewBox="0 0 34 ${h}" width="34" height="${h}" aria-label="${pts} puntos">`;
+  // pequeñas variaciones fijas para que parezcan hechos a mano
+  const wob = [0.6, -0.8, 0.4, -0.5, 0.7, -0.3];
   for (let gI = 0; gI < groups; gI++) {
     const n = Math.max(0, Math.min(5, pts - gI * 5));
-    const x = gI * w + (target === 30 && gI >= 3 ? 6 : 0) + 3;
-    const c = '#e9d8a6';
+    const y = gI * (size + gap) + (target === 30 && gI >= 3 ? rule : 0) + 4;
+    const x = 6;
+    const w = wob[gI % wob.length];
     const lines = [
-      [x, 3, x + 14, 3],
-      [x + 14, 3, x + 14, 17],
-      [x + 14, 17, x, 17],
-      [x, 17, x, 3],
-      [x, 3, x + 14, 17],
+      [x, y + w, x, y + size],
+      [x, y, x + size, y - w],
+      [x + size, y, x + size + w, y + size],
+      [x, y + size, x + size, y + size + w],
+      [x + 2, y + size - 2, x + size - 2, y + 2],
     ];
     lines.forEach((l, i) => {
-      svg += `<line x1="${l[0]}" y1="${l[1]}" x2="${l[2]}" y2="${l[3]}" stroke="${i < n ? c : '#ffffff18'}" stroke-width="2.4" stroke-linecap="round"/>`;
-      if (i < n) svg += `<circle cx="${l[2]}" cy="${l[3]}" r="1.8" fill="#d0452f"/>`;
+      const on = i < n;
+      svg += `<line x1="${l[0]}" y1="${l[1]}" x2="${l[2]}" y2="${l[3]}" stroke="${on ? '#ece6d8' : 'rgba(236,230,216,0.08)'}" stroke-width="${on ? 2.6 : 1.4}" stroke-linecap="round"/>`;
     });
   }
-  if (target === 30) svg += `<line x1="${3 * w + 3}" y1="0" x2="${3 * w + 3}" y2="22" stroke="#e8b84a" stroke-width="1.5"/>`;
+  if (target === 30) {
+    const y = 3 * (size + gap) + rule / 2 - 2;
+    svg += `<line x1="0" y1="${y}" x2="34" y2="${y}" stroke="rgba(236,230,216,0.45)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  }
   return svg + '</svg>';
 }
 
 // ======================================================== eventos de la UI del juego
-const QUICK = ['¡Buenas!', 'Jugá, che', 'Uh, qué mano…', 'Las viejas', 'Las perdedoras', '¡Qué suerte tenés!', 'Bien jugado', 'Me voy a la parda', '¿Truco?', 'Uy, se me cayó 😅'];
+const QUICK = ['¡Buenas!', 'Jugá, che', 'Uh, qué mano…', 'Las viejas', 'Las perdedoras', '¡Qué suerte tenés!', 'Bien jugado', 'Me voy a la parda', '¿Truco?', 'Uy, se me cayó'];
 
 function bindGameUI() {
   $('#leave').onclick = () => {
@@ -832,13 +841,21 @@ function bindGameUI() {
     room?.toast('Enlace copiado: ' + esc(link), 'good');
   };
   const vt = $('#voice-toggle');
-  const paintVoice = () => (vt.textContent = voiceOn ? '🔊' : '🔇');
+  const paintVoice = () => (vt.textContent = voiceOn ? 'Voz: sí' : 'Voz: no');
   paintVoice();
   vt.onclick = () => {
     voiceOn = !voiceOn;
     store.set('truco-voice', voiceOn ? '1' : '0');
     paintVoice();
   };
+  const zb = $('#zoom-btn');
+  const zoomOn = (e) => {
+    e.preventDefault();
+    scene.zoomHeld = true;
+  };
+  const zoomOff = () => (scene.zoomHeld = false);
+  zb.addEventListener('pointerdown', zoomOn);
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) zb.addEventListener(ev, zoomOff);
   const chat = $('#chat');
   $('#chat-toggle').onclick = () => {
     chat.classList.toggle('hidden');
@@ -950,7 +967,7 @@ function buildSenasMenu() {
   if (tgt === 'table') who = 'la mesa';
   else if (tgt != null && room?.st) who = room.nameOf(tgt, true);
   const look = lookFor(store.get('truco-name') || 'Invitado', room?.you ?? 0);
-  m.innerHTML = `<div class="tip">La seña <b>solo la ven los que te están mirando</b> en ese momento (fijate el 👁 en los nombres). Ahora estás mirando a: <b>${esc(who)}</b>.</div>`;
+  m.innerHTML = `<div class="tip">La seña <b>solo la ven los que te están mirando</b> en ese momento (fijate quién dice “te mira” en los nombres). Ahora estás mirando a: <b>${esc(who)}</b>.</div>`;
   for (const [id, s] of Object.entries(SENAS)) {
     const b = document.createElement('button');
     b.className = 'item';
@@ -980,7 +997,8 @@ function helpHtml() {
     <ul>
       <li>Arrastrá con el mouse o el dedo para mirar a los costados y para abajo (a la mesa). También <kbd>A</kbd>/<kbd>D</kbd> y <kbd>W</kbd>/<kbd>S</kbd>, o los botones de la izquierda.</li>
       <li>Tocá una carta para elegirla y después: <b>Tirar</b>, <b>Tirar encimada</b> (sobre tu carta anterior, para disimular cómo venía la mano) o <b>Tirar tapada</b> (boca abajo, desde segunda; no gana la ronda). Doble clic la tira directo. Atajos: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> y <kbd>Enter</kbd>.</li>
-      <li>El 👁 al lado de un nombre quiere decir que esa persona te está mirando.</li>
+      <li>“te mira” al lado de un nombre quiere decir que esa persona te está mirando. Las señas no avisan nada: hay que verlas en la cara.</li>
+      <li>Mantené apretada la <kbd>Z</kbd> (o el botón Zoom) para hacer zoom y ver mejor la mesa o una cara.</li>
     </ul>
     <h3>Señas (las ven solo los que te miran en ese momento)</h3><ul>${senas}<li>De palabra (por el chat, y las escuchan todos): “las viejas” = 27, “las perdedoras” = 29.</li></ul>
     <h3>Puntos</h3>

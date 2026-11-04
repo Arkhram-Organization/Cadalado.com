@@ -281,7 +281,7 @@ export class TrucoRoom extends DurableObject {
       r.status = 'ended';
       const t = r.game.winner;
       const names = r.seats.filter((_, i) => team(i) === t).map((s) => s.name).join(' y ');
-      this.addSystemChat(`🏆 Ganaron ${names} (${r.game.score[t]} a ${r.game.score[1 - t]})`);
+      this.addSystemChat(`Ganaron ${names} (${r.game.score[t]} a ${r.game.score[1 - t]})`);
     } else if (r.game.h.phase === 'ended' && !r.handEndedAt) {
       r.handEndedAt = Date.now();
     }
@@ -309,9 +309,14 @@ export class TrucoRoom extends DurableObject {
     const r = this.room;
     r.seats.forEach((s, i) => {
       if (!s?.bot) return;
-      if (rng() < 0.35) {
-        const options = ['table', ...r.seats.map((_, j) => j).filter((j) => j !== i)];
-        const tgt = options[Math.floor(rng() * options.length)];
+      if (rng() < 0.3) {
+        // la mayor parte del tiempo miran la mesa; a veces a un compañero o a un rival
+        const others = r.seats.map((_, j) => j).filter((j) => j !== i);
+        const partners = others.filter((j) => team(j) === team(i));
+        const roll = rng();
+        let tgt = 'table';
+        if (roll > 0.55 && partners.length && roll < 0.75) tgt = partners[Math.floor(rng() * partners.length)];
+        else if (roll >= 0.75) tgt = others[Math.floor(rng() * others.length)];
         this.gaze[i] = tgt;
         this.broadcastRaw({ t: 'gaze', seat: i, target: tgt });
       }
@@ -366,8 +371,8 @@ export class TrucoRoom extends DurableObject {
 
   botName() {
     const used = new Set(this.room.seats.filter(Boolean).map((s) => s.name));
-    const names = BOT_NAMES.filter((n) => !used.has(n + ' 🤖'));
-    return (names[Math.floor(rng() * names.length)] || 'Bot') + ' 🤖';
+    const names = BOT_NAMES.filter((n) => !used.has(n));
+    return names[Math.floor(rng() * names.length)] || 'Bot';
   }
 
   async commit() {
