@@ -62,6 +62,7 @@ const restStore = {
     return Number(n);
   },
   hget: (key, field) => rest('HGET', key, field),
+  incrby: async (key, n) => Number(await rest('INCRBY', key, n)),
   ping: () => rest('PING'),
 };
 
@@ -117,6 +118,7 @@ const redisStore = {
     return Number(n);
   },
   hget: async (key, field) => (await redis()).hGet(key, field),
+  incrby: async (key, n) => Number(await (await redis()).incrBy(key, n)),
   ping: async () => (await redis()).ping(),
 };
 
@@ -175,6 +177,12 @@ const memoryStore = {
   },
   async hget(key, field) {
     return alive(key)?.v?.[field] ?? null;
+  },
+  async incrby(key, n) {
+    const e = alive(key) || { v: '0', exp: 0 };
+    e.v = String(Number(e.v) + Number(n));
+    mem.set(key, e);
+    return Number(e.v);
   },
   ping: async () => 'PONG',
 };

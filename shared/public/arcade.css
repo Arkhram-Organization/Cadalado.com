@@ -1,0 +1,83 @@
+/* Base común de los juegos de cadalado (memes, casino, carrera). Identidad: ver MARCA.md */
+:root {
+  --carbon: #141413; --carbon-2: #1b1a18; --carbon-3: #242320; --carbon-4: #2e2c29;
+  --borde: #383531; --borde-2: #4a4641;
+  --blanco: #f4f1ea; --blanco-2: #cfc9bd; --gris: #9a948a;
+  --lima: #c5f04a; --lima-oscuro: #8fb52a; --rojo: #ff6b5b;
+  --titulo: "Unbounded", system-ui, sans-serif;
+  --texto: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--carbon); color: var(--blanco); font: 16px/1.5 var(--texto); -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3 { font-family: var(--titulo); font-weight: 800; letter-spacing: -0.02em; line-height: 1.02; margin: 0; }
+.hidden { display: none !important; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.cl-barra { position: sticky; top: 0; z-index: 40; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: rgba(20,20,19,.88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--borde); }
+.cl-logo { display: flex; align-items: center; gap: 8px; font-family: var(--titulo); font-weight: 800; font-size: 18px; letter-spacing: -0.03em; }
+.cl-logo img { width: 30px; height: 30px; transition: transform .4s cubic-bezier(.2,1.5,.4,1); }
+.cl-logo:hover img { transform: rotate(-12deg) scale(1.08); }
+.cl-sep { width: 1px; height: 24px; background: var(--borde-2); }
+.cl-juego { font-family: var(--titulo); font-weight: 700; font-size: 16px; color: var(--juego); }
+.cl-espacio { flex: 1; }
+.cl-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 99px; background: var(--carbon-3); box-shadow: inset 0 0 0 1px var(--borde); font-weight: 700; font-size: 14px; }
+.cl-chip:not(:has(b)) { padding: 6px 14px; }
+.cl-chip b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--carbon); font-size: 13px; }
+
+.btn {
+  --f: var(--carbon-4); --t: var(--blanco); --b: #1f1d1b;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 18px; border: 0; border-radius: 12px; background: var(--f); color: var(--t);
+  font-family: var(--titulo); font-weight: 700; font-size: 14px; letter-spacing: .01em;
+  box-shadow: 0 4px 0 var(--b); transition: transform .08s, box-shadow .08s, filter .15s; white-space: nowrap;
+}
+.btn:hover { filter: brightness(1.1); }
+.btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--b); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn-lima { --f: var(--lima); --t: #16200a; --b: var(--lima-oscuro); }
+.btn-borde { --f: transparent; box-shadow: inset 0 0 0 2px var(--borde-2); }
+.btn-borde:active:not(:disabled) { box-shadow: inset 0 0 0 2px var(--borde-2); }
+.btn-grande { padding: 15px 24px; font-size: 17px; border-radius: 14px; }
+.btn-chico { padding: 7px 11px; font-size: 12px; border-radius: 9px; box-shadow: 0 3px 0 var(--b); }
+
+.panel { background: var(--carbon-2); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--borde); padding: 20px; }
+.entrada { width: 100%; padding: 12px 14px; border-radius: 11px; border: 0; outline: none; background: var(--carbon); box-shadow: inset 0 0 0 1px var(--borde-2); font-size: 16px; }
+.entrada:focus { box-shadow: inset 0 0 0 2px var(--lima); }
+.etq { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--gris); }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; background: var(--carbon-4); color: var(--blanco-2); }
+.chip-lima { background: rgba(197,240,74,.14); color: var(--lima); }
+
+/* menú de cada juego: crear / unirse / salas abiertas */
+.menu { max-width: 1060px; margin: 0 auto; padding: 36px 16px 60px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 22px; }
+.menu-hero { grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.menu-hero h1 { font-size: clamp(40px, 7vw, 78px); }
+.menu-hero h1 em { font-style: normal; color: var(--juego, var(--lima)); }
+.menu-hero p { color: var(--blanco-2); max-width: 460px; font-size: 18px; margin-top: 10px; }
+.menu .panel h2 { font-size: 22px; margin-bottom: 14px; }
+.fila-form { display: flex; gap: 8px; }
+.salas { display: flex; flex-direction: column; gap: 8px; }
+.sala-fila { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--carbon-3); box-shadow: inset 0 0 0 1px var(--borde); }
+.sala-fila:hover { background: var(--carbon-4); }
+.sala-fila .q { flex: 1; min-width: 0; }
+.sala-fila .q b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sala-fila .q small { color: var(--gris); }
+.vacio { padding: 22px; border-radius: 12px; border: 1px dashed var(--borde-2); text-align: center; color: var(--gris); }
+
+/* jugadores */
+.avatar { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--av, var(--lima)); color: #15140f; font-family: var(--titulo); font-weight: 800; font-size: 14px; }
+
+.cl-toast { position: fixed; left: 50%; bottom: 22px; z-index: 200; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 11px 18px; border-radius: 12px; background: var(--blanco); color: var(--carbon); font-weight: 800; box-shadow: 0 16px 40px -10px rgba(0,0,0,.6); transition: all .25s cubic-bezier(.2,1.2,.4,1); }
+.cl-toast.ver { opacity: 1; transform: translate(-50%, 0); }
+.cl-toast.mal { background: var(--rojo); color: #fff; }
+
+@media (max-width: 820px) {
+  .menu { grid-template-columns: 1fr; }
+  .cl-logo span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

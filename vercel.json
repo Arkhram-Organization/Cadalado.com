@@ -19,6 +19,18 @@
       "destination": "/api/club?ruta=:ruta*"
     },
     {
+      "source": "/api/carrera/:ruta*",
+      "destination": "/api/juegos/carrera?ruta=:ruta*"
+    },
+    {
+      "source": "/api/casino/:ruta*",
+      "destination": "/api/juegos/casino?ruta=:ruta*"
+    },
+    {
+      "source": "/api/memes/:ruta*",
+      "destination": "/api/juegos/memes?ruta=:ruta*"
+    },
+    {
       "source": "/ajedrez/game/:id",
       "destination": "/ajedrez/index.html"
     },
@@ -29,6 +41,22 @@
     {
       "source": "/truco/sala/:code",
       "destination": "/truco/index.html"
+    },
+    {
+      "source": "/memes/sala/:code",
+      "destination": "/memes/index.html"
+    },
+    {
+      "source": "/casino/sala/:code",
+      "destination": "/casino/index.html"
+    },
+    {
+      "source": "/carrera/sala/:code",
+      "destination": "/carrera/index.html"
+    },
+    {
+      "source": "/casino/mesa/:code",
+      "destination": "/casino/index.html"
     }
   ],
   "redirects": [
