@@ -23,6 +23,10 @@
       "destination": "/api/juegos/carrera?ruta=:ruta*"
     },
     {
+      "source": "/api/royale/:ruta*",
+      "destination": "/api/juegos/royale?ruta=:ruta*"
+    },
+    {
       "source": "/api/casino/:ruta*",
       "destination": "/api/juegos/casino?ruta=:ruta*"
     },
@@ -53,6 +57,10 @@
     {
       "source": "/carrera/sala/:code",
       "destination": "/carrera/index.html"
+    },
+    {
+      "source": "/royale/sala/:code",
+      "destination": "/royale/index.html"
     },
     {
       "source": "/casino/mesa/:code",

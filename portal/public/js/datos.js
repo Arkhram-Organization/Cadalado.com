@@ -7,12 +7,25 @@
 // lobby: dirección de su lista de salas. formato: cómo leerla (ver LECTORES en inicio.js).
 export const JUEGOS = [
   {
+    id: 'royale',
+    nombre: 'Último en pie',
+    estado: 'disponible',
+    nuevo: true,
+    url: '/royale/',
+    linea: 'Battle royale 2D en pixel art: armas, botín, una zona que se achica y el último que queda gana.',
+    datos: [['Jugadores', 'Hasta 24 + bots'], ['Modalidad', 'Online, tiempo real'], ['Partida', '3 a 6 min']],
+    color: '#ff6b5b',
+    captura: '/img/royale.webp',
+    lobby: '/api/royale/lobby',
+    formato: 'salas',
+  },
+  {
     id: 'carrera',
     nombre: 'Ángeles Peña',
     estado: 'disponible',
     nuevo: true,
     url: '/carrera/',
-    linea: 'Carrera de obstáculos en 3D: barras, martillos, plataformas y puertas falsas. Llegá primero.',
+    linea: 'Carrera de obstáculos en 3D por rondas: barras, martillos, molinos, baldosas que se caen y piñas.',
     datos: [['Jugadores', 'Hasta 16 + bots'], ['Modalidad', 'Online, tiempo real'], ['Partida', '30 a 60 s']],
     color: '#4fd1c5',
     captura: '/img/carrera.webp',
@@ -73,7 +86,6 @@ export const JUEGOS = [
 
 // Ideas que todavía no son juegos (se muestran como propuestas, no como algo que se puede jugar).
 export const IDEAS = [
-  { titulo: 'Battle royale 2D', texto: 'Vista desde arriba en pixel art, zona que se achica, botín y construcción simple. Hasta 20 por partida.', etiqueta: 'Propuesta' },
   { titulo: 'Dibujá y adiviná', texto: 'Uno dibuja, el resto adivina en el chat. Rondas cortas y palabras argentas.', etiqueta: 'Idea' },
   { titulo: 'Generala', texto: 'Cinco dados, cubilete y anotador, como en la mesa de la casa.', etiqueta: 'Idea' },
   { titulo: 'Preguntados criollo', texto: 'Trivia por categorías en tiempo real: el que contesta primero y bien, suma.', etiqueta: 'Idea' },
@@ -81,12 +93,13 @@ export const IDEAS = [
 
 // Solo datos confirmados: el rol se completa cuando cada uno lo defina.
 export const EQUIPO = [
-  { nombre: 'Sebastián Calviño', rol: 'Sitio y juegos', juegos: ['ajedrez', 'carrera', 'casino', 'memes'] },
+  { nombre: 'Sebastián Calviño', rol: 'Sitio y juegos', juegos: ['ajedrez', 'carrera', 'casino', 'memes', 'royale'] },
   { nombre: 'Theo Trosman', rol: 'Truco', juegos: ['truco'] },
   { nombre: 'Ignacio Eskenazi', rol: 'Equipo', juegos: [] },
 ];
 
 export const NOVEDADES = [
+  { etiqueta: 'Nuevo', titulo: 'Último en pie', texto: 'Battle royale 2D en pixel art con los personajes de cadalado.', juego: 'royale' },
   { etiqueta: 'Nuevo', titulo: 'Ángeles Peña', texto: 'Obstáculos en 3D, en tiempo real y con bots para llenar la largada.', juego: 'carrera' },
   { etiqueta: 'Nuevo', titulo: 'El casino de Dobro', texto: 'Ruleta, blackjack y tragamonedas con pozo compartido. Fichas de mentira.', juego: 'casino' },
   { etiqueta: 'Nuevo', titulo: 'Make it Meme', texto: '100 plantillas, textos donde quieras y votación anónima.', juego: 'memes' },

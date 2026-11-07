@@ -11,6 +11,7 @@ export const JUEGOS = [
   { carpeta: 'games/memes', ruta: 'memes' },
   { carpeta: 'games/casino', ruta: 'casino' },
   { carpeta: 'games/carrera', ruta: 'carrera' },
+  { carpeta: 'games/royale', ruta: 'royale' },
 ];
 
 await rm('dist', { recursive: true, force: true });
