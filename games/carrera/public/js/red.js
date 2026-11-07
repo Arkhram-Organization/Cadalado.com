@@ -14,11 +14,12 @@ export function decodificar(s) {
 }
 
 export class Red {
-  constructor({ sala, code, miId, alRecibir }) {
+  constructor({ sala, code, miId, alRecibir, alMensaje }) {
     this.sala = sala;
     this.code = code;
     this.miId = miId;
     this.alRecibir = alRecibir; // (id, estado) => void
+    this.alMensaje = alMensaje; // (id, objeto) => void  (piñas y otros avisos sueltos)
     this.pares = new Map(); // id -> { pc, dc, ok, desde }
     this.ultimo = null;
     this.relevoT = setInterval(() => this.relevo(), 250);
@@ -48,7 +49,13 @@ export class Red {
       par.dc = dc;
       dc.onopen = () => (par.ok = true);
       dc.onclose = () => (par.ok = false);
-      dc.onmessage = (m) => this.alRecibir(id, decodificar(m.data));
+      dc.onmessage = (m) => {
+        if (typeof m.data === 'string' && m.data[0] === '{') {
+          try {
+            this.alMensaje?.(id, JSON.parse(m.data));
+          } catch {}
+        } else this.alRecibir(id, decodificar(m.data));
+      };
     };
     pc.ondatachannel = (e) => engancharCanal(e.channel);
     pc.onconnectionstatechange = () => {
@@ -107,6 +114,21 @@ export class Red {
         p.dc.send(s);
       } catch {}
     }
+  }
+
+  // Piña a otro jugador: directo si hay conexión (se manda dos veces por si se pierde una),
+  // si no, por el servidor (que se la pasa solo a esa persona).
+  golpe(id, dx, dz) {
+    const p = this.pares.get(id);
+    const msg = JSON.stringify({ k: 'golpe', dx: +dx.toFixed(2), dz: +dz.toFixed(2), n: Math.random() });
+    if (p?.ok && p.dc?.readyState === 'open') {
+      try {
+        p.dc.send(msg);
+        setTimeout(() => p.dc?.readyState === 'open' && p.dc.send(msg), 60);
+        return;
+      } catch {}
+    }
+    this.sala.enviar({ t: 'golpe', para: id, dx, dz });
   }
 
   sinConexion() {

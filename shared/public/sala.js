@@ -234,6 +234,7 @@ export function sonar(tipo = 'clic') {
       aviso: () => tono(990, 0.12, 0.08),
       salto: () => tono(520, 0.1, 0.06, 'triangle'),
       tick: () => tono(1400, 0.03, 0.04, 'square'),
+      pina: () => { ruido(0.12, 0.5, 600); tono(120, 0.15, 0.12, 'square'); },
     })[tipo]?.();
   } catch {}
 }

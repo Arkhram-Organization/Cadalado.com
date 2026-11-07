@@ -52,4 +52,20 @@ kbd { font: 700 11px var(--mono); padding: 2px 6px; border-radius: 5px; backgrou
 .botones-t { position: absolute; right: 22px; bottom: 30px; display: flex; gap: 14px; align-items: flex-end; }
 .botones-t button { width: 84px; height: 84px; border-radius: 50%; border: 0; background: var(--lima); color: #16200a; font: 900 14px var(--titulo); box-shadow: 0 6px 0 var(--lima-oscuro); }
 .botones-t button.chico { width: 64px; height: 64px; background: #fff; box-shadow: 0 5px 0 #aaa; font-size: 11px; }
+/* rondas, cupo, piña y espectador */
+.ronda-etq { font: 800 14px var(--titulo); text-transform: uppercase; letter-spacing: .04em; color: #fff; background: rgba(20,20,19,.7); border-radius: 10px; padding: 4px 10px; margin-bottom: 4px; display: inline-block; }
+.cupo { font: 700 13px var(--titulo); color: #16200a; background: var(--lima); border-radius: 10px; padding: 3px 10px; margin-top: 4px; display: inline-block; text-transform: uppercase; }
+.espectar { left: 50%; bottom: 26px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: rgba(20,20,19,.82); color: #fff; border-radius: 16px; padding: 8px 10px; font-weight: 600; }
+.espectar b { font-family: var(--titulo); }
+.espectar .btn { min-width: 36px; font-size: 20px; line-height: 1; }
+.pina-hud { left: 50%; transform: translateX(-50%); bottom: 22px; display: flex; align-items: center; gap: 8px; background: rgba(20,20,19,.78); color: #fff; border-radius: 14px; padding: 8px 12px; font: 800 14px var(--titulo); text-transform: uppercase; }
+.pina-hud i { width: 70px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.15); overflow: hidden; }
+.pina-hud i b { display: block; height: 100%; background: #ffd166; }
+.pina-hud.lista i b { background: var(--lima); }
+.hidden.pina-hud, .hidden.espectar { display: none; }
+.aviso span.dorado { background: linear-gradient(135deg, #fff1a8, #f2c94c 45%, #b8860b); color: #3a2a00; box-shadow: 0 0 30px rgba(242,201,76,.7); }
+.lista-j div.dorado { background: linear-gradient(90deg, rgba(242,201,76,.35), var(--carbon-3)); }
+.lista-j div.dorado small { color: #f2c94c; }
+.tabla-res div.afuera { opacity: .55; }
+@media (max-width: 760px) { .pina-hud { display: none; } }
 @media (max-width: 760px) { .panel-flota { top: 58px; left: 8px; padding: 14px; } .puesto { font-size: 32px; } .chat-mini { display: none; } }

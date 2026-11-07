@@ -1,6 +1,6 @@
-// La pista de la carrera: geometría, obstáculos en movimiento y la ruta de los bots.
-// Todo es determinístico (depende de la "semilla" de la carrera y del tiempo), así que todos los
-// navegadores ven lo mismo sin mandarse nada, y el servidor puede calcular cuándo llega cada bot.
+// Los mapas de Fall Pibes: geometría, obstáculos en movimiento y la ruta de los bots.
+// Todo es determinístico (depende de la "semilla" de la ronda y del tiempo): todos los navegadores
+// ven lo mismo sin mandarse nada, y el servidor sabe cuándo llega cada bot.
 // Unidades: metros y segundos. La pista avanza hacia -Z. El piso arranca en y = 0.
 
 export function rng(semilla) {
@@ -14,199 +14,267 @@ export function rng(semilla) {
   };
 }
 
-export const META_Z = -160;
-export const LIMITE_S = 150; // si alguien no llega en este tiempo, termina igual
-export const CHECKPOINTS = [
-  { z: -2, y: 0, nombre: 'Largada' },
-  { z: -42, y: 0, nombre: 'Barras' },
-  { z: -67, y: 0, nombre: 'Martillos' },
-  { z: -100, y: 0, nombre: 'Puertas' },
-  { z: -146, y: 6, nombre: 'Recta final' },
-];
+export const LIMITE_S = 120; // tiempo máximo de cada ronda
+export const COLORES = ['#ff4fa3', '#7aa2ff', '#ff7a45', '#f2c94c', '#c084fc', '#4fd1c5', '#ff6b5b', '#9be15d', '#f4f1ea', '#38d9e6', '#ffa94d', '#e599f7'];
+const caja = (x, y, z, w, h, d, c = 0, extra = {}) => ({ x, y, z, w, h, d, c, ...extra });
+const piso = (z0, z1, ancho, top = 0, c = 0) => caja(0, top - 0.5, (z0 + z1) / 2, ancho, 1, Math.abs(z1 - z0), c);
+const bordes = (z0, z1, ancho, top = 0) => [caja(-ancho / 2 - 0.3, top + 0.4, (z0 + z1) / 2, 0.6, 0.8, Math.abs(z1 - z0), 4), caja(ancho / 2 + 0.3, top + 0.4, (z0 + z1) / 2, 0.6, 0.8, Math.abs(z1 - z0), 4)];
+export const alturaRampa = (r, z) => r.y0 + ((r.z0 - z) / (r.z0 - r.z1)) * (r.y1 - r.y0);
 
-// Cajas fijas: centro (x, y, z) y tamaño (w, h, d). color = índice de la paleta.
-export function estaticos(semilla) {
-  const cajas = [
-    { x: 0, y: -0.5, z: -7, w: 16, h: 1, d: 14, c: 0 }, // largada
-    { x: 0, y: -0.5, z: -29, w: 18, h: 1, d: 30, c: 1 }, // barras giratorias
-    { x: 0, y: -0.5, z: -82, w: 14, h: 1, d: 32, c: 2 }, // martillos
-    { x: 0, y: -0.5, z: -106, w: 14, h: 1, d: 16, c: 3 }, // puertas
-    { x: 0, y: 5.5, z: -152, w: 14, h: 1, d: 16, c: 0 }, // recta final
-    // bordes bajos para no caerse sin querer
-    { x: -8.6, y: 0.4, z: -7, w: 0.6, h: 0.8, d: 14, c: 4 },
-    { x: 8.6, y: 0.4, z: -7, w: 0.6, h: 0.8, d: 14, c: 4 },
-    { x: -9.3, y: 0.4, z: -29, w: 0.6, h: 0.8, d: 30, c: 4 },
-    { x: 9.3, y: 0.4, z: -29, w: 0.6, h: 0.8, d: 30, c: 4 },
-    { x: -7.3, y: 0.4, z: -82, w: 0.6, h: 0.8, d: 32, c: 4 },
-    { x: 7.3, y: 0.4, z: -82, w: 0.6, h: 0.8, d: 32, c: 4 },
-    { x: -7.3, y: 6.4, z: -152, w: 0.6, h: 0.8, d: 16, c: 4 },
-    { x: 7.3, y: 6.4, z: -152, w: 0.6, h: 0.8, d: 16, c: 4 },
-    // columna central de las barras
-    { x: 0, y: 1, z: -22, w: 1, h: 2, d: 1, c: 4 },
-    { x: 0, y: 1, z: -36, w: 1, h: 2, d: 1, c: 4 },
-  ];
-  // pared de puertas: 5 puertas, 2 se abren (según la semilla) y 3 son macizas
-  for (const p of puertas(semilla)) if (!p.abierta) cajas.push({ x: p.x, y: 2, z: -104, w: 2.2, h: 4, d: 0.6, c: 5, puerta: true });
-  for (const x of [-6, -3.6, -1.2, 1.2, 3.6, 6]) cajas.push({ x, y: 2, z: -104, w: 0.3, h: 4, d: 0.8, c: 4 });
-  cajas.push({ x: 0, y: 4.4, z: -104, w: 12.6, h: 0.8, d: 0.8, c: 4 });
-  return cajas;
-}
-
-export function puertas(semilla) {
-  const r = rng(semilla ^ 0x9e3779b9);
-  const abiertas = new Set();
-  while (abiertas.size < 2) abiertas.add(Math.floor(r() * 5));
-  return [-4.8, -2.4, 0, 2.4, 4.8].map((x, i) => ({ x, abierta: abiertas.has(i) }));
-}
-
-// Rampa con bolas: de z -114 (y 0) a z -144 (y 6), 12 de ancho.
-export const RAMPA = { z0: -114, z1: -144, y0: 0, y1: 6, ancho: 12 };
-export const alturaRampa = (z) => RAMPA.y0 + ((RAMPA.z0 - z) / (RAMPA.z0 - RAMPA.z1)) * (RAMPA.y1 - RAMPA.y0);
-
-// Filas de plataformas que se mueven de lado sobre el vacío (z -45 a -66).
-const FILAS = [
-  { z: -47.5, amp: 5, w: 0.9 },
-  { z: -54.5, amp: 5.5, w: 1.15 },
-  { z: -61.5, amp: 4.5, w: 0.8 },
-];
-const BARRAS = [
-  { z: -22, w: 1.3, largo: 8.2 },
-  { z: -36, w: -1.05, largo: 9 },
-];
-const MARTILLOS = [
-  { z: -74, w: 1.5 },
-  { z: -83, w: 1.25 },
-  { z: -92, w: 1.7 },
-];
-const CARRILES_BOLA = [-4, 0, 4];
-export const PERIODO_BOLA = 3.6;
-const VEL_BOLA = 8.5;
-
-function fases(semilla) {
-  const r = rng(semilla ^ 0x51ed27);
-  return { filas: FILAS.map(() => r() * 6.28), martillos: MARTILLOS.map(() => r() * 6.28), bolas: CARRILES_BOLA.map(() => r() * PERIODO_BOLA) };
-}
-const cache = new Map();
-const fasesDe = (semilla) => (cache.has(semilla) ? cache.get(semilla) : cache.set(semilla, fases(semilla)).get(semilla));
-
-// Lo que se mueve en el instante t (segundos desde la largada).
-export function moviles(t, semilla) {
-  const f = fasesDe(semilla);
-  const plataformas = FILAS.map((fila, i) => {
-    const x = fila.amp * Math.sin(fila.w * t + f.filas[i]);
-    const vx = fila.amp * fila.w * Math.cos(fila.w * t + f.filas[i]);
-    return { x, y: -0.5, z: fila.z, w: 5, h: 1, d: 5, vx };
-  });
-  const barras = BARRAS.map((b, i) => ({ x: 0, y: 0.75, z: b.z, ang: b.w * t + i, w: b.w, largo: b.largo, r: 0.38 }));
-  const martillos = MARTILLOS.map((m, i) => {
-    const ang = 1.15 * Math.sin(m.w * t + f.martillos[i]);
-    const dang = 1.15 * m.w * Math.cos(m.w * t + f.martillos[i]);
-    return { pivote: { x: 0, y: 9.5, z: m.z }, ang, brazo: 8, x: 8 * Math.sin(ang), y: 9.5 - 8 * Math.cos(ang), z: m.z, vx: 8 * Math.cos(ang) * dang, r: 1.5 };
-  });
-  const bolas = [];
-  CARRILES_BOLA.forEach((x, i) => {
-    // cada bola sale de arriba de la rampa y baja; aparece una por carril cada PERIODO_BOLA
+// Bolas que bajan por una rampa: aparece una por carril cada `periodo` segundos.
+function bolasRampa(rampa, t, fases, periodo = 3.4, vel = 7) {
+  const out = [];
+  [-4, 0, 4].forEach((x, i) => {
     for (let k = 0; k < 3; k++) {
-      const edad = ((t + f.bolas[i]) % PERIODO_BOLA) + k * PERIODO_BOLA;
-      const z = RAMPA.z1 + 1 + edad * VEL_BOLA;
-      if (z > RAMPA.z0 + 2) continue;
-      bolas.push({ x, y: alturaRampa(Math.max(RAMPA.z1, Math.min(RAMPA.z0, z))) + 1.1, z, r: 1.1, vz: VEL_BOLA, giro: edad * VEL_BOLA / 1.1 });
+      const edad = ((t + fases[i]) % periodo) + k * periodo;
+      const z = rampa.z1 + 1 + edad * vel;
+      if (z > rampa.z0 + 2) continue;
+      out.push({ x, y: alturaRampa(rampa, Math.max(rampa.z1, Math.min(rampa.z0, z))) + 1.1, z, r: 1.1, vz: vel, giro: (edad * vel) / 1.1 });
     }
   });
-  return { plataformas, barras, martillos, bolas };
+  return out;
 }
+const pendulo = (z, w, fase, t, ancho = 8) => {
+  const ang = 1.1 * Math.sin(w * t + fase);
+  const dang = 1.1 * w * Math.cos(w * t + fase);
+  return { pivote: { x: 0, y: 9.5, z }, ang, brazo: 8, x: 8 * Math.sin(ang), y: 9.5 - 8 * Math.cos(ang), z, vx: 8 * Math.cos(ang) * dang, r: 1.4, ancho };
+};
+
+// Dos molinos de aspas (giran en el plano XY, como una hélice de frente) uno a cada lado, en contra.
+const molinosPar = (z, w, t, fase) => [
+  { x: -3.4, y: 4.6, z: z + 0.35, ang: w * t + fase, w, largo: 4.4, brazos: 3, grosor: 0.55 },
+  { x: 3.4, y: 4.6, z: z - 0.35, ang: -w * t + fase + 0.5, w: -w, largo: 4.4, brazos: 3, grosor: 0.55 },
+];
+
+// ============================================================ MAPA 1: La largada
+const M1 = {
+  id: 1,
+  nombre: 'La largada',
+  META_Z: -166,
+  metaY: 5,
+  CHECKPOINTS: [{ z: -2, y: 0, nombre: 'Largada' }, { z: -44, y: 0, nombre: 'Saltos' }, { z: -74, y: 0, nombre: 'Martillos' }, { z: -111, y: 0, nombre: 'Molino' }, { z: -154, y: 5, nombre: 'Recta final' }],
+  rampa: { x: 0, ancho: 12, z0: -127, z1: -153, y0: 0, y1: 5 },
+  estaticos() {
+    return {
+      cajas: [
+        piso(0, -14, 16), ...bordes(0, -14, 16),
+        piso(-14, -46, 18, 0, 1), ...bordes(-14, -46, 18),
+        caja(0, 1, -22, 1, 2, 1, 4), caja(0, 1, -38, 1, 2, 1, 4),
+        // piedras para saltar (la segunda pide doble salto)
+        caja(-2.5, -0.5, -49.5, 3, 1, 3, 3), caja(2.5, -0.5, -56.5, 3, 1, 3, 3),
+        piso(-72, -104, 14, 0, 2), ...bordes(-72, -104, 14),
+        // hueco de doble salto: -104 a -109.5
+        piso(-109.5, -127, 14, 0, 3), ...bordes(-109.5, -127, 14),
+        piso(-152.5, -174, 14, 5, 0), ...bordes(-152.5, -174, 14, 5),
+      ],
+      rampas: [this.rampa],
+      cintas: [],
+      carteles: [{ x: 0, y: 2.2, z: -102.5, texto: 'DOBLE SALTO' }],
+    };
+  },
+  moviles(t, semilla) {
+    const f = fases(semilla, 12);
+    return {
+      plataformas: [
+        { x: 4 * Math.sin(0.8 * t + f[0]), y: -0.5, z: -63, w: 4, h: 1, d: 4, vx: 3.2 * Math.cos(0.8 * t + f[0]) },
+        { x: 3.5 * Math.sin(1.0 * t + f[1]), y: -0.5, z: -69, w: 4, h: 1, d: 4, vx: 3.5 * Math.cos(1.0 * t + f[1]) },
+      ],
+      barras: [
+        { x: 0, y: 0.55, z: -22, ang: 1.0 * t, w: 1.0, largo: 8.6, r: 0.35 },
+        { x: 0, y: 0.55, z: -38, ang: -0.85 * t + 1, w: -0.85, largo: 8.6, r: 0.35 },
+      ],
+      martillos: [pendulo(-79, 1.4, f[2], t), pendulo(-88, 1.2, f[3], t), pendulo(-97, 1.6, f[4], t)],
+      molinos: molinosPar(-118, 0.9, t, f[8]),
+      pistones: [],
+      bolas: bolasRampa(this.rampa, t, f.slice(5, 8)),
+      baldosas: [],
+    };
+  },
+  ruta: [
+    { ir: -18 }, { ir: -30, peligro: 0.35 }, { ir: -44.5, peligro: 0.3 },
+    { esperar: [0.3, 1.2] }, { saltar: [-2.5, 0, -49.5] }, { esperar: [0.2, 0.6] }, { saltar: [2.5, 0, -56.5], dur: 0.9 },
+    { esperar: [0.3, 1.4] }, { fila: 0 }, { fila: 1 }, { saltar: [0, 0, -73.5] },
+    { ir: -84, peligro: 0.45 }, { ir: -103.5, peligro: 0.4 }, { esperar: [0.2, 0.8] }, { saltar: [0, 0, -110.5], dur: 0.95 },
+    { ir: -115, peligro: 0.2 }, { ir: -121, peligro: 0.45 }, { ir: -126 },
+    { ir: -140, y: 'rampa', vel: 0.8, peligro: 0.45 }, { ir: -153.5, y: 'rampa', vel: 0.8 }, { ir: -167, y: 5, vel: 1.05 },
+  ],
+};
+
+// ============================================================ MAPA 2: Cintas y pistones
+const M2 = {
+  id: 2,
+  nombre: 'Cintas y pistones',
+  META_Z: -164,
+  metaY: 4,
+  CHECKPOINTS: [{ z: -2, y: 0, nombre: 'Largada' }, { z: -46, y: 0, nombre: 'Pistones' }, { z: -82, y: 0, nombre: 'Vigas' }, { z: -111, y: 0, nombre: 'Molinos' }, { z: -152, y: 4, nombre: 'Recta final' }],
+  estaticos() {
+    const escalones = [0.8, 1.6, 2.4, 3.2].map((top, i) => caja(0, top / 2 - 0.25, -137.5 - i * 3.5, 12, top + 0.5, 2.5, 5));
+    return {
+      cajas: [
+        piso(0, -14, 16), ...bordes(0, -14, 16),
+        ...bordes(-14, -44, 12),
+        piso(-44, -80, 14, 0, 2), ...bordes(-44, -80, 14),
+        // vigas finas sobre el agua
+        caja(-4, -0.5, -92, 1.6, 1, 24, 1), caja(0, -0.5, -92, 1.6, 1, 24, 1), caja(4, -0.5, -92, 1.6, 1, 24, 1),
+        // hueco de doble salto: -104 a -109
+        piso(-109, -135, 14, 0, 3), ...bordes(-109, -135, 14),
+        ...escalones,
+        piso(-150, -172, 14, 4, 0), ...bordes(-150, -172, 14, 4),
+      ],
+      rampas: [],
+      cintas: [{ x: 0, y: 0, z: -29, w: 12, d: 30, vz: 3 }],
+      carteles: [{ x: 0, y: 2.2, z: -102.5, texto: 'DOBLE SALTO' }],
+    };
+  },
+  moviles(t, semilla) {
+    const f = fases(semilla, 12);
+    const pistones = [-50, -56, -62, -68, -74].map((z, i) => {
+      const lado = i % 2 ? 1 : -1;
+      const k = 0.5 + 0.5 * Math.sin(2.1 * t + f[i]); // 0 = adentro de la pared, 1 = afuera
+      const dk = 0.5 * 2.1 * Math.cos(2.1 * t + f[i]);
+      return { x: lado * (10 - k * 6.5), y: 1, z, w: 6, h: 2, d: 2.6, vx: -lado * dk * 6.5 };
+    });
+    return {
+      plataformas: [],
+      barras: [{ x: 0, y: 0.55, z: -92, ang: 1.1 * t, w: 1.1, largo: 7, r: 0.35 }],
+      martillos: [],
+      molinos: [...molinosPar(-116, 0.85, t, f[8]), ...molinosPar(-128, -1.0, t, f[9])],
+      pistones,
+      bolas: [],
+      baldosas: [],
+    };
+  },
+  ruta: [
+    { ir: -14 }, { ir: -44, vel: 0.5, peligro: 0.2 }, { ir: -52, peligro: 0.5 }, { ir: -66, peligro: 0.5 }, { ir: -79.5, peligro: 0.35 },
+    { carril: [-4, 0, 4] }, { ir: -86 }, { ir: -95, peligro: 0.4 }, { ir: -103.5 },
+    { esperar: [0.2, 0.8] }, { saltar: [0, 0, -110.5], dur: 0.95 }, { ir: -114, peligro: 0.2 }, { ir: -124, peligro: 0.45 }, { ir: -134.5, peligro: 0.35 },
+    { saltar: [0, 0.8, -137.5] }, { saltar: [0, 1.6, -141] }, { saltar: [0, 2.4, -144.5] }, { saltar: [0, 3.2, -148] }, { saltar: [0, 4, -151.5] },
+    { ir: -165, y: 4, vel: 1.05 },
+  ],
+};
+
+// ============================================================ MAPA 3 (final): Baldosas
+const M3 = {
+  id: 3,
+  nombre: 'La final: baldosas',
+  META_Z: -152,
+  metaY: 5,
+  CHECKPOINTS: [{ z: -2, y: 0, nombre: 'Largada' }, { z: -66, y: 0, nombre: 'Martillos' }, { z: -97, y: 0, nombre: 'Barras' }, { z: -142, y: 5, nombre: 'La corona' }],
+  rampa: { x: 0, ancho: 12, z0: -116, z1: -140, y0: 0, y1: 5 },
+  estaticos() {
+    return {
+      cajas: [
+        piso(0, -14, 16), ...bordes(0, -14, 16),
+        piso(-64, -90, 8, 0, 1), ...bordes(-64, -90, 8),
+        // hueco de doble salto: -90 a -95
+        piso(-95, -116, 14, 0, 2), ...bordes(-95, -116, 14),
+        caja(0, 1, -102, 1, 2, 1, 4), caja(0, 1, -110, 1, 2, 1, 4),
+        piso(-140, -160, 14, 5, 0), ...bordes(-140, -160, 14, 5),
+      ],
+      rampas: [this.rampa],
+      cintas: [],
+      carteles: [{ x: 0, y: 2.2, z: -88.5, texto: 'DOBLE SALTO' }],
+    };
+  },
+  moviles(t, semilla) {
+    const f = fases(semilla, 12);
+    // campo de baldosas: 7 columnas x 12 filas; se caen en olas y vuelven a subir
+    const baldosas = [];
+    const r = rng(semilla ^ 0xba1d0);
+    for (let fila = 0; fila < 12; fila++) for (let col = 0; col < 7; col++) {
+      const periodo = 6.5;
+      const ciclo = ((t + r() * periodo + fila * 0.35) % periodo) / periodo; // 0..1
+      const cae = ciclo > 0.78 ? Math.min(1, (ciclo - 0.78) / 0.04) : 0;
+      baldosas.push({ x: (col - 3) * 2.05, y: -0.4 - cae * 6, z: -15.5 - fila * 2.05, w: 1.95, h: 0.8, d: 1.95, solida: ciclo < 0.79, aviso: ciclo > 0.62 && ciclo <= 0.79 });
+    }
+    return {
+      plataformas: [],
+      barras: [
+        { x: 0, y: 0.55, z: -102, ang: 1.2 * t, w: 1.2, largo: 7, r: 0.35 },
+        { x: 0, y: 0.55, z: -110, ang: -1.0 * t + 1.3, w: -1.0, largo: 7, r: 0.35 },
+      ],
+      martillos: [pendulo(-70, 1.7, f[0], t, 6), pendulo(-77, 1.5, f[1], t, 6), pendulo(-84, 1.9, f[2], t, 6)],
+      molinos: [],
+      pistones: [],
+      bolas: bolasRampa(this.rampa, t, f.slice(3, 6), 3.0, 7.5),
+      baldosas,
+    };
+  },
+  ruta: [
+    { ir: -14 }, { ir: -38, vel: 0.85, peligro: 0.35 }, { ir: -63.5, vel: 0.85, peligro: 0.35 },
+    { ir: -74, peligro: 0.45 }, { ir: -89.5, peligro: 0.45 }, { esperar: [0.2, 0.7] }, { saltar: [0, 0, -96], dur: 0.95 },
+    { ir: -105, peligro: 0.4 }, { ir: -115.5, peligro: 0.4 }, { ir: -128, y: 'rampa', vel: 0.8, peligro: 0.45 }, { ir: -140.5, y: 'rampa', vel: 0.8 },
+    { ir: -153, y: 5, vel: 1.05 },
+  ],
+};
+
+export const MAPAS = { 1: M1, 2: M2, 3: M3 };
+export const ORDEN_RONDAS = [1, 2, 3];
+
+const cacheF = new Map();
+function fases(semilla, n) {
+  if (!cacheF.has(semilla)) {
+    const r = rng(semilla ^ 0x51ed27);
+    cacheF.set(semilla, Array.from({ length: n }, () => r() * 6.28));
+  }
+  return cacheF.get(semilla);
+}
+const cacheE = new Map();
+export function estaticos(mapaId) {
+  if (!cacheE.has(mapaId)) cacheE.set(mapaId, MAPAS[mapaId].estaticos());
+  return cacheE.get(mapaId);
+}
+export const moviles = (mapaId, t, semilla) => MAPAS[mapaId].moviles(t, semilla);
 
 // ---------------------------------------------------------------- bots
-// Cada bot sigue una ruta armada con segmentos (caminar, saltar, esperar, tropezar).
-// La ruta sale de la semilla, así que en todos lados el bot hace exactamente lo mismo.
-export const NOMBRES_BOT = ['Tito', 'Coca', 'Pocha', 'Lito', 'Nené', 'Cacho', 'Mirta', 'Rulo', 'Tota', 'Pirulo', 'Chacho', 'Lalo', 'Quique', 'Fito'];
-export const COLORES = ['#ff4fa3', '#7aa2ff', '#ff7a45', '#f2c94c', '#c084fc', '#4fd1c5', '#ff6b5b', '#9be15d', '#ffffff', '#38d9e6', '#ffa94d', '#e599f7'];
-
-export function rutaBot(semilla, i) {
-  const r = rng((semilla * 31 + i * 7919) >>> 0);
-  const v = 6.2 + r() * 1.6;
-  const carril = (r() - 0.5) * 7;
+// Cada bot recorre la ruta del mapa con su velocidad, a veces se cae o lo golpean.
+// Son más lentos que una persona (6.4 m/s): se les puede ganar, pero no son malos.
+export function rutaBot(mapaId, semilla, i) {
+  const mapa = MAPAS[mapaId];
+  const r = rng((semilla * 31 + i * 7919 + mapaId * 104729) >>> 0);
+  const v = 4.7 + r() * 0.9;
+  let carril = (r() - 0.5) * 6;
   const segs = [];
   let t = 0;
   let pos = { x: carril, y: 0, z: -3 - r() * 4 };
-  const ir = (x, y, z, vel = v, tipo = 'camina') => {
-    const d = Math.hypot(x - pos.x, z - pos.z);
-    const dur = Math.max(0.05, d / vel);
-    segs.push({ t0: t, t1: t + dur, a: { ...pos }, b: { x, y, z }, tipo });
+  const yDe = (y, z) => (y === 'rampa' ? alturaRampa(mapa.rampa, Math.max(mapa.rampa.z1, Math.min(mapa.rampa.z0, z))) : y ?? pos.y);
+  const seg = (b, dur, tipo) => {
+    segs.push({ t0: t, t1: t + dur, a: { ...pos }, b, tipo });
     t += dur;
-    pos = { x, y, z };
+    pos = b.fila === undefined ? { ...b } : b;
   };
-  const quieto = (dur, tipo = 'quieto') => {
-    segs.push({ t0: t, t1: t + dur, a: { ...pos }, b: { ...pos }, tipo });
-    t += dur;
-  };
-  const saltar = (x, y, z, dur = 0.6) => {
-    segs.push({ t0: t, t1: t + dur, a: { ...pos }, b: { x, y, z }, tipo: 'salto' });
-    t += dur;
-    pos = { x, y, z };
-  };
-  quieto(0.2 + r() * 0.5);
-  // barras: caminar zigzagueando; a veces una barra lo voltea
-  ir(carril * 0.6, 0, -18);
-  if (r() < 0.35) {
-    quieto(0.3, 'golpe');
-    ir(pos.x + (r() - 0.5) * 3, 0, pos.z + 2.5, 6, 'golpe');
-    quieto(0.6);
+  seg({ ...pos }, 0.2 + r() * 0.6, 'quieto');
+  for (const p of mapa.ruta) {
+    if (p.carril) carril = p.carril[Math.floor(r() * p.carril.length)];
+    else if (p.esperar) seg({ ...pos }, p.esperar[0] + r() * (p.esperar[1] - p.esperar[0]), 'quieto');
+    else if (p.saltar) seg({ x: p.saltar[0] + (r() - 0.5) * 1.2, y: p.saltar[1], z: p.saltar[2] }, p.dur || 0.7, 'salto');
+    else if (p.fila !== undefined) {
+      seg({ fila: p.fila }, 0.7, 'salto');
+      seg({ fila: p.fila }, 0.5 + r() * 1.0, 'plataforma');
+    } else if (p.ir !== undefined) {
+      const x = Math.max(-5, Math.min(5, carril + (r() - 0.5) * 2));
+      const destino = { x, y: yDe(p.y, p.ir), z: p.ir };
+      const d = Math.hypot(destino.x - (pos.x ?? 0), destino.z - (pos.z ?? 0));
+      seg(destino, Math.max(0.05, d / (v * (p.vel || 1))), 'camina');
+      if (p.peligro && r() < p.peligro) {
+        // un obstáculo lo voltea: vuela un poco para atrás y se levanta
+        seg({ x: pos.x + (r() - 0.5) * 3, y: pos.y, z: pos.z + 1.5 + r() * 2 }, 0.6, 'golpe');
+        seg({ ...pos }, 0.6 + r() * 0.8, 'quieto');
+        if (r() < 0.25) seg({ ...pos }, 2.5, 'cae'); // se cayó al agua: vuelve al último punto
+      }
+    }
   }
-  ir(carril * 0.8, 0, -32);
-  ir(carril * 0.5, 0, -43.5);
-  // plataformas: espera y salta a cada fila; arriba de la plataforma se mueve con ella
-  quieto(0.3 + r() * 1.4);
-  for (let k = 0; k < FILAS.length; k++) {
-    const llegada = { fila: k };
-    segs.push({ t0: t, t1: t + 0.6, a: { ...pos }, b: llegada, tipo: 'salto' });
-    t += 0.6;
-    const estar = 0.5 + r() * 0.9;
-    segs.push({ t0: t, t1: t + estar, a: llegada, b: llegada, tipo: 'plataforma' });
-    t += estar;
-    pos = llegada;
-  }
-  segs.push({ t0: t, t1: t + 0.6, a: { ...pos }, b: { x: carril * 0.4, y: 0, z: -67.5 }, tipo: 'salto' });
-  t += 0.6;
-  pos = { x: carril * 0.4, y: 0, z: -67.5 };
-  // martillos: a veces uno lo saca volando para atrás
-  ir(carril * 0.3, 0, -79);
-  if (r() < 0.4) {
-    saltar(pos.x + (r() < 0.5 ? -3 : 3), 0, pos.z + 3.5, 0.8);
-    quieto(0.8, 'golpe');
-  }
-  ir(-carril * 0.3, 0, -96);
-  // puertas: elige una abierta
-  const abiertas = puertas(semilla).filter((p) => p.abierta);
-  const puerta = abiertas[Math.floor(r() * abiertas.length)];
-  if (r() < 0.45) {
-    // primero se equivoca de puerta y rebota
-    const falsa = puertas(semilla).find((p) => !p.abierta);
-    ir(falsa.x, 0, -102.6);
-    ir(falsa.x, 0, -101.2, 5, 'golpe');
-    quieto(0.4);
-  }
-  ir(puerta.x, 0, -102.6);
-  ir(puerta.x, 0, -106);
-  // rampa con bolas (más lenta); alguna bola puede bajarlo
-  ir(carril * 0.4, 0, -113);
-  ir(carril * 0.4, alturaRampa(-128), -128, v * 0.82);
-  if (r() < 0.4) {
-    ir(pos.x, alturaRampa(-122), -122, 7, 'golpe');
-    quieto(0.5);
-  }
-  ir(carril * 0.3, 6, -144.5, v * 0.82);
-  ir(carril * 0.2, 6, META_Z - 1, v * 1.05);
-  return { segs, fin: segs.find((s) => s.b.z !== undefined && s.b.z <= META_Z)?.t1 ?? t, v };
+  const fin = segs.find((s) => s.b.z !== undefined && s.b.z <= mapa.META_Z)?.t1 ?? t;
+  return { segs, fin, v };
 }
 
-// Posición de un bot en el instante t: { x, y, z, ry (hacia dónde mira), a (animación) }
-export function posBot(ruta, t, semilla) {
+// Posición de un bot en el instante t: { x, y, z, ry, a }
+export function posBot(mapaId, ruta, t, semilla) {
   const s = ruta.segs.find((g) => t < g.t1) || ruta.segs[ruta.segs.length - 1];
   const k = Math.max(0, Math.min(1, (t - s.t0) / (s.t1 - s.t0)));
   const punto = (p, tt) => {
     if (p.fila === undefined) return p;
-    const pl = moviles(tt, semilla).plataformas[p.fila];
+    const pl = moviles(mapaId, tt, semilla).plataformas[p.fila];
     return { x: pl.x, y: 0, z: pl.z };
   };
   const a = punto(s.a, t);
@@ -214,8 +282,9 @@ export function posBot(ruta, t, semilla) {
   const x = a.x + (b.x - a.x) * k;
   const z = a.z + (b.z - a.z) * k;
   let y = a.y + (b.y - a.y) * k;
-  if (s.tipo === 'salto') y += Math.sin(k * Math.PI) * 2.4;
+  if (s.tipo === 'salto') y += Math.sin(k * Math.PI) * (s.t1 - s.t0 > 0.8 ? 2.4 : 1.6);
+  if (s.tipo === 'cae') y -= Math.min(8, k * 14);
   const ry = Math.atan2(-(b.x - a.x), -(b.z - a.z)) || 0;
-  const anim = t > ruta.fin ? 'festeja' : s.tipo === 'salto' ? 'salto' : s.tipo === 'golpe' ? 'golpe' : s.tipo === 'camina' ? 'corre' : 'quieto';
-  return { x, y, z, ry: s.tipo === 'quieto' || s.tipo === 'plataforma' ? 0 : ry, a: anim };
+  const anim = t > ruta.fin ? 'festeja' : s.tipo === 'salto' ? 'salto' : s.tipo === 'golpe' || s.tipo === 'cae' ? 'golpe' : s.tipo === 'camina' ? 'corre' : 'quieto';
+  return { x, y, z, ry: s.tipo === 'camina' || s.tipo === 'salto' ? ry : 0, a: anim };
 }
