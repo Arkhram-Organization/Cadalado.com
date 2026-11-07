@@ -10,7 +10,7 @@ export const NPCS = [
   {
     id: 'glinsky',
     nombre: 'Glinsky',
-    look: { piel: '#e8c4a8', pelo: { estilo: 'poco', color: '#e9e6e0' }, ojos: '#4a2c18', cuerpo: 'flaco', ropa: { remera: '#3f5a7a', pantalon: '#2b2b33', franja: '#f4f1ea' }, genero: 'h' },
+    look: { piel: '#e8c4a8', pelo: { estilo: 'corto', color: '#eeeeea' }, ojos: '#4a2c18', cuerpo: 'flaco', ropa: { remera: '#3f5a7a', pantalon: '#2b2b33', franja: '#f4f1ea' }, genero: 'h' },
     frases: [
       '¡Qué grande que sos, Julo!',
       'Julo es el Momo de la informática.',
@@ -57,7 +57,7 @@ export const NPCS = [
   {
     id: 'dobro',
     nombre: 'Dobro',
-    look: { piel: '#e9c3a0', pelo: { estilo: 'corto', color: '#1e1610' }, ojos: '#4a3322', cuerpo: 'normal', lentes: '#151515', ropa: { remera: '#1d2c5e', pantalon: '#1b1b22' }, genero: 'h' },
+    look: { piel: '#e9c3a0', pelo: { estilo: 'calvo', color: '#1e1610' }, ojos: '#4a3322', cuerpo: 'normal', lentes: '#151515', ropa: { remera: '#1d2c5e', pantalon: '#1b1b22' }, genero: 'h' },
     // en el casino aparece de smoking (ver casino)
     smoking: true,
     frases: [
