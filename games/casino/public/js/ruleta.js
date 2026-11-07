@@ -3,6 +3,7 @@
 // (la animación sale del reloj del servidor). Las fichas se arrastran al paño o se ponen con un clic.
 import { ficha, enFichas, fmt, VALORES_FICHA } from './piezas.js';
 import { montarDesafio } from './desafio.js';
+import { avatarSvg, lookDeId, lookDeNombre } from '/comun/avatar.js';
 
 const RUEDA = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 const ROJOS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -56,27 +57,27 @@ function ruedaSvg() {
   }
   let aspas = '';
   for (let k = 0; k < 4; k++) aspas += `<rect x="-2.4" y="-30" width="4.8" height="60" rx="2.4" fill="url(#oro)" transform="rotate(${k * 45})"/>`;
-  return `<svg viewBox="-104 -104 208 208" aria-hidden="true">
+  const defs = `
     <defs>
       <radialGradient id="madera" r=".75"><stop offset=".55" stop-color="#6b4324"/><stop offset=".85" stop-color="#3a2312"/><stop offset="1" stop-color="#1e1108"/></radialGradient>
       <radialGradient id="pista" r=".5"><stop offset=".8" stop-color="#2a1a0d"/><stop offset=".9" stop-color="#5a3a1e"/><stop offset="1" stop-color="#2a1a0d"/></radialGradient>
       <radialGradient id="cono" r=".6"><stop offset="0" stop-color="#8a5a31"/><stop offset="1" stop-color="#3b2414"/></radialGradient>
       <linearGradient id="oro" x1="0" x2="1"><stop offset="0" stop-color="#8a6a1a"/><stop offset=".5" stop-color="#ffe9a0"/><stop offset="1" stop-color="#8a6a1a"/></linearGradient>
       <radialGradient id="bola" cx=".35" cy=".3" r=".7"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#ddd"/><stop offset="1" stop-color="#7a7a7a"/></radialGradient>
-    </defs>
+    </defs>`;
+  const fija = `<svg viewBox="-104 -104 208 208" aria-hidden="true">${defs}
     <circle r="103" fill="url(#madera)"/>
     <circle r="96" fill="url(#pista)"/>
     <circle r="96" fill="none" stroke="#8a5a31" stroke-width="2"/>
-    ${rombos}
-    <g data-gira>
+    ${rombos}</svg>`;
+  const gira = `<svg viewBox="-104 -104 208 208" aria-hidden="true">${defs.replace(/id="/g, 'id="g-').replace(/url\(#/g, 'url(#g-')}
       <circle r="81" fill="#2b1a0e" stroke="#d4af37" stroke-width="1.2"/>
       ${numeros}${casilleros}
       <circle r="55" fill="url(#cono)" stroke="#d4af37" stroke-width="1"/>
       <circle r="34" fill="#5a3820" stroke="#d4af37" stroke-width=".8"/>
-      ${aspas}<circle r="8" fill="url(#oro)"/><circle r="3" fill="#fff8d6"/>
-    </g>
-    <circle data-bola r="3.6" fill="url(#bola)" cx="0" cy="-91" style="filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))"/>
+      ${aspas.replace(/url\(#oro\)/g, 'url(#g-oro)')}<circle r="8" fill="url(#g-oro)"/><circle r="3" fill="#fff8d6"/>
   </svg>`;
+  return `${fija}<div class="rueda-gira" data-gira>${gira}</div><div class="bola-div" data-bola></div>`;
 }
 
 function tableroHtml() {
@@ -108,6 +109,8 @@ export function montarRuleta(zona, h) {
             <div class="resultado-grande" data-res></div>
           </div>
           <div class="historial-ruleta" data-hist></div>
+          <div class="mesa-gente" data-gente-mesa></div>
+          <div class="bots-mesa"><span class="etq">Bots en la mesa</span><button class="btn btn-chico" data-bot="bot-agregar">+ Sumar bot</button><button class="btn btn-chico" data-bot="bot-sacar">Sacar</button></div>
         </div>
         <div>
           ${tableroHtml()}
@@ -131,6 +134,12 @@ export function montarRuleta(zona, h) {
   const tablero = zona.querySelector('.tablero');
   const gira = zona.querySelector('[data-gira]');
   const bola = zona.querySelector('[data-bola]');
+  const ruedaEl = zona.querySelector('[data-rueda]');
+  // la bola se mueve con transform (sin repintar la rueda): coordenadas del SVG → píxeles
+  const ponerBola = (x, y) => {
+    const t = ruedaEl.clientWidth / 208;
+    bola.style.transform = `translate(${((x + 104) * t).toFixed(1)}px, ${((y + 104) * t).toFixed(1)}px)`;
+  };
 
   // ---------------------------------------------------------------- apostar (clic o arrastre)
   function elegir(v) {
@@ -211,6 +220,21 @@ export function montarRuleta(zona, h) {
     });
   });
   zona.querySelectorAll('[data-acc]').forEach((b) => (b.onclick = () => h.enviar({ t: b.dataset.acc })));
+  zona.querySelectorAll('[data-bot]').forEach((b) => (b.onclick = () => h.enviar({ t: b.dataset.bot })));
+
+  // la gente en la mesa (personas y bots) con su avatar y un globito cuando hablan
+  const avs = new Map();
+  function pintarGente(e) {
+    const lista = [...e.jugadores.filter((j) => j.online).map((j) => ({ id: j.id, nombre: j.nombre, bot: false })), ...(e.bots || []).map((b) => ({ id: b.id, nombre: b.nombre, bot: true }))];
+    const el = $('[data-gente-mesa]');
+    const firma = lista.map((x) => x.id).join();
+    if (el.dataset.firma === firma) return;
+    el.dataset.firma = firma;
+    el.innerHTML = lista.map((x) => {
+      if (!avs.has(x.id)) avs.set(x.id, avatarSvg(x.bot ? lookDeNombre(x.nombre) : lookDeId(x.id, h.colorDe(x.id)), { titulo: x.nombre }));
+      return `<div class="persona-mesa" data-quien="${x.id}" data-nombre="${h.esc(x.nombre)}"><span class="av">${avs.get(x.id)}</span><small>${h.esc(x.nombre)}</small><span class="globo-mesa"></span></div>`;
+    }).join('');
+  }
 
   // ---------------------------------------------------------------- fichas en el paño
   function pila(lista, clase = '') {
@@ -250,6 +274,7 @@ export function montarRuleta(zona, h) {
   let rebotes = 0;
   let mostrado = null;
   function cuadro(ahoraMs) {
+    if (!zona.isConnected) return; // se salió de la mesa
     raf = requestAnimationFrame(cuadro);
     const dt = Math.min(0.1, (ahoraMs - ultimoCuadro) / 1000);
     ultimoCuadro = ahoraMs;
@@ -259,14 +284,13 @@ export function montarRuleta(zona, h) {
     // la rueda: cuando se larga la bola acelera y después vuelve a su velocidad tranquila
     const vel = VEL_REPOSO + (girando ? 75 * Math.exp(-Math.max(0, t) / 3) : 0);
     angRueda = (angRueda + vel * dt) % 360;
-    gira.setAttribute('transform', `rotate(${angRueda})`);
+    gira.style.transform = `rotate(${angRueda.toFixed(2)}deg)`;
     const n = est.resultado ?? est.historial[0] ?? null; // entre giros, la bola queda en el último número
     let rel; // ángulo de la bola respecto de la rueda
     let radio;
     if (n == null) {
       // todavía no se largó: la bola espera en la pista
-      bola.setAttribute('cx', 0);
-      bola.setAttribute('cy', -91);
+      ponerBola(0, -91);
       return;
     }
     const destino = RUEDA.indexOf(n) * SECTOR;
@@ -298,17 +322,9 @@ export function montarRuleta(zona, h) {
     }
     if (girando && t < 0.2) rebotes = 0;
     const [x, y] = pol(radio, angRueda + rel);
-    bola.setAttribute('cx', x.toFixed(2));
-    bola.setAttribute('cy', y.toFixed(2));
+    ponerBola(x, y);
   }
   let raf = requestAnimationFrame(cuadro);
-  const vigilar = new MutationObserver(() => {
-    if (!zona.isConnected) {
-      cancelAnimationFrame(raf);
-      vigilar.disconnect();
-    }
-  });
-  vigilar.observe(document.body, { childList: true, subtree: true });
 
   function mostrarNumero(n) {
     mostrado = est.giro;
@@ -351,9 +367,22 @@ export function montarRuleta(zona, h) {
         }
       }
       $('[data-hist]').innerHTML = e.historial.map((n) => `<span class="r-${color(n)}">${n}</span>`).join('');
+      pintarGente(e);
       pintarFichas();
       desafio.estado(e);
       zona.querySelector('[data-acc="repetir"]').disabled = !e.puedeRepetir || e.fase !== 'apuestas';
+    },
+    // alguien habló en el chat: si está en la mesa, se ve el globito
+    dice(ev) {
+      const p = [...zona.querySelectorAll('.persona-mesa')].find((x) => x.dataset.nombre === ev.nombre);
+      const g = p?.querySelector('.globo-mesa');
+      if (!g) return;
+      g.textContent = ev.texto;
+      g.classList.remove('ver');
+      void g.offsetWidth;
+      g.classList.add('ver');
+      clearTimeout(g._t);
+      g._t = setTimeout(() => g.classList.remove('ver'), 4500);
     },
     reloj() {
       if (!est) return;

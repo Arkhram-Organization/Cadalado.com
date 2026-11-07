@@ -3,6 +3,26 @@
 // Varias personas juegan en la misma mesa al mismo tiempo; el saldo de cada una está en fichas.js.
 import { crearJuego, idPublico, entero, mezclar } from '../../../shared/salas.js';
 import { quien, mover, saldo } from './fichas.js';
+import { NPCS, POR_ID } from '../../../shared/public/npcs.js';
+import { dicho } from '../../../shared/public/dichos.js';
+
+// ============================================================ BOTS (los NPC de cadalado juegan con fichas de la casa)
+const esBot = (pid) => typeof pid === 'string' && pid.startsWith('bot-');
+const npcDe = (pid) => (esBot(pid) ? pid.slice(4) : null);
+const nombreQuien = (r, pid) => (esBot(pid) ? POR_ID[npcDe(pid)]?.nombre : r.jugadores[pid]?.nombre) || '—';
+// mueve fichas solo de personas (los bots juegan con fichas de la casa)
+const moverP = (r, pid, delta) => (esBot(pid) ? null : mover(quien(pid, r.jugadores[pid]?.uid), delta));
+function elegirBot(usados) {
+  const libres = NPCS.filter((n) => n.id !== 'dobro' && !usados.includes(n.id) && (!n.raro || Math.random() < 0.15));
+  return libres.length ? libres[entero(libres.length)].id : null;
+}
+// Un NPC dice algo: va al chat (y el navegador lo muestra también en su globito).
+function hablar(ctx, npc, situacion, extra = {}) {
+  const n = POR_ID[npc];
+  if (!n) return;
+  ctx.evento({ k: 'chat', de: 'bot-' + npc, nombre: n.nombre, npc, texto: dicho(npc, situacion, extra.jugador || 'alguien'), bot: true });
+}
+const humanosOnline = (r, ctx) => Object.keys(r.jugadores).some((p) => ctx.online.has(p));
 
 // ============================================================ RULETA (europea, un solo cero)
 export const RUEDA = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
@@ -102,7 +122,32 @@ function ruletaNueva() {
   return { fase: 'apuestas', fin: Date.now() + APUESTAS_MS, apuestas: {}, resultado: null, historial: [], pagos: {}, giro: 0 };
 }
 
+// Los bots de la ruleta apuestan entre 1 y 3 fichas en casilleros variados.
+function apuestasBot() {
+  const afuera = ['rojo', 'negro', 'par', 'impar', 'falta', 'pasa', 'd1', 'd2', 'd3', 'c1', 'c2', 'c3'];
+  const n = 1 + entero(3);
+  return Array.from({ length: n }, () => ({ k: Math.random() < 0.45 ? 'n' + entero(37) : afuera[entero(afuera.length)], m: [10, 50, 100, 100, 500][entero(5)] }));
+}
+function botsApuestan(r) {
+  for (const npc of r.bots || []) r.apuestas['bot-' + npc] = apuestasBot();
+}
+
 async function ruletaAccion(r, msg, ctx) {
+  if (msg.t === 'bot-agregar') {
+    r.bots ||= [];
+    if (r.bots.length >= 4) return { error: 'Ya hay 4 bots en la mesa' };
+    const npc = elegirBot(r.bots);
+    if (!npc) return {};
+    r.bots.push(npc);
+    if (r.fase === 'apuestas') r.apuestas['bot-' + npc] = apuestasBot();
+    hablar(ctx, npc, 'saludo');
+    return {};
+  }
+  if (msg.t === 'bot-sacar') {
+    const npc = r.bots?.pop();
+    if (npc && r.fase === 'apuestas') delete r.apuestas['bot-' + npc];
+    return {};
+  }
   const dres = await desafioAccion(r, msg, ctx, r.fase === 'apuestas');
   if (dres) return dres;
   const { pid, jugador } = ctx;
@@ -147,6 +192,7 @@ async function ruletaTick(r, ctx) {
   if (r.fase === 'apuestas') {
     await desafioCerrar(r, ctx);
     r.fase = 'girando';
+    if (Math.random() < 0.5) ctx.evento({ k: 'chat', de: 'bot-dobro', nombre: 'Dobro', npc: 'dobro', texto: 'No va más.', bot: true });
     r.resultado = entero(37);
     r.giro += 1;
     r.fin = ctx.now + GIRO_MS;
@@ -161,11 +207,13 @@ async function ruletaTick(r, ctx) {
         const c = casillero(a.k);
         if (c.nums.includes(n)) gana += a.m * (c.paga + 1);
       }
-      if (gana) await mover(quien(pid, r.jugadores[pid]?.uid), gana);
+      if (gana) await moverP(r, pid, gana);
       r.pagos[pid] = { puso, gana };
+      // los bots reaccionan (no siempre)
+      if (esBot(pid) && (gana > puso ? Math.random() < 0.8 : Math.random() < 0.35)) hablar(ctx, npcDe(pid), gana > puso ? 'gana' : 'pierde');
     }
     const grandes = Object.entries(r.pagos).filter(([, p]) => p.gana > p.puso).sort((a, b) => b[1].gana - a[1].gana);
-    ctx.sistema(`Salió el ${n} ${n === 0 ? 'verde' : ROJOS.has(n) ? 'rojo' : 'negro'}` + (grandes[0] ? ` · ${r.jugadores[grandes[0][0]]?.nombre} se lleva ${grandes[0][1].gana.toLocaleString('es-AR')}` : ''));
+    ctx.sistema(`Salió el ${n} ${n === 0 ? 'verde' : ROJOS.has(n) ? 'rojo' : 'negro'}` + (grandes[0] ? ` · ${nombreQuien(r, grandes[0][0])} se lleva ${grandes[0][1].gana.toLocaleString('es-AR')}` : ''));
     await desafioPagar(r, Object.fromEntries(Object.entries(r.pagos).map(([p, x]) => [p, x.gana - x.puso])), ctx);
     r.historial = [n, ...r.historial].slice(0, 16);
     r.ultimas = Object.fromEntries(Object.entries(r.apuestas).filter(([, l]) => l.length));
@@ -175,6 +223,7 @@ async function ruletaTick(r, ctx) {
   } else {
     r.fase = 'apuestas';
     r.fin = ctx.now + APUESTAS_MS;
+    if (humanosOnline(r, ctx)) botsApuestan(r);
   }
 }
 
@@ -189,6 +238,7 @@ function ruletaVista(r, { pid }) {
     apuestas: Object.entries(r.apuestas).map(([p, l]) => ({ id: id(p), lista: l })),
     pagos: r.fase === 'pago' ? Object.entries(r.pagos).map(([p, x]) => ({ id: id(p), ...x })) : [],
     puedeRepetir: !!r.ultimas?.[pid]?.length,
+    bots: (r.bots || []).map((npc) => ({ id: id('bot-' + npc), nombre: POR_ID[npc]?.nombre || 'Bot', npc })),
     ...desafioVista(r),
   };
 }
@@ -239,7 +289,7 @@ function bjSiguienteTurno(r, ctx) {
     const a = r.asientos[i];
     if (a?.estado === 'jugando') {
       r.turno = i;
-      r.fin = ctx.now + TURNO_MS;
+      r.fin = ctx.now + (a.bot ? 1400 : TURNO_MS); // los bots piensan un toque y juegan
       return;
     }
   }
@@ -270,9 +320,12 @@ async function bjLiquidar(r, ctx) {
       cobra = a.apuesta;
     } else a.res = 'pierde';
     a.cobra = cobra;
-    if (cobra) await mover(quien(a.pid, r.jugadores[a.pid]?.uid), cobra);
-    if (cobra > a.apuesta) nombres.push(r.jugadores[a.pid]?.nombre);
+    if (cobra) await moverP(r, a.pid, cobra);
+    if (cobra > a.apuesta) nombres.push(nombreQuien(r, a.pid));
+    if (a.bot && Math.random() < 0.6) hablar(ctx, a.bot, cobra > a.apuesta ? 'gana' : cobra < a.apuesta ? 'pierde' : 'turno');
   }
+  // Dobro comenta cómo le fue a la banca
+  if (Math.random() < 0.6) ctx.evento({ k: 'chat', de: 'bot-dobro', nombre: 'Dobro', npc: 'dobro', texto: dicho('dobro', banca > 21 || nombres.length ? 'pierde' : 'gana'), bot: true });
   ctx.sistema(`La banca hizo ${banca > 21 ? `${banca} y se pasó` : banca}${nombres.length ? ` · ganan ${nombres.join(', ')}` : ''}`);
   await desafioPagar(r, Object.fromEntries(r.asientos.filter((a) => a?.apuesta && a.cartas.length).map((a) => [a.pid, a.cobra - a.apuesta])), ctx);
   r.fase = 'pago';
@@ -324,24 +377,28 @@ async function bjAccion(r, msg, ctx) {
     case 'plantarse':
     case 'doblar': {
       if (r.fase !== 'jugando' || r.turno !== mio) return { error: 'No es tu turno' };
-      if (msg.t === 'doblar') {
-        if (a.cartas.length !== 2) return { error: 'Solo se dobla con las dos primeras cartas' };
-        await mover(q, -a.apuesta);
-        a.apuesta *= 2;
-        a.doblo = true;
-        a.cartas.push(sacar(r));
-        a.estado = puntaje(a.cartas).total > 21 ? 'pasado' : 'plantado';
-      } else if (msg.t === 'pedir') {
-        a.cartas.push(sacar(r));
-        const t = puntaje(a.cartas).total;
-        if (t > 21) a.estado = 'pasado';
-        else if (t === 21) a.estado = 'plantado';
-        else {
-          r.fin = ctx.now + TURNO_MS;
-          return {};
-        }
-      } else a.estado = 'plantado';
-      bjSiguienteTurno(r, ctx);
+      return bjJugar(r, a, msg.t, ctx);
+    }
+    case 'bot-sentar': {
+      // cualquiera puede sentar a un NPC en un lugar libre (juega con fichas de la casa)
+      const i = Number.isInteger(msg.asiento) ? msg.asiento : r.asientos.findIndex((x) => !x);
+      if (!(i >= 0 && i < ASIENTOS) || r.asientos[i]) return { error: 'No hay lugar libre' };
+      const npc = elegirBot(r.asientos.filter((x) => x?.bot).map((x) => x.bot));
+      if (!npc) return {};
+      r.asientos[i] = { pid: 'bot-' + npc, bot: npc, apuesta: 0, cartas: [], estado: 'espera' };
+      if (r.fase === 'apuestas' || r.fase === 'espera') r.asientos[i].apuesta = apuestaBot();
+      if (r.fase === 'espera') {
+        r.fase = 'apuestas';
+        r.fin = ctx.now + BJ_APUESTAS_MS;
+      }
+      hablar(ctx, npc, 'saludo');
+      return {};
+    }
+    case 'bot-sacar': {
+      const i = Number(msg.asiento);
+      const b = r.asientos[i];
+      if (!b?.bot || (b.cartas.length && r.fase !== 'apuestas' && r.fase !== 'pago')) return {};
+      r.asientos[i] = null;
       return {};
     }
     default:
@@ -349,12 +406,55 @@ async function bjAccion(r, msg, ctx) {
   }
 }
 
+const apuestaBot = () => [100, 200, 200, 500, 500, 1000][entero(6)];
+
+// Pedir, plantarse o doblar (para personas y bots).
+async function bjJugar(r, a, tipo, ctx) {
+  if (tipo === 'doblar') {
+    if (a.cartas.length !== 2) return { error: 'Solo se dobla con las dos primeras cartas' };
+    await moverP(r, a.pid, -a.apuesta);
+    a.apuesta *= 2;
+    a.doblo = true;
+    a.cartas.push(sacar(r));
+    a.estado = puntaje(a.cartas).total > 21 ? 'pasado' : 'plantado';
+  } else if (tipo === 'pedir') {
+    a.cartas.push(sacar(r));
+    const t = puntaje(a.cartas).total;
+    if (t > 21) a.estado = 'pasado';
+    else if (t === 21) a.estado = 'plantado';
+    else {
+      r.fin = ctx.now + (a.bot ? 1300 : TURNO_MS);
+      return {};
+    }
+  } else a.estado = 'plantado';
+  bjSiguienteTurno(r, ctx);
+  return {};
+}
+
+// Estrategia simple de bot: pide con poco, dobla con 10 u 11, se planta con 17 o con 13+ si la banca muestra poco.
+function decisionBot(r, a) {
+  const { total, blanda } = puntaje(a.cartas);
+  const banca = puntaje([r.banca[0]]).total;
+  if (a.cartas.length === 2 && (total === 10 || total === 11) && banca < 10 && Math.random() < 0.6) return 'doblar';
+  if (total <= 11) return 'pedir';
+  if (blanda && total <= 17) return 'pedir';
+  if (total >= 17) return 'plantarse';
+  if (banca >= 7) return 'pedir';
+  return total >= 13 ? 'plantarse' : 'pedir';
+}
+
 async function bjTick(r, ctx) {
   if (r.fase === 'espera' || ctx.now < r.fin) return;
   if (r.fase === 'apuestas') {
     // se van los que se desconectaron sin apostar
     r.asientos.forEach((a, i) => {
-      if (a && !a.apuesta && !ctx.online.has(a.pid)) r.asientos[i] = null;
+      if (a && !a.bot && !a.apuesta && !ctx.online.has(a.pid)) r.asientos[i] = null;
+    });
+    // sin personas en la mesa los bots se levantan; si hay, apuestan
+    const hayPersonas = r.asientos.some((a) => a && !a.bot);
+    r.asientos.forEach((a, i) => {
+      if (a?.bot && !hayPersonas) r.asientos[i] = null;
+      else if (a?.bot && !a.apuesta) a.apuesta = apuestaBot();
     });
     const jugando = r.asientos.filter((a) => a?.apuesta > 0);
     if (jugando.length) await desafioCerrar(r, ctx);
@@ -382,8 +482,13 @@ async function bjTick(r, ctx) {
     return;
   }
   if (r.fase === 'jugando') {
-    // se le terminó el tiempo: se planta solo
     const a = r.asientos[r.turno];
+    if (a?.bot) {
+      const d = decisionBot(r, a);
+      if (Math.random() < 0.25) hablar(ctx, a.bot, 'turno');
+      return bjJugar(r, a, d, ctx);
+    }
+    // se le terminó el tiempo: se planta solo
     if (a) a.estado = 'plantado';
     bjSiguienteTurno(r, ctx);
     return;
@@ -399,10 +504,11 @@ async function bjTick(r, ctx) {
     return bjLiquidar(r, ctx);
   }
   if (r.fase === 'pago') {
-    for (const a of r.asientos) if (a) Object.assign(a, { apuesta: 0, cartas: [], estado: 'espera', res: null, cobra: 0, doblo: false });
+    for (const a of r.asientos) if (a) Object.assign(a, { apuesta: a.bot ? apuestaBot() : 0, cartas: [], estado: 'espera', res: null, cobra: 0, doblo: false });
     r.banca = [];
     r.fase = r.asientos.some(Boolean) ? 'apuestas' : 'espera';
     r.fin = ctx.now + BJ_APUESTAS_MS;
+    if (r.fase === 'apuestas' && Math.random() < 0.3) ctx.evento({ k: 'chat', de: 'bot-dobro', nombre: 'Dobro', npc: 'dobro', texto: dicho('dobro', 'saludo'), bot: true });
   }
 }
 
@@ -415,7 +521,7 @@ function bjVista(r, { pid }) {
     bancaTotal: r.oculta ? (r.banca[0] ? puntaje([r.banca[0]]).total : 0) : puntaje(r.banca).total,
     asientos: r.asientos.map((a) =>
       a
-        ? { id: idPublico(a.pid), nombre: r.jugadores[a.pid]?.nombre || '—', soyYo: a.pid === pid, apuesta: a.apuesta, cartas: a.cartas, total: puntaje(a.cartas).total, estado: a.estado, res: a.res, cobra: a.cobra }
+        ? { id: idPublico(a.pid), nombre: nombreQuien(r, a.pid), bot: a.bot || null, soyYo: a.pid === pid, apuesta: a.apuesta, cartas: a.cartas, total: puntaje(a.cartas).total, estado: a.estado, res: a.res, cobra: a.cobra }
         : null
     ),
     quedan: r.zapato.length,

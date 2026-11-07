@@ -182,3 +182,33 @@ test('desafío entre jugadores: se acepta, el que más gana se lleva el pozo; si
   }
   assert.equal(v.estado.desafio, null);
 });
+
+test('bots: apuestan en la ruleta, juegan solos al blackjack y hablan en el chat', async () => {
+  // ruleta
+  const { data } = await req('POST', '/crear', { pid: 'pidBotsRulAA', nombre: 'Ana', opciones: { tipo: 'ruleta' } });
+  const A = 'pidBots' + rnd();
+  await accion(data.code, A, { t: 'join', nombre: 'Ana' });
+  await accion(data.code, A, { t: 'bot-agregar' });
+  await accion(data.code, A, { t: 'bot-agregar' });
+  let v = await ver(data.code, A);
+  assert.equal(v.estado.bots.length, 2);
+  assert.equal(v.estado.apuestas.length, 2, 'los bots ya apostaron');
+  assert.ok(v.eventos.some((e) => e.k === 'chat' && e.bot), 'saludan en el chat');
+  assert.equal(v.saldo, 10000, 'los bots no tocan mis fichas');
+  // blackjack: Ana se sienta, sienta un bot y juegan una mano entera
+  const bj = (await req('POST', '/crear', { pid: 'pidBotsBJAA', nombre: 'Ana', opciones: { tipo: 'blackjack' } })).data.code;
+  await accion(bj, A, { t: 'join', nombre: 'Ana' });
+  await accion(bj, A, { t: 'sentarse', asiento: 0 });
+  await accion(bj, A, { t: 'bot-sentar', asiento: 2 });
+  v = await ver(bj, A);
+  assert.ok(v.estado.asientos[2].bot);
+  assert.ok(v.estado.asientos[2].apuesta > 0);
+  await accion(bj, A, { t: 'apostar', monto: 100 });
+  for (let i = 0; i < 40 && v.estado.fase !== 'pago'; i++) {
+    await adelantar(bj);
+    v = await ver(bj, A);
+    if (v.estado.fase === 'jugando' && v.estado.turno === 0) v = (await accion(bj, A, { t: 'plantarse' })).data;
+  }
+  assert.equal(v.estado.fase, 'pago');
+  assert.ok(v.estado.asientos[2].res, 'el bot terminó su mano');
+});

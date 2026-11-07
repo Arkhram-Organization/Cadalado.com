@@ -10,7 +10,7 @@ export function montarBlackjack(zona, h) {
   let miLugar = null;
   zona.innerHTML = `
     <div class="pano bj3d-pano">
-      <div class="bj3d" data-escena><div class="bj3d-ayuda">Arrastrá para mirar la mesa · rueda para acercar</div></div>
+      <div class="bj3d" data-escena><div class="bj3d-ayuda">Arrastrá para mirar la mesa · rueda para acercar</div><button class="btn btn-chico bj3d-full" data-full title="Pantalla completa">Pantalla completa</button></div>
       <div class="reloj-mesa"><i data-reloj></i></div>
       <div data-controles style="margin-top:14px"></div>
       <div data-desafio></div>
@@ -19,13 +19,16 @@ export function montarBlackjack(zona, h) {
   const $ = (s) => zona.querySelector(s);
   const mesa = new MesaBJ($('[data-escena]'));
   const desafio = montarDesafio($('[data-desafio]'), h);
-  const vigilar = new MutationObserver(() => {
-    if (!zona.isConnected) {
-      mesa.destruir();
-      vigilar.disconnect();
-    }
-  });
-  vigilar.observe(document.body, { childList: true, subtree: true });
+  $('[data-full]').onclick = () => {
+    const el = zona.querySelector('.bj3d-pano');
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else el.requestFullscreen?.().catch(() => {});
+  };
+  const alCambiarPantalla = () => {
+    zona.querySelector('[data-full]').textContent = document.fullscreenElement ? 'Salir de pantalla completa' : 'Pantalla completa';
+    setTimeout(() => mesa.redimensionar(), 60);
+  };
+  document.addEventListener('fullscreenchange', alCambiarPantalla);
 
   function pintarControles() {
     const e = est;
@@ -34,18 +37,23 @@ export function montarBlackjack(zona, h) {
     let c = '';
     if (mio < 0) {
       c = `<div class="bj-lugares"><span class="etq" style="color:#fff">Elegí un lugar</span>${e.asientos.map((x, i) => `<button class="btn ${x ? '' : 'btn-lima'}" data-sentarse="${i}" ${x ? 'disabled' : ''}>${x ? h.esc(x.nombre) : `Lugar ${i + 1}`}</button>`).join('')}</div>`;
-    } else if (e.fase === 'apuestas' || e.fase === 'espera') {
+    } else if (e.fase === 'apuestas' || e.fase === 'espera' || e.fase === 'pago') {
+      const libres = e.asientos.some((x) => !x);
+      const bots = e.asientos.map((x, i) => (x?.bot ? i : -1)).filter((i) => i >= 0);
       c = `<div class="controles" style="margin-top:0">
-        <div class="selector-fichas">${VALORES_FICHA.map((v) => `<button class="ficha ${v === sel ? 'on' : ''}" data-v="${v}"><span>${v >= 1000 ? v / 1000 + 'K' : v}</span></button>`).join('')}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="mono" style="color:#fff">En juego: <b>${fmt(a.apuesta)}</b></span><button class="btn btn-lima" data-apostar>Apostar ${fmt(sel)}</button><button class="btn btn-chico" data-acc="limpiar" ${a.apuesta ? '' : 'disabled'}>Sacar</button><button class="btn btn-chico btn-borde" data-acc="levantarse">Levantarme</button></div></div>`;
+        ${e.fase !== 'pago' ? `<div class="selector-fichas">${VALORES_FICHA.map((v) => `<button class="ficha ${v === sel ? 'on' : ''}" data-v="${v}"><span>${v >= 1000 ? v / 1000 + 'K' : v}</span></button>`).join('')}</div>` : '<span></span>'}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${e.fase !== 'pago' ? `<span class="mono" style="color:#fff">En juego: <b>${fmt(a.apuesta)}</b></span><button class="btn btn-lima" data-apostar>Apostar ${fmt(sel)}</button><button class="btn btn-chico" data-acc="limpiar" ${a.apuesta ? '' : 'disabled'}>Sacar</button>` : ''}
+        ${libres ? '<button class="btn btn-chico" data-bot="bot-sentar">+ Sentar un bot</button>' : ''}${bots.length ? `<button class="btn btn-chico" data-bot="bot-sacar" data-asiento="${bots.at(-1)}">Sacar bot</button>` : ''}
+        <button class="btn btn-chico btn-borde" data-acc="levantarse">Levantarme</button></div></div>`;
     } else if (e.fase === 'jugando' && e.turno === mio) {
       c = `<div class="bj-acciones"><button class="btn btn-lima btn-grande" data-acc="pedir">Pedir carta</button><button class="btn btn-grande" data-acc="plantarse">Plantarme</button>${a.cartas.length === 2 ? `<button class="btn btn-grande" data-acc="doblar">Doblar (${fmt(a.apuesta)})</button>` : ''}</div>`;
     } else if (e.fase === 'jugando') c = `<p style="text-align:center;color:var(--blanco-2)">${e.turno >= 0 ? `Juega ${h.esc(e.asientos[e.turno]?.nombre || '')}…` : ''}</p>`;
-    else c = `<p style="text-align:center;color:var(--blanco-2)">${e.fase === 'banca' ? 'Juega la banca…' : 'Pagando…'}</p>`;
+    else c = `<p style="text-align:center;color:var(--blanco-2)">Juega la banca…</p>`;
     const el = $('[data-controles]');
     if (el.dataset.firma === c) return;
     el.dataset.firma = c;
     el.innerHTML = c;
+    el.querySelectorAll('[data-bot]').forEach((b) => (b.onclick = () => h.enviar({ t: b.dataset.bot, asiento: b.dataset.asiento != null ? Number(b.dataset.asiento) : undefined })));
     el.querySelectorAll('[data-sentarse]').forEach((b) => (b.onclick = () => {
       h.sonar('clic');
       h.enviar({ t: 'sentarse', asiento: Number(b.dataset.sentarse) });
@@ -66,19 +74,6 @@ export function montarBlackjack(zona, h) {
     }));
   }
 
-  // lo que dice Dobro según lo que pasa en la mesa
-  function comentar(antes, e) {
-    if (e.fase === 'apuestas' && antes?.fase !== 'apuestas') mesa.hablar(Math.random() < 0.5 ? 'Hagan sus apuestas, señores.' : 'Fichas al paño. Recuerden: jugar está bueno, saber parar, mejor.');
-    if (e.fase === 'jugando' && e.turno >= 0 && antes?.turno !== e.turno) {
-      const a = e.asientos[e.turno];
-      if (a) mesa.hablar(`${a.nombre}, tenés ${a.total}. ¿Pedís o te plantás?`);
-    }
-    if (e.fase === 'pago' && antes?.fase !== 'pago') {
-      const ganan = e.asientos.filter((a) => a?.res === 'gana' || a?.res === 'blackjack').length;
-      mesa.hablar(e.bancaTotal > 21 ? 'Me pasé. La casa también llora.' : ganan ? 'Felicitaciones. La próxima es mía.' : 'La casa siempre gana. La casa soy yo.');
-    }
-  }
-
   return {
     estado(e) {
       const antes = est;
@@ -91,7 +86,6 @@ export function montarBlackjack(zona, h) {
       if (e.fase === 'jugando' && e.turno === mio && antes?.turno !== mio) h.sonar('aviso');
       const nuevas = (lista, prev) => lista.length > (prev?.length || 0);
       if (antes && (nuevas(e.banca, antes.banca) || e.asientos.some((a, i) => a && nuevas(a.cartas, antes.asientos[i]?.cartas)))) h.sonar('carta');
-      comentar(antes, e);
       mesa.actualizar(e, { color: h.colorDe });
       h.estadoMesa(
         { espera: 'Esperando jugadores', apuestas: 'Hagan sus apuestas', jugando: 'Mano en juego', banca: 'Juega la banca', pago: 'Pagando' }[e.fase],
@@ -109,6 +103,16 @@ export function montarBlackjack(zona, h) {
         setTimeout(() => $('[data-banner]').classList.remove('ver'), 3000);
       }
       if (e.fase !== 'pago') $('[data-banner]').classList.remove('ver');
+    },
+    // alguien habló en el chat: Dobro o el que está sentado lo dice en su globito
+    dice(ev) {
+      if (ev.npc === 'dobro') return mesa.hablar(ev.texto);
+      const i = est?.asientos.findIndex((a) => a?.nombre === ev.nombre);
+      if (i >= 0) mesa.decirAsiento(i, ev.texto);
+    },
+    destruir() {
+      document.removeEventListener('fullscreenchange', alCambiarPantalla);
+      mesa.destruir();
     },
     reloj() {
       if (!est) return;

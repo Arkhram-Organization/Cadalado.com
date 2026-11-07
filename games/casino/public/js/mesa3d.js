@@ -2,7 +2,7 @@
 // y Dobro repartiendo (de smoking y con lentes). La cámara se mueve arrastrando, como en el truco.
 import * as THREE from '/comun/vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
-import { POR_ID, frase, rngNpc } from '/comun/npcs.js';
+import { POR_ID, rngNpc } from '/comun/npcs.js';
 import { enFichas } from './piezas.js';
 
 const ASIENTOS = 5;
@@ -201,7 +201,7 @@ export class MesaBJ {
     this.fichas = []; // por asiento: { grupo, monto }
     this.personas = []; // por asiento: { persona, id }
     this.carteles = [];
-    this.vista = { yaw: 0, pitch: 0.72, dist: 6.6, yawObj: 0, pitchObj: 0.72, distObj: 6.6 };
+    this.vista = { yaw: 0, pitch: 0.88, dist: 6.8, yawObj: 0, pitchObj: 0.88, distObj: 6.8 };
     this.reloj = 0;
 
     // luces: lámpara colgante sobre la mesa y ambiente cálido
@@ -353,8 +353,8 @@ export class MesaBJ {
   // Pone la cámara detrás de mi lugar (o al frente si estoy mirando).
   mirarDesde(asiento) {
     this.vista.yawObj = asiento >= 0 ? -anguloAsiento(asiento) : 0;
-    this.vista.pitchObj = 0.72;
-    this.vista.distObj = 6.6;
+    this.vista.pitchObj = 0.88;
+    this.vista.distObj = 6.8;
   }
 
   ficha(v) {
@@ -391,7 +391,8 @@ export class MesaBJ {
       }
       if (actual?.id === a.id) return;
       if (actual) this.scene.remove(actual.persona.grupo);
-      const p = crearPersona(THREE, lookDeId(a.id, nombres.color?.(a.id) || '#7aa2ff'), { nombre: a.nombre + (a.soyYo ? ' (vos)' : ''), colorNombre: a.soyYo ? '#c5f04a' : '#fff', tamCartel: 0.26, tamGlobo: 0.24 });
+      const look = a.bot ? { ...POR_ID[a.bot]?.look } : lookDeId(a.id, nombres.color?.(a.id) || '#7aa2ff');
+      const p = crearPersona(THREE, look, { nombre: a.nombre + (a.soyYo ? ' (vos)' : ''), colorNombre: a.soyYo ? '#c5f04a' : '#fff', tamCartel: 0.26, tamGlobo: 0.24 });
       const s = puntoArco(i, 3.12);
       p.grupo.position.set(s.x, 0.06, s.z); // la cadera queda apoyada en el asiento
       const dx = 0 - s.x;
@@ -507,10 +508,8 @@ export class MesaBJ {
     this.dobro.decir(texto, 4.5);
     this.ultimaFraseDobro = this.reloj;
   }
-  charla() {
-    if (this.reloj - this.ultimaFraseDobro < 26) return;
-    this.fraseAnt = frase('dobro', Math.random, 'vos', this.fraseAnt);
-    this.hablar(this.fraseAnt);
+  decirAsiento(i, texto) {
+    this.personas[i]?.persona.decir(texto, 4.5);
   }
 
   cuadro(dt) {
@@ -560,7 +559,6 @@ export class MesaBJ {
       this.marca.position.set(p.x, MESA_Y + 0.004, p.z);
       this.marca.scale.setScalar(1 + Math.sin(this.reloj * 6) * 0.08);
     }
-    if (this.fase && this.fase !== 'espera') this.charla();
     this.renderer.render(this.scene, this.camara);
   }
 

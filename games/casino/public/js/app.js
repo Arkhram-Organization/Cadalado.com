@@ -179,7 +179,7 @@ function mesa(code) {
     mostrarSaldo,
     ahora: () => sala.ahora(),
     enviar: (msg) => sala.enviar(msg),
-    nombreDe: (id) => est?.jugadores.find((j) => j.id === id)?.nombre || '—',
+    nombreDe: (id) => est?.jugadores.find((j) => j.id === id)?.nombre || est?.bots?.find((b) => b.id === id)?.nombre || est?.asientos?.find((a) => a?.id === id)?.nombre || '—',
     estadoMesa: (texto, clase) => {
       const el = $('[data-estado]');
       el.textContent = texto;
@@ -225,8 +225,13 @@ function mesa(code) {
       if (ev.sistema) {
         d.className = 'sis';
         d.textContent = ev.texto;
-      } else d.innerHTML = `<b>${esc(ev.nombre)}:</b> ${esc(ev.texto)}`;
+      } else {
+        if (ev.bot) d.className = 'bot';
+        d.innerHTML = `<b>${esc(ev.nombre)}:</b> ${esc(ev.texto)}`;
+        modulo?.dice?.(ev); // y en el globito arriba de quien habló
+      }
       log.append(d);
+      while (log.children.length > 80) log.firstChild.remove();
       log.scrollTop = log.scrollHeight;
     },
     onError: (m) => {
@@ -241,6 +246,7 @@ function mesa(code) {
   });
   const t = setInterval(() => modulo?.reloj(), 200);
   limpiar.push(() => clearInterval(t));
+  limpiar.push(() => modulo?.destruir?.());
 }
 
 ruteo();
