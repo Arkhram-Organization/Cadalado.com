@@ -4,7 +4,7 @@
 
 const ANCHO = { flaco: 0.3, normal: 0.36, gordito: 0.46 };
 
-export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true } = {}) {
+export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
   const L = {
     piel: '#e8c4a8',
     ojos: '#4a3322',
@@ -168,7 +168,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   g.add(sombra);
 
   // cartel con el nombre y globito de diálogo (sprites con canvas)
-  const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.72)', 0.65) : null;
+  const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.72)', tamCartel) : null;
   if (cartel) {
     cartel.position.y = 2.35;
     g.add(cartel);
@@ -184,8 +184,8 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     altura: 2,
     decir(texto, seg = 4.5) {
       if (globo) g.remove(globo);
-      globo = sprite(THREE, texto, '#141413', '#ffffff', 0.5, true);
-      globo.position.y = 3.05;
+      globo = sprite(THREE, texto, '#141413', '#ffffff', tamGlobo, true);
+      globo.position.y = 2.35 + tamCartel + 0.05 + globo.scale.y / 2;
       g.add(globo);
       globoHasta = reloj + seg;
     },
