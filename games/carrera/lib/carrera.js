@@ -80,7 +80,7 @@ export const carrera = crearJuego({
         if (tiempo < MINIMO_MS) return { error: 'Llegada inválida' };
         r.llegadas[pid] = tiempo;
         const puesto = Object.keys(r.llegadas).length + resultados(r).filter((x) => x.bot && x.tiempo != null && x.tiempo < tiempo).length;
-        ctx.sistema(`🏁 ${ctx.jugador.nombre} llegó ${puesto}º (${(tiempo / 1000).toFixed(2)} s)`);
+        ctx.sistema(`${ctx.jugador.nombre} llegó ${puesto}º (${(tiempo / 1000).toFixed(2)} s)`);
         // si ya llegaron todas las personas, en un ratito termina
         if (r.participantes.every((p) => r.llegadas[p] != null || !ctx.online.has(p))) r.fin = Math.min(r.fin, ctx.now + 3500);
         return {};
@@ -105,7 +105,7 @@ export const carrera = crearJuego({
       r.fase = 'podio';
       r.fin = ctx.now + PODIO_MS;
       const g = r.resultados[0];
-      if (g) ctx.sistema(`🏆 Ganó ${g.nombre}${g.tiempo ? ` en ${(g.tiempo / 1000).toFixed(2)} s` : ''}`);
+      if (g) ctx.sistema(`Ganó ${g.nombre}${g.tiempo ? ` en ${(g.tiempo / 1000).toFixed(2)} s` : ''}`);
     } else if (r.fase === 'podio' && ctx.now >= r.fin) r.fase = 'lobby';
   },
   vista(r) {

@@ -31,7 +31,7 @@ function ruedaSvg() {
     const fill = { verde: '#0a8f3c', rojo: '#c8102e', negro: '#161616' }[color(n)];
     s += `<path d="M${x0} ${y0}A${r1} ${r1} 0 0 1 ${x1} ${y1}L${x2} ${y2}A${r2} ${r2} 0 0 0 ${x3} ${y3}Z" fill="${fill}" stroke="#d4af37" stroke-width=".6"/>`;
     const [tx, ty] = p(84, i * SECTOR);
-    s += `<text x="${tx}" y="${ty}" transform="rotate(${i * SECTOR} ${tx} ${ty})" text-anchor="middle" dominant-baseline="central" font-family="Unbounded, sans-serif" font-weight="800" font-size="8.5" fill="#fff">${n}</text>`;
+    s += `<text x="${tx}" y="${ty}" transform="rotate(${i * SECTOR} ${tx} ${ty})" text-anchor="middle" dominant-baseline="central" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="800" font-size="8.5" fill="#fff">${n}</text>`;
   });
   // centro con aspas doradas
   let aspas = '';

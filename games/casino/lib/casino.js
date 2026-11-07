@@ -424,7 +424,7 @@ async function slotsAccion(r, msg, ctx) {
   r.ultimas[pid] = { rod, lineas: p.lineas, gana, pozo, apuesta, n: r.tiradas };
   if (gana >= apuesta * 10 || pozo) {
     r.feed = [{ nombre: jugador.nombre, gana, pozo: !!pozo, ts: ctx.now }, ...r.feed].slice(0, 12);
-    if (pozo) ctx.sistema(`🎰 ¡${jugador.nombre} se llevó el pozo de ${gana.toLocaleString('es-AR')}!`);
+    if (pozo) ctx.sistema(`¡${jugador.nombre} se llevó el pozo de ${gana.toLocaleString('es-AR')}!`);
   }
   return {};
 }

@@ -5,11 +5,11 @@ const PL = new Map(PLANTILLAS.map((p) => [p.id, p]));
 const app = document.querySelector('#app');
 const COLOR = '#ff4fa3';
 const VOTOS = [
-  [1, '💀', 'Nada'],
-  [2, '😐', 'Meh'],
-  [3, '🙂', 'Bien'],
-  [4, '😂', 'Bueno'],
-  [5, '🔥', 'Genio'],
+  [1, '1', 'Nada'],
+  [2, '2', 'Meh'],
+  [3, '3', 'Bien'],
+  [4, '4', 'Bueno'],
+  [5, '5', 'Genio'],
 ];
 const COLORES = { blanco: '#fff', negro: '#111', amarillo: '#ffe100', rojo: '#ff3b3b' };
 const AV = ['#ff4fa3', '#c5f04a', '#7aa2ff', '#ff7a45', '#f2c94c', '#4fd1c5', '#c084fc'];
@@ -235,7 +235,7 @@ function abrirSala(code) {
         <div class="reglas">
           <div><b>1 · Plantilla</b>Te toca una al azar. Si no te convence, pedí otra.</div>
           <div><b>2 · Texto</b>Escribí y arrastrá los textos a donde quieras.</div>
-          <div><b>3 · Votación</b>Se ven de a uno, sin autor. Del 💀 al 🔥.</div>
+          <div><b>3 · Votación</b>Se ven de a uno, sin autor. Del 1 al 5.</div>
         </div></div>`;
       c.querySelector('[data-copiar2]').onclick = () => app.querySelector('[data-copiar]').click();
       c.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
@@ -268,7 +268,7 @@ function abrirSala(code) {
       if (cambio) sonar('aviso');
       c.innerHTML = `${cabeza(`Meme ${v.idx + 1} de ${v.total}`, `<span class="chip">${v.votaron}/${v.pueden} votaron</span>`)}
         <div class="marco-meme">${memeHtml(v.plantilla, v.textos)}</div>
-        ${v.esMio ? '<div class="secreto">🤫 Este es tuyo. No digas nada y mirá cómo lo votan.</div>' : `<div class="votos">${VOTOS.map(([n, e, t]) => `<button data-voto="${n}" class="${v.miVoto === n ? 'on' : ''}"><span>${e}</span>${t}</button>`).join('')}</div>`}`;
+        ${v.esMio ? '<div class="secreto">Este es tuyo. No digas nada y mirá cómo lo votan.</div>' : `<div class="votos">${VOTOS.map(([n, e, t]) => `<button data-voto="${n}" class="${v.miVoto === n ? 'on' : ''}"><span>${e}</span>${t}</button>`).join('')}</div>`}`;
       c.querySelectorAll('[data-voto]').forEach((b) => (b.onclick = () => {
         sonar('clic');
         c.querySelectorAll('[data-voto]').forEach((x) => x.classList.toggle('on', x === b));
@@ -281,7 +281,7 @@ function abrirSala(code) {
       if (!cambio) return;
       sonar('gana');
       const grilla = !est.resultados.length ? '<div class="panel espera"><h2>Nadie mandó meme</h2><p>Esta ronda quedó vacía.</p></div>' : `<div class="grilla-res">${est.resultados.map((m, i) => `<div class="res ${i === 0 ? 'top' : ''}" style="animation-delay:${i * 0.12}s">
-          ${memeHtml(m.plantilla, m.textos)}<div class="pie"><b>${i === 0 ? '👑 ' : ''}${esc(m.nombre)}</b><span class="mono">+${m.puntos}</span></div></div>`).join('')}</div>`;
+          ${memeHtml(m.plantilla, m.textos)}<div class="pie"><b>${i === 0 ? '1º · ' : ''}${esc(m.nombre)}</b><span class="mono">+${m.puntos}</span></div></div>`).join('')}</div>`;
       if (est.fase === 'resultados') {
         c.innerHTML = `${cabeza('Resultados de la ronda', esHost ? '<button class="btn btn-lima" data-sig>Siguiente ronda</button>' : '')}${grilla}`;
         c.querySelector('[data-sig]')?.addEventListener('click', () => sala.enviar({ t: 'siguiente' }));
@@ -289,7 +289,7 @@ function abrirSala(code) {
         const tabla = Object.entries(est.puntos).sort((a, b) => b[1] - a[1]);
         const pod = [tabla[1], tabla[0], tabla[2]];
         c.innerHTML = `<div class="cabeza-fase"><div><span class="etq">Final</span><h2>¡Terminó!</h2></div>${esHost ? '<button class="btn btn-lima" data-otra>Jugar otra vez</button>' : ''}</div>
-          <div class="podio">${pod.map((p, i) => (p ? `<div class="p${[2, 1, 3][i]}"><span style="font-size:30px">${['🥈', '🥇', '🥉'][i]}</span><b>${esc(nombreDe(p[0]))}</b><span class="mono">${p[1]} pts</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
+          <div class="podio">${pod.map((p, i) => (p ? `<div class="p${[2, 1, 3][i]}"><span class="mono" style="font-size:26px;color:var(--blanco)">${['2º', '1º', '3º'][i]}</span><b>${esc(nombreDe(p[0]))}</b><span class="mono">${p[1]} pts</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
           ${est.mejor ? `<div class="panel"><span class="etq">El mejor meme · ronda ${est.mejor.ronda} · ${esc(est.mejor.nombre)}</span><div class="marco-meme" style="margin-top:10px">${memeHtml(est.mejor.plantilla, est.mejor.textos)}</div></div>` : ''}
           <span class="etq">Última ronda</span>${grilla}`;
         c.querySelector('[data-otra]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
@@ -308,10 +308,10 @@ function abrirSala(code) {
     const p = PL.get(ed.plantilla);
     c.innerHTML = `${cabeza('Armá tu meme', `<span class="chip"><span data-seg>${est.segCrear}</span> s · <span data-faltan></span></span>`)}
       <div class="editor"><div class="marco-meme" data-lienzo>${memeHtml(ed.plantilla, ed.textos, { editor: true })}</div></div>
-      <div class="listo-banner ${est.miMeme ? '' : 'hidden'}" data-listo>✅ <span><b>¡Mandado!</b> Si querés, seguí cambiándolo y volvé a mandar antes de que se termine el tiempo.</span></div>
+      <div class="listo-banner ${est.miMeme ? '' : 'hidden'}" data-listo><span><b>¡Mandado!</b> Si querés, seguí cambiándolo y volvé a mandar antes de que se termine el tiempo.</span></div>
       <div class="barra-edicion">
         <button class="btn" data-agregar>+ Texto</button>
-        <button class="btn" data-otra title="${esc(p?.nombre || '')}">🔀 Otra plantilla</button>
+        <button class="btn" data-otra title="${esc(p?.nombre || '')}">Otra plantilla</button>
         <span style="flex:1"></span>
         <button class="btn btn-lima btn-grande" data-enviar>¡Listo!</button>
       </div>

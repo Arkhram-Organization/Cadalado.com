@@ -6,7 +6,7 @@ import { rutaBot, posBot, COLORES, NOMBRES_BOT, CHECKPOINTS, META_Z } from './pi
 
 const app = document.querySelector('#app');
 const COLOR = '#4fd1c5';
-const cuenta = await marco({ juego: 'Carrera loca', color: COLOR, volver: '/carrera/' });
+const cuenta = await marco({ juego: 'Fall Pibes', color: COLOR, volver: '/carrera/' });
 let limpiar = [];
 
 function ir(ruta) {
@@ -31,10 +31,10 @@ function ruteo() {
 
 // ---------------------------------------------------------------- menú
 function menu() {
-  document.title = 'Carrera loca · cadalado';
+  document.title = 'Fall Pibes · cadalado';
   app.innerHTML = `
   <div class="menu">
-    <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · hasta 16</span><h1>Carrera <em>loca.</em></h1>
+    <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · hasta 16</span><h1>Fall <em>Pibes.</em></h1>
       <p>Barras que giran, plataformas sobre el agua, martillos, puertas falsas y una rampa con bolas. Llegá primero a la meta.</p></div></div>
     <section class="panel">
       <h2>Armar una carrera</h2>
@@ -224,9 +224,9 @@ function abrirSala(code) {
       const top = [r[1], r[0], r[2]];
       const t = (ms) => (ms == null ? 'no llegó' : `${(ms / 1000).toFixed(2)} s`);
       const miPuesto = r.findIndex((x) => x.id === e.yo) + 1;
-      pod.innerHTML = `<h2>${miPuesto === 1 ? '¡Ganaste! 🏆' : miPuesto ? `Llegaste ${miPuesto}º` : 'Resultados'}</h2>
-        <div class="podio-top">${top.map((x, i) => (x ? `<div class="p${[2, 1, 3][i]}"><span style="font-size:28px">${['🥈', '🥇', '🥉'][i]}</span><b>${esc(x.nombre)}</b><span class="mono">${t(x.tiempo)}</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
-        <div class="tabla-res">${r.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' 🤖' : ''}</span><span class="mono">${t(x.tiempo)}</span></div>`).join('')}</div>
+      pod.innerHTML = `<h2>${miPuesto === 1 ? '¡Ganaste!' : miPuesto ? `Llegaste ${miPuesto}º` : 'Resultados'}</h2>
+        <div class="podio-top">${top.map((x, i) => (x ? `<div class="p${[2, 1, 3][i]}"><span class="mono" style="font-size:24px">${['2º', '1º', '3º'][i]}</span><b>${esc(x.nombre)}</b><span class="mono">${t(x.tiempo)}</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
+        <div class="tabla-res">${r.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' <small style="color:var(--gris)">bot</small>' : ''}</span><span class="mono">${t(x.tiempo)}</span></div>`).join('')}</div>
         ${esHost ? '<button class="btn btn-lima btn-grande" data-otra style="width:100%;margin-top:14px">Otra carrera</button>' : '<p style="margin-top:12px">En unos segundos vuelven a la largada.</p>'}`;
       pod.querySelector('[data-otra]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
     }
@@ -365,7 +365,7 @@ function abrirSala(code) {
           if (e === 'salto' || e === 'buceo') sonar('salto');
           if (e === 'golpe') sonar('clic');
           if (e === 'caida') aviso('¡Al agua! Volvés al último punto', true);
-          if (e === 'puerta') aviso('Puerta falsa 🚪', true);
+          if (e === 'puerta') aviso('Puerta falsa', true);
           if (e === 'checkpoint' && fase === 'carrera') aviso(`Punto de control: ${CHECKPOINTS[jugador.cp].nombre}`);
           if (e === 'meta' && fase === 'carrera' && !enviadoMeta) {
             enviadoMeta = true;

@@ -34,7 +34,7 @@ function cartel(texto, color = '#fff') {
   cv.width = 256;
   cv.height = 64;
   const g = cv.getContext('2d');
-  g.font = '800 30px Unbounded, Manrope, sans-serif';
+  g.font = '800 30px Barlow Condensed, Barlow, sans-serif';
   const w = Math.min(250, g.measureText(texto).width + 28);
   g.fillStyle = 'rgba(20,20,19,.72)';
   g.beginPath();

@@ -240,6 +240,7 @@ export function sonar(tipo = 'clic') {
 
 // ---------------------------------------------------------------- barra superior común
 export async function marco({ juego, color = '#c5f04a', volver = null }) {
+  import('./menu-esc.js').then((m) => m.menuEsc({ juego, volver: volver || '/' }));
   const barra = document.createElement('header');
   barra.className = 'cl-barra';
   barra.style.setProperty('--juego', color);

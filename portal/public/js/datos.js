@@ -5,11 +5,10 @@
 
 // estado: 'disponible' | 'desarrollo'
 // lobby: dirección de su lista de salas. formato: cómo leerla (ver LECTORES en inicio.js).
-// cara: lo que muestra su lado del dado de la portada.
 export const JUEGOS = [
   {
     id: 'carrera',
-    nombre: 'Carrera loca',
+    nombre: 'Fall Pibes',
     estado: 'disponible',
     nuevo: true,
     url: '/carrera/',
@@ -19,11 +18,10 @@ export const JUEGOS = [
     captura: '/img/carrera.webp',
     lobby: '/api/carrera/lobby',
     formato: 'salas',
-    cara: '🏃',
   },
   {
     id: 'casino',
-    nombre: 'Casino',
+    nombre: 'El casino de Dobro',
     estado: 'disponible',
     nuevo: true,
     url: '/casino/',
@@ -33,7 +31,6 @@ export const JUEGOS = [
     captura: '/img/casino.webp',
     lobby: '/api/casino/lobby',
     formato: 'salas',
-    cara: '🎰',
   },
   {
     id: 'memes',
@@ -47,7 +44,6 @@ export const JUEGOS = [
     captura: '/img/memes.webp',
     lobby: '/api/memes/lobby',
     formato: 'salas',
-    cara: '😂',
   },
   {
     id: 'truco',
@@ -60,7 +56,6 @@ export const JUEGOS = [
     captura: '/img/truco.webp',
     lobby: '/api/truco/lobby',
     formato: 'truco',
-    cara: '🃏',
   },
   {
     id: 'ajedrez',
@@ -73,7 +68,6 @@ export const JUEGOS = [
     captura: '/img/ajedrez.webp',
     lobby: '/ajedrez/api/lobby',
     formato: 'ajedrez',
-    cara: '♞',
   },
 ];
 
@@ -81,7 +75,7 @@ export const JUEGOS = [
 export const IDEAS = [
   { titulo: 'Battle royale 2D', texto: 'Vista desde arriba en pixel art, zona que se achica, botín y construcción simple. Hasta 20 por partida.', etiqueta: 'Propuesta' },
   { titulo: 'Dibujá y adiviná', texto: 'Uno dibuja, el resto adivina en el chat. Rondas cortas y palabras argentas.', etiqueta: 'Idea' },
-  { titulo: 'Generala', texto: 'Cinco dados, cubilete y anotador. El dado ya lo tenemos en el logo.', etiqueta: 'Idea' },
+  { titulo: 'Generala', texto: 'Cinco dados, cubilete y anotador, como en la mesa de la casa.', etiqueta: 'Idea' },
   { titulo: 'Preguntados criollo', texto: 'Trivia por categorías en tiempo real: el que contesta primero y bien, suma.', etiqueta: 'Idea' },
 ];
 
@@ -93,8 +87,8 @@ export const EQUIPO = [
 ];
 
 export const NOVEDADES = [
-  { etiqueta: 'Nuevo', titulo: 'Carrera loca', texto: 'Obstáculos en 3D, en tiempo real y con bots para llenar la largada.', juego: 'carrera' },
-  { etiqueta: 'Nuevo', titulo: 'Casino', texto: 'Ruleta, blackjack y tragamonedas con pozo compartido. Fichas de mentira.', juego: 'casino' },
+  { etiqueta: 'Nuevo', titulo: 'Fall Pibes', texto: 'Obstáculos en 3D, en tiempo real y con bots para llenar la largada.', juego: 'carrera' },
+  { etiqueta: 'Nuevo', titulo: 'El casino de Dobro', texto: 'Ruleta, blackjack y tragamonedas con pozo compartido. Fichas de mentira.', juego: 'casino' },
   { etiqueta: 'Nuevo', titulo: 'Make it Meme', texto: '100 plantillas, textos donde quieras y votación anónima.', juego: 'memes' },
   { etiqueta: 'Club', titulo: 'Tu cuenta', texto: 'Historial de todos los juegos, amigos y chat. Desafiá desde el perfil.', enlace: '/club' },
 ];

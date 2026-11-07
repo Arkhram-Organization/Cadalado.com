@@ -21,7 +21,7 @@ const TIPO = {
   slots: { nombre: 'Tragamonedas', clase: 'slots', texto: 'Tres rodillos, cinco líneas y un pozo que crece con cada tirada de todo el salón.', montar: montarSlots },
 };
 
-await marco({ juego: 'Casino', color: ORO, volver: '/casino/' });
+await marco({ juego: 'El casino de Dobro', color: ORO, volver: '/casino/' });
 let sala = null;
 let limpiar = [];
 
@@ -55,11 +55,11 @@ const arte = {
 };
 
 async function salon() {
-  document.title = 'Casino · cadalado';
+  document.title = 'El casino de Dobro · cadalado';
   app.innerHTML = `
   <div class="salon">
     <div class="salon-hero">
-      <div><span class="etq">Fichas de mentira · emoción de verdad</span><h1>Casino<em>.</em></h1>
+      <div><span class="etq">Fichas de mentira · emoción de verdad</span><h1>El casino <em>de Dobro.</em></h1>
       <p>Ruleta, blackjack y tragamonedas en mesas compartidas: todos apuestan al mismo tiempo, en la misma partida.</p></div>
       <div class="saldo-grande"><span class="etq">Tus fichas</span><b data-saldo>—</b><button class="btn btn-chico hidden" data-ayuda style="margin-top:8px">Pedirle a la casa</button></div>
     </div>
@@ -205,7 +205,7 @@ function mesa(code) {
       if (!modulo) {
         $('[data-zona]').innerHTML = '';
         modulo = TIPO[e.tipo].montar($('[data-zona]'), helpers);
-        document.title = `${e.nombre} · Casino cadalado`;
+        document.title = `${e.nombre} · El casino de Dobro`;
         recordar('casino', `/casino/mesa/${code}`, e.nombre);
       }
       $('[data-nombre]').textContent = e.nombre;

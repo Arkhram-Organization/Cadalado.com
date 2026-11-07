@@ -153,7 +153,7 @@ export function montarSlots(zona, h) {
       h.estadoMesa(`${fmt(e.tiradas)} tiradas en el salón`, 'abierta');
       pozo(e.pozo);
       $('[data-feed]').innerHTML = e.feed.length
-        ? e.feed.map((f) => `<div class="${f.pozo ? 'pozo' : ''}">${f.pozo ? '🎰 ' : ''}<b>${h.esc(f.nombre)}</b> ${f.pozo ? 'se llevó el pozo:' : 'ganó'} <b>${fmt(f.gana)}</b></div>`).join('')
+        ? e.feed.map((f) => `<div class="${f.pozo ? 'pozo' : ''}"><b>${h.esc(f.nombre)}</b> ${f.pozo ? 'se llevó el pozo:' : 'ganó'} <b>${fmt(f.gana)}</b></div>`).join('')
         : '<p class="etq">Acá aparecen los premios grandes de todos.</p>';
     },
     reloj() {},

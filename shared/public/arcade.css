@@ -4,8 +4,8 @@
   --borde: #383531; --borde-2: #4a4641;
   --blanco: #f4f1ea; --blanco-2: #cfc9bd; --gris: #9a948a;
   --lima: #c5f04a; --lima-oscuro: #8fb52a; --rojo: #ff6b5b;
-  --titulo: "Unbounded", system-ui, sans-serif;
-  --texto: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --titulo: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --texto: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, monospace;
   color-scheme: dark;
 }
@@ -15,16 +15,16 @@ body { background: var(--carbon); color: var(--blanco); font: 16px/1.5 var(--tex
 a { color: inherit; text-decoration: none; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
-h1, h2, h3 { font-family: var(--titulo); font-weight: 800; letter-spacing: -0.02em; line-height: 1.02; margin: 0; }
+h1, h2, h3 { font-family: var(--titulo); font-weight: 800; letter-spacing: -0.005em; line-height: 1; margin: 0; text-transform: uppercase; }
 .hidden { display: none !important; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 .cl-barra { position: sticky; top: 0; z-index: 40; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: rgba(20,20,19,.88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--borde); }
-.cl-logo { display: flex; align-items: center; gap: 8px; font-family: var(--titulo); font-weight: 800; font-size: 18px; letter-spacing: -0.03em; }
+.cl-logo { display: flex; align-items: center; gap: 8px; font-family: var(--titulo); font-weight: 800; font-size: 22px; }
 .cl-logo img { width: 30px; height: 30px; transition: transform .4s cubic-bezier(.2,1.5,.4,1); }
 .cl-logo:hover img { transform: rotate(-12deg) scale(1.08); }
 .cl-sep { width: 1px; height: 24px; background: var(--borde-2); }
-.cl-juego { font-family: var(--titulo); font-weight: 700; font-size: 16px; color: var(--juego); }
+.cl-juego { font-family: var(--titulo); font-weight: 800; font-size: 19px; color: var(--juego); text-transform: uppercase; }
 .cl-espacio { flex: 1; }
 .cl-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 99px; background: var(--carbon-3); box-shadow: inset 0 0 0 1px var(--borde); font-weight: 700; font-size: 14px; }
 .cl-chip:not(:has(b)) { padding: 6px 14px; }
@@ -34,7 +34,7 @@ h1, h2, h3 { font-family: var(--titulo); font-weight: 800; letter-spacing: -0.02
   --f: var(--carbon-4); --t: var(--blanco); --b: #1f1d1b;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 11px 18px; border: 0; border-radius: 12px; background: var(--f); color: var(--t);
-  font-family: var(--titulo); font-weight: 700; font-size: 14px; letter-spacing: .01em;
+  font-family: var(--titulo); font-weight: 700; font-size: 17px; letter-spacing: .03em; text-transform: uppercase;
   box-shadow: 0 4px 0 var(--b); transition: transform .08s, box-shadow .08s, filter .15s; white-space: nowrap;
 }
 .btn:hover { filter: brightness(1.1); }

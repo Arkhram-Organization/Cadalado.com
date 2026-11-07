@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>cadalado · ¿Sale una partida?</title>
-  <meta name="description" content="Club de juegos online con amigos: carrera de obstáculos, casino, memes, truco y ajedrez. Tirá el dado.">
+  <meta name="description" content="Club de juegos online: ajedrez y truco para jugar con amigos. Cada uno de su lado, todos en la misma partida.">
   <meta name="theme-color" content="#141413">
   <meta property="og:title" content="cadalado · ¿Sale una partida?">
-  <meta property="og:description" content="Club de juegos online con amigos: carrera de obstáculos, casino, memes, truco y ajedrez. Tirá el dado.">
+  <meta property="og:description" content="Club de juegos online: ajedrez y truco para jugar con amigos. Cada uno de su lado, todos en la misma partida.">
   <meta property="og:image" content="/img/truco.webp">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -21,21 +21,23 @@
     <section class="hero casilleros">
       <div class="contenedor">
         <div class="hero-texto">
-          <span class="kicker entra">Club de juegos online · con amigos</span>
-          <h1 class="entra" style="--d:.08s">¿A qué jugamos <em>hoy?</em></h1>
-          <p class="hero-sub entra" style="--d:.16s">Carreras, casino, memes, truco y ajedrez. Sin descargas: mandás el link y cada uno juega desde su lado.</p>
+          <span class="kicker entra">Club de juegos online</span>
+          <h1 class="entra" style="--d:.08s">¿Sale una <em>partida?</em></h1>
+          <p class="hero-sub entra" style="--d:.16s">Carreras, casino, memes, truco y ajedrez para jugar con tus amigos desde el navegador. Cada uno de su lado, todos en la misma partida.</p>
           <div class="hero-cta entra" style="--d:.24s">
-            <button class="btn btn-lima btn-grande" data-tirar>🎲 Tirá el dado</button>
-            <a class="btn btn-borde btn-grande" href="#juegos">Ver los juegos</a>
+            <a class="btn btn-lima btn-grande" href="/ajedrez/">Jugar ajedrez</a>
+            <a class="btn btn-borde btn-grande" href="#juegos">Explorar juegos</a>
           </div>
           <div class="hero-pulso entra" style="--d:.32s" data-pulso aria-live="polite"></div>
         </div>
-        <div class="dado-zona entra" style="--d:.2s">
-          <div class="dado-escena" data-dado-escena>
-            <div class="dado" data-dado aria-hidden="true"></div>
-            <div class="dado-sombra"></div>
+        <div class="escena entra" style="--d:.2s" aria-hidden="true">
+          <div class="pantalla p-truco flota"><img src="/img/truco.webp" alt="" width="1280" height="800"></div>
+          <div class="pantalla p-ajedrez">
+            <div class="mini" data-mini></div>
+            <div class="mini-pie"><span>Ana <span style="color:var(--gris)">vs</span> Beto</span><span class="reloj" data-mini-reloj>4:59</span></div>
           </div>
-          <div class="dado-resultado" data-dado-res aria-live="polite"><span class="etq">Cada lado, un juego</span><b>Tocá el dado</b></div>
+          <span class="etiqueta e-vivo chip chip-vivo">Partida en vivo</span>
+          <div class="etiqueta e-marcador flota" style="animation-delay:-3s">Truco a 15 · <b>11</b> a 3</div>
         </div>
       </div>
     </section>
@@ -83,7 +85,7 @@
 
     <section class="seccion borde-arriba" id="novedades">
       <div class="contenedor">
-        <div class="seccion-cabeza revela"><div><span class="kicker">Novedades</span><h2>Lo nuevo</h2></div><p>Lo último que sumamos al club.</p></div>
+        <div class="seccion-cabeza revela"><div><span class="kicker">Novedades</span><h2>Lo que se viene</h2></div><p>Lo que ya está y lo próximo. Sin promesas raras.</p></div>
         <div class="novedades" data-novedades></div>
       </div>
     </section>
@@ -109,7 +111,7 @@
       <div class="contenedor revela">
         <h2>¿Sale <em>una?</em></h2>
         <p>Mandá el link. Se juega.</p>
-        <div class="hero-cta"><a class="btn btn-lima btn-grande" href="/carrera/">Carrera loca</a><a class="btn btn-lima btn-grande" href="/casino/">Casino</a><a class="btn btn-borde btn-grande" href="#juegos">Todos los juegos</a></div>
+        <div class="hero-cta"><a class="btn btn-lima btn-grande" href="/ajedrez/">Jugar ajedrez</a><a class="btn btn-lima btn-grande" href="/truco/">Jugar truco</a></div>
       </div>
     </section>
   </main>
