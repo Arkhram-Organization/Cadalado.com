@@ -2,23 +2,25 @@
 // crearPersona(THREE, look) → { grupo, animar(estado, dt), decir(texto, seg), ... }
 // look: ver shared/public/npcs.js (piel, pelo, ojos, cuerpo, ropa, barba, lentes, kipa, sombrero, capa, robot, dorado, smoking)
 
-const ANCHO = { flaco: 0.3, normal: 0.36, gordito: 0.46 };
+const ANCHO = { flaco: 0.27, normal: 0.31, gordito: 0.38 };
 
+// Estilo "muñequito de juguete": cabeza grande, cuerpo redondeado, brazos largos con manos y piernas cortas.
+// Mide ~1.85 de alto. La cara mira hacia -Z.
 export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
   const L = {
     piel: '#e8c4a8',
-    ojos: '#4a3322',
+    ojos: '#1b1410',
     cuerpo: 'normal',
     pelo: { estilo: 'corto', color: '#2b1d14' },
     ropa: { remera: '#7aa2ff', pantalon: '#2b2b33' },
     ...look,
   };
-  const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...extra });
-  const piel = L.robot ? mat(L.piel, { metalness: 0.6, roughness: 0.35 }) : mat(L.piel, { roughness: 0.55 });
+  const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, ...extra });
+  const piel = L.robot ? mat(L.piel, { metalness: 0.6, roughness: 0.35 }) : mat(L.piel, { roughness: 0.5 });
   const remera = mat(L.smoking ? '#111114' : L.ropa.remera);
   const pantalon = mat(L.smoking ? '#111114' : L.ropa.pantalon);
-  const zapato = mat('#1a1a1a');
-  const pelo = mat(L.pelo.color, { roughness: 0.9 });
+  const zapato = mat(L.smoking ? '#0b0b0b' : '#3a2a20', { roughness: 0.4 });
+  const pelo = mat(L.pelo.color, { roughness: 0.8 });
   const ancho = ANCHO[L.cuerpo] || ANCHO.normal;
   const g = new THREE.Group();
   const cuerpo = new THREE.Group(); // todo lo que se anima
@@ -30,46 +32,55 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     padre.add(o);
     return o;
   };
+  const CADERA = 0.5;
 
-  // piernas (con pivote en la cadera)
+  // piernas cortas y gorditas (pivote en la cadera)
   const pierna = (lado) => {
     const p = new THREE.Group();
-    p.position.set(lado * ancho * 0.42, 0.86, 0);
-    malla(new THREE.CapsuleGeometry(0.11, 0.5, 4, 10), pantalon, 0, -0.38, 0, p);
-    malla(new THREE.BoxGeometry(0.16, 0.1, 0.28), zapato, 0, -0.8, -0.05, p);
+    p.position.set(lado * ancho * 0.45, CADERA, 0);
+    malla(new THREE.CapsuleGeometry(0.12, 0.2, 4, 12), pantalon, 0, -0.2, 0, p);
+    const z = malla(new THREE.SphereGeometry(0.13, 14, 10), zapato, 0, -0.42, -0.05, p);
+    z.scale.set(0.95, 0.6, 1.35);
     cuerpo.add(p);
     return p;
   };
   const piernaI = pierna(-1);
   const piernaD = pierna(1);
 
-  // torso
+  // torso redondeado: remera arriba, pantalón abajo
   const torso = new THREE.Group();
-  torso.position.y = 0.86;
+  torso.position.y = CADERA;
   cuerpo.add(torso);
-  const panza = malla(new THREE.CapsuleGeometry(ancho * 0.75, 0.32, 6, 14), remera, 0, 0.36, 0, torso);
-  panza.scale.set(1, 1, L.cuerpo === 'gordito' ? 0.95 : 0.72);
+  const cadera = malla(new THREE.SphereGeometry(ancho, 18, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5), pantalon, 0, 0.12, 0, torso);
+  cadera.scale.set(1, 0.6, L.cuerpo === 'gordito' ? 0.95 : 0.82);
+  const panza = malla(new THREE.CapsuleGeometry(ancho, 0.24, 8, 18), remera, 0, 0.32, 0, torso);
+  panza.scale.set(1, 1, L.cuerpo === 'gordito' ? 0.95 : 0.8);
+  const prof = ancho * (L.cuerpo === 'gordito' ? 0.95 : 0.8); // hasta dónde llega el pecho hacia adelante
   if (L.smoking) {
-    // camisa blanca en V, moño y solapas
-    malla(new THREE.BoxGeometry(ancho * 0.55, 0.3, 0.02), mat('#f7f7f2'), 0, 0.5, -ancho * 0.56, torso).rotation.x = -0.12;
-    const mono = malla(new THREE.BoxGeometry(0.14, 0.05, 0.04), mat('#0d0d0d'), 0, 0.62, -ancho * 0.6, torso);
-    mono.rotation.z = 0;
-    malla(new THREE.SphereGeometry(0.025, 8, 6), mat('#0d0d0d'), 0, 0.62, -ancho * 0.62, torso);
+    // camisa blanca en V, moño y botones
+    const camisa = malla(new THREE.CylinderGeometry(0.0, ancho * 0.42, 0.34, 3, 1), mat('#f7f7f2'), 0, 0.5, -prof + 0.04, torso);
+    camisa.rotation.set(Math.PI, 0, 0);
+    camisa.scale.z = 0.25;
+    malla(new THREE.BoxGeometry(0.15, 0.06, 0.04), mat('#0d0d0d'), 0, 0.64, -prof - 0.02, torso);
+    for (const y of [0.42, 0.33]) malla(new THREE.SphereGeometry(0.018, 8, 6), mat('#d4af37', { metalness: 0.6 }), 0, y, -prof - 0.01, torso);
   }
   if (L.capa) {
-    const capa = malla(new THREE.PlaneGeometry(ancho * 1.6, 0.85), mat(L.capa, { side: THREE.DoubleSide }), 0, 0.25, ancho * 0.55, torso);
-    capa.rotation.x = 0.18;
+    const capa = malla(new THREE.PlaneGeometry(ancho * 1.9, 0.8), mat(L.capa, { side: THREE.DoubleSide }), 0, 0.2, prof + 0.03, torso);
+    capa.rotation.x = 0.15;
   }
   if (L.robot) {
-    malla(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 12), mat('#38d9e6', { emissive: '#38d9e6', emissiveIntensity: 0.8 }), 0, 0.42, -ancho * 0.72, torso).rotation.x = Math.PI / 2;
+    malla(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 14), mat('#38d9e6', { emissive: '#38d9e6', emissiveIntensity: 0.8 }), 0, 0.38, -prof, torso).rotation.x = Math.PI / 2;
   }
+  // un detalle en la remera para distinguir (franja o número)
+  if (!L.smoking && !L.robot && L.ropa.franja) malla(new THREE.CapsuleGeometry(ancho * 1.005, 0.02, 6, 18), mat(L.ropa.franja), 0, 0.38, 0, torso).scale.set(1, 0.35, L.cuerpo === 'gordito' ? 0.96 : 0.81);
 
-  // brazos (pivote en el hombro)
+  // brazos largos (pivote en el hombro) con manga y mano
   const brazo = (lado) => {
     const b = new THREE.Group();
-    b.position.set(lado * (ancho * 0.75 + 0.08), 0.66, 0);
-    malla(new THREE.CapsuleGeometry(0.075, 0.42, 4, 10), L.smoking ? remera : remera, 0, -0.26, 0, b);
-    malla(new THREE.SphereGeometry(0.075, 10, 8), piel, 0, -0.55, 0, b);
+    b.position.set(lado * (ancho + 0.07), 0.56, 0);
+    malla(new THREE.CapsuleGeometry(0.085, 0.16, 4, 10), remera, 0, -0.1, 0, b);
+    malla(new THREE.CapsuleGeometry(0.07, 0.18, 4, 10), L.smoking ? remera : piel, 0, -0.3, 0, b);
+    malla(new THREE.SphereGeometry(0.085, 12, 10), L.guantes ? mat(L.guantes) : piel, 0, -0.47, 0, b);
     torso.add(b);
     return b;
   };
@@ -77,31 +88,37 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   const brazoD = brazo(1);
 
   // cabeza
+  // la cabeza se arma chica y se agranda entera (así pelo, lentes y gorros quedan en su lugar)
   const cabeza = new THREE.Group();
-  cabeza.position.y = 0.86 + 0.82;
-  cuerpo.add(cabeza);
-  malla(new THREE.CylinderGeometry(0.07, 0.08, 0.1, 10), piel, 0, -0.17, 0, cabeza);
-  const craneo = malla(new THREE.SphereGeometry(0.19, 20, 16), piel, 0, 0, 0, cabeza);
-  craneo.scale.set(L.cuerpo === 'gordito' ? 1.05 : 0.95, 1.05, 1);
-  for (const x of [-0.19, 0.19]) malla(new THREE.SphereGeometry(0.04, 8, 6), piel, x, -0.01, 0.01, cabeza);
-  // cara (mira hacia -Z)
-  const blanco = mat('#ffffff', { roughness: 0.3 });
-  const iris = mat(L.ojos, { roughness: 0.3 });
-  for (const x of [-0.065, 0.065]) {
-    malla(new THREE.SphereGeometry(0.033, 12, 10), blanco, x, 0.03, -0.165, cabeza);
-    malla(new THREE.SphereGeometry(0.018, 10, 8), iris, x, 0.03, -0.192, cabeza);
-    if (L.pelo.estilo !== 'calvo' || L.barba) malla(new THREE.BoxGeometry(0.06, 0.012, 0.02), pelo, x, 0.085, -0.175, cabeza);
+  cabeza.position.y = CADERA + 0.88;
+  cabeza.scale.setScalar(1.75);
+  torso.parent.add(cabeza);
+  const craneo = malla(new THREE.SphereGeometry(0.19, 24, 18), piel, 0, 0, 0, cabeza);
+  craneo.scale.set(L.cuerpo === 'gordito' ? 1.06 : 1, 1, 0.98);
+  // ojos ovalados oscuros con brillo, cejas y boca simple
+  const ojo = mat(L.ojos, { roughness: 0.2 });
+  const brillo = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  for (const x of [-0.06, 0.06]) {
+    const o = malla(new THREE.SphereGeometry(0.026, 12, 10), ojo, x, 0.03, -0.172, cabeza);
+    o.scale.set(0.8, 1.35, 0.6);
+    malla(new THREE.SphereGeometry(0.008, 6, 4), brillo, x + 0.008, 0.048, -0.186, cabeza);
+    if (L.pelo.estilo !== 'calvo' || L.barba) {
+      const c = malla(new THREE.BoxGeometry(0.05, 0.01, 0.015), pelo, x, 0.085, -0.172, cabeza);
+      c.rotation.z = x > 0 ? -0.15 : 0.15;
+    }
   }
-  malla(new THREE.SphereGeometry(0.025, 8, 6), piel, 0, -0.02, -0.19, cabeza);
-  const boca = malla(new THREE.BoxGeometry(0.07, 0.012, 0.01), mat('#7a3b33'), 0, -0.085, -0.178, cabeza);
+  const mejilla = new THREE.MeshBasicMaterial({ color: 0xff8a7a, transparent: true, opacity: 0.35 });
+  if (!L.robot) for (const x of [-0.11, 0.11]) malla(new THREE.CircleGeometry(0.028, 12), mejilla, x, -0.03, -0.17, cabeza).rotation.y = Math.PI + (x > 0 ? 0.55 : -0.55);
+  const boca = malla(new THREE.BoxGeometry(0.06, 0.012, 0.01), mat('#5a2b25'), 0, -0.07, -0.182, cabeza);
   // pelo
   const est = L.pelo.estilo;
   if (est === 'corto') {
     const c = malla(new THREE.SphereGeometry(0.2, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), pelo, 0, 0.02, 0.012, cabeza);
     c.scale.set(1, 0.9, 1.02);
   } else if (est === 'poco') {
-    const c = malla(new THREE.TorusGeometry(0.17, 0.035, 8, 20, Math.PI), pelo, 0, 0.02, 0.02, cabeza);
-    c.rotation.set(Math.PI / 2, 0, Math.PI);
+    // solo a los costados y atrás (pelado arriba)
+    const c = malla(new THREE.TorusGeometry(0.175, 0.04, 8, 24, Math.PI), pelo, 0, -0.02, 0.0, cabeza);
+    c.rotation.set(Math.PI / 2, 0, 0);
   } else if (est === 'rulos' || est === 'rulosPoco') {
     const n = est === 'rulos' ? 16 : 9;
     for (let i = 0; i < n; i++) {
@@ -110,9 +127,9 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
       malla(new THREE.SphereGeometry(0.055, 8, 6), pelo, Math.cos(a) * r, est === 'rulos' ? 0.12 : 0.06 + (i % 2) * 0.03, Math.sin(a) * r + 0.03, cabeza);
     }
   } else if (est === 'largo') {
-    const c = malla(new THREE.SphereGeometry(0.205, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), pelo, 0, 0.02, 0.01, cabeza);
+    const c = malla(new THREE.SphereGeometry(0.205, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.45), pelo, 0, 0.03, 0.015, cabeza);
     c.scale.set(1.02, 0.95, 1.04);
-    malla(new THREE.BoxGeometry(0.36, 0.38, 0.09), pelo, 0, -0.17, 0.12, cabeza);
+    malla(new THREE.BoxGeometry(0.36, 0.34, 0.09), pelo, 0, -0.1, 0.13, cabeza);
   }
   if (L.barba) {
     const b = malla(new THREE.SphereGeometry(0.17, 14, 10, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), mat(L.barba, { roughness: 0.95 }), 0, 0.01, -0.03, cabeza);
@@ -134,6 +151,12 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   if (L.sombrero) {
     malla(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 20), mat(L.sombrero), 0, 0.15, 0, cabeza);
     malla(new THREE.CylinderGeometry(0.16, 0.19, 0.16, 18), mat(L.sombrero), 0, 0.24, 0, cabeza);
+  }
+  if (L.auriculares) {
+    const m = mat(L.auriculares, { roughness: 0.35 });
+    const arco = malla(new THREE.TorusGeometry(0.2, 0.014, 6, 24, Math.PI), m, 0, 0.02, 0, cabeza);
+    arco.rotation.y = Math.PI / 2;
+    for (const x of [-0.195, 0.195]) malla(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 16), m, x, -0.01, 0, cabeza).rotation.z = Math.PI / 2;
   }
   if (L.robot) {
     malla(new THREE.CylinderGeometry(0.01, 0.01, 0.16, 6), mat('#8a96a3'), 0, 0.26, 0, cabeza);
@@ -170,7 +193,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   // cartel con el nombre y globito de diálogo (sprites con canvas)
   const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.72)', tamCartel) : null;
   if (cartel) {
-    cartel.position.y = 2.35;
+    cartel.position.y = 2.2;
     g.add(cartel);
   }
   let globo = null;
@@ -185,11 +208,11 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     decir(texto, seg = 4.5) {
       if (globo) g.remove(globo);
       globo = sprite(THREE, texto, '#141413', '#ffffff', tamGlobo, true);
-      globo.position.y = 2.35 + tamCartel + 0.05 + globo.scale.y / 2;
+      globo.position.y = 2.2 + tamCartel + 0.05 + globo.scale.y / 2;
       g.add(globo);
       globoHasta = reloj + seg;
     },
-    // estado: 'quieto' | 'corre' | 'salto' | 'buceo' | 'golpe' | 'pina' | 'patada' | 'festeja' | 'sentado' | 'cae'
+    // estado: 'quieto' | 'corre' | 'salto' | 'buceo' | 'golpe' | 'tirado' | 'pina' | 'patada' | 'festeja' | 'sentado' | 'cae'
     animar(estado, dt) {
       reloj += dt;
       fase += dt * (estado === 'corre' ? 11 : 3);
@@ -217,10 +240,19 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         cuerpo.position.y = 0.45;
         brazoI.rotation.x = brazoD.rotation.x = -2.9;
       } else if (estado === 'golpe' || estado === 'cae') {
-        cuerpo.rotation.z = Math.sin(fase * 3) * 0.5;
-        cuerpo.rotation.x = 0.35;
-        brazoI.rotation.z = -1.4;
-        brazoD.rotation.z = 1.4;
+        cuerpo.rotation.z = Math.sin(fase * 3) * 0.45;
+        cuerpo.rotation.x = 0.3;
+        brazoI.rotation.z = -1.9;
+        brazoD.rotation.z = 1.9;
+        boca.scale.set(0.6, 4, 1);
+      } else if (estado === 'tirado') {
+        // en el piso panza arriba, como un muñeco tirado
+        cuerpo.rotation.x = 1.5;
+        cuerpo.position.set(0, 0.32, 0.55);
+        brazoI.rotation.z = -1.2 + Math.sin(fase * 2) * 0.15;
+        brazoD.rotation.z = 1.2 - Math.sin(fase * 2) * 0.15;
+        piernaI.rotation.x = -0.3;
+        piernaD.rotation.x = 0.2;
         boca.scale.set(0.6, 4, 1);
       } else if (estado === 'pina') {
         brazoD.rotation.x = -1.6;
@@ -237,9 +269,12 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         brazoD.rotation.z = 2.6 - s * 0.2;
         boca.scale.set(1.2, 3, 1);
       } else if (estado === 'sentado') {
-        piernaI.rotation.x = piernaD.rotation.x = -1.45;
-        cuerpo.position.y = -0.38;
-        brazoI.rotation.x = brazoD.rotation.x = -0.9;
+        // sentado: muslos para adelante, manos sobre la mesa
+        piernaI.rotation.x = piernaD.rotation.x = -1.5;
+        cuerpo.position.y = 0.04;
+        brazoI.rotation.x = brazoD.rotation.x = -1.15;
+        brazoI.rotation.z = 0.15;
+        brazoD.rotation.z = -0.15;
         cabeza.rotation.y = Math.sin(fase * 0.3) * 0.25;
       } else {
         // quieto: respira y mira un poco a los costados

@@ -1,4 +1,4 @@
-// Los mapas de Fall Pibes: geometría, obstáculos en movimiento y la ruta de los bots.
+// Los mapas de Ángeles Peña: geometría, obstáculos en movimiento y la ruta de los bots.
 // Todo es determinístico (depende de la "semilla" de la ronda y del tiempo): todos los navegadores
 // ven lo mismo sin mandarse nada, y el servidor sabe cuándo llega cada bot.
 // Unidades: metros y segundos. La pista avanza hacia -Z. El piso arranca en y = 0.
@@ -146,7 +146,7 @@ const M2 = {
   },
   ruta: [
     { ir: -14 }, { ir: -44, vel: 0.5, peligro: 0.2 }, { ir: -52, peligro: 0.5 }, { ir: -66, peligro: 0.5 }, { ir: -79.5, peligro: 0.35 },
-    { carril: [-4, 0, 4] }, { ir: -86 }, { ir: -95, peligro: 0.4 }, { ir: -103.5 },
+    { carril: [-4, 0, 4], fijo: true }, { ir: -86 }, { ir: -95, peligro: 0.4 }, { ir: -103.5 }, { libre: true },
     { esperar: [0.2, 0.8] }, { saltar: [0, 0, -110.5], dur: 0.95 }, { ir: -114, peligro: 0.2 }, { ir: -124, peligro: 0.45 }, { ir: -134.5, peligro: 0.35 },
     { saltar: [0, 0.8, -137.5] }, { saltar: [0, 1.6, -141] }, { saltar: [0, 2.4, -144.5] }, { saltar: [0, 3.2, -148] }, { saltar: [0, 4, -151.5] },
     { ir: -165, y: 4, vel: 1.05 },
@@ -164,7 +164,9 @@ const M3 = {
   estaticos() {
     return {
       cajas: [
-        piso(0, -14, 16), ...bordes(0, -14, 16),
+        piso(0, -14.4, 16), ...bordes(0, -14.4, 16),
+        // después de las baldosas: un tramo firme con dos barras que barren
+        piso(-39, -64, 14, 0, 3), ...bordes(-39, -64, 14),
         piso(-64, -90, 8, 0, 1), ...bordes(-64, -90, 8),
         // hueco de doble salto: -90 a -95
         piso(-95, -116, 14, 0, 2), ...bordes(-95, -116, 14),
@@ -190,6 +192,8 @@ const M3 = {
     return {
       plataformas: [],
       barras: [
+        { x: 0, y: 0.55, z: -46, ang: 0.95 * t + f[6], w: 0.95, largo: 6.6, r: 0.35 },
+        { x: 0, y: 0.55, z: -56, ang: -1.1 * t + f[7], w: -1.1, largo: 6.6, r: 0.35 },
         { x: 0, y: 0.55, z: -102, ang: 1.2 * t, w: 1.2, largo: 7, r: 0.35 },
         { x: 0, y: 0.55, z: -110, ang: -1.0 * t + 1.3, w: -1.0, largo: 7, r: 0.35 },
       ],
@@ -201,8 +205,8 @@ const M3 = {
     };
   },
   ruta: [
-    { ir: -14 }, { ir: -38, vel: 0.85, peligro: 0.35 }, { ir: -63.5, vel: 0.85, peligro: 0.35 },
-    { ir: -74, peligro: 0.45 }, { ir: -89.5, peligro: 0.45 }, { esperar: [0.2, 0.7] }, { saltar: [0, 0, -96], dur: 0.95 },
+    { ir: -14 }, { baldosas: true }, { ir: -50, peligro: 0.35 }, { ir: -63.5, peligro: 0.35 },
+    { ir: -74, peligro: 0.45, ancho: 2 }, { ir: -89.5, peligro: 0.45, ancho: 2 }, { esperar: [0.2, 0.7] }, { saltar: [0, 0, -96], dur: 0.95 },
     { ir: -105, peligro: 0.4 }, { ir: -115.5, peligro: 0.4 }, { ir: -128, y: 'rampa', vel: 0.8, peligro: 0.45 }, { ir: -140.5, y: 'rampa', vel: 0.8 },
     { ir: -153, y: 5, vel: 1.05 },
   ],
@@ -244,23 +248,68 @@ export function rutaBot(mapaId, semilla, i) {
     pos = b.fila === undefined ? { ...b } : b;
   };
   seg({ ...pos }, 0.2 + r() * 0.6, 'quieto');
+  let fijo = false;
   for (const p of mapa.ruta) {
-    if (p.carril) carril = p.carril[Math.floor(r() * p.carril.length)];
-    else if (p.esperar) seg({ ...pos }, p.esperar[0] + r() * (p.esperar[1] - p.esperar[0]), 'quieto');
+    if (p.libre) fijo = false;
+    else if (p.carril) {
+      carril = p.carril[Math.floor(r() * p.carril.length)];
+      fijo = !!p.fijo;
+      // se acomoda en su carril antes de subirse (por el piso)
+      if (fijo) seg({ x: carril, y: pos.y, z: pos.z }, Math.max(0.1, Math.abs(carril - pos.x) / v), 'camina');
+    } else if (p.baldosas) {
+      // campo de baldosas: salta fila por fila a una que no se vaya a caer
+      const tiempoFila = 2.05 / v + 0.08;
+      const firme = (fila, col, t0, dur) => {
+        for (let q = 0; q <= 3; q++) if (!moviles(mapaId, t0 + (dur * q) / 3, semilla).baldosas[fila * 7 + col].solida) return false;
+        return true;
+      };
+      let col = Math.max(0, Math.min(6, Math.round(pos.x / 2.05) + 3));
+      const zFila = (f) => (f < 0 ? -14 : -15.5 - f * 2.05);
+      for (let fila = 0; fila < 12; fila++) {
+        let elegida = null;
+        for (let espera = 0; espera < 14 && elegida == null; espera++) {
+          const opciones = [col, col - 1, col + 1].filter((c) => c >= 0 && c <= 6).sort((x, y) => Math.abs(x - 3) - Math.abs(y - 3) + (r() - 0.5) * 2.5);
+          // si cambia de columna, primero se corre de costado en su fila (que también tiene que aguantar)
+          elegida = opciones.find((c) => firme(fila, c, t, tiempoFila * 2 + 0.4) && (c === col || fila === 0 || firme(fila - 1, c, t, tiempoFila + 0.3))) ?? null;
+          if (elegida == null) {
+            if (fila > 0 && !firme(fila - 1, col, t, 0.4)) break;
+            seg({ ...pos }, 0.3, 'quieto');
+          }
+        }
+        if (elegida == null) {
+          seg({ ...pos }, 2.5, 'cae');
+          elegida = col;
+        }
+        if (elegida !== col) seg({ x: (elegida - 3) * 2.05, y: 0, z: zFila(fila - 1) }, tiempoFila, 'camina');
+        col = elegida;
+        seg({ x: (col - 3) * 2.05, y: 0, z: zFila(fila) }, tiempoFila, 'camina');
+      }
+      seg({ x: (col - 3) * 2.05 * 0.6, y: 0, z: -40 }, 1.1 / v + 0.15, 'camina');
+    } else if (p.esperar) seg({ ...pos }, p.esperar[0] + r() * (p.esperar[1] - p.esperar[0]), 'quieto');
     else if (p.saltar) seg({ x: p.saltar[0] + (r() - 0.5) * 1.2, y: p.saltar[1], z: p.saltar[2] }, p.dur || 0.7, 'salto');
     else if (p.fila !== undefined) {
       seg({ fila: p.fila }, 0.7, 'salto');
       seg({ fila: p.fila }, 0.5 + r() * 1.0, 'plataforma');
     } else if (p.ir !== undefined) {
-      const x = Math.max(-5, Math.min(5, carril + (r() - 0.5) * 2));
-      const destino = { x, y: yDe(p.y, p.ir), z: p.ir };
-      const d = Math.hypot(destino.x - (pos.x ?? 0), destino.z - (pos.z ?? 0));
-      seg(destino, Math.max(0.05, d / (v * (p.vel || 1))), 'camina');
+      // camina zigzagueando un poco (no en línea recta), sin salirse del piso
+      const lim = p.ancho ?? 4.5;
+      const z0 = pos.z;
+      const tramos = fijo ? 1 : Math.max(1, Math.round(Math.abs(p.ir - z0) / 5));
+      for (let k = 1; k <= tramos; k++) {
+        const z = z0 + ((p.ir - z0) * k) / tramos;
+        let x = fijo ? carril : Math.max(-lim, Math.min(lim, (pos.x ?? 0) * 0.5 + carril * 0.5 + (r() - 0.5) * 3.2));
+        if (k === tramos && !fijo) x = Math.max(-lim, Math.min(lim, x));
+        const destino = { x, y: yDe(p.y, z), z };
+        const d = Math.hypot(destino.x - (pos.x ?? 0), destino.z - (pos.z ?? 0));
+        seg(destino, Math.max(0.05, d / (v * (p.vel || 1) * (0.92 + r() * 0.16))), 'camina');
+      }
       if (p.peligro && r() < p.peligro) {
-        // un obstáculo lo voltea: vuela un poco para atrás y se levanta
-        seg({ x: pos.x + (r() - 0.5) * 3, y: pos.y, z: pos.z + 1.5 + r() * 2 }, 0.6, 'golpe');
-        seg({ ...pos }, 0.6 + r() * 0.8, 'quieto');
-        if (r() < 0.25) seg({ ...pos }, 2.5, 'cae'); // se cayó al agua: vuelve al último punto
+        // un obstáculo lo voltea: vuela un poco para atrás, queda tirado y se levanta
+        const atras = { x: Math.max(-lim, Math.min(lim, pos.x + (r() - 0.5) * 2)), y: pos.y, z: pos.z + 1.2 + r() * 1.2 };
+        if (p.y === 'rampa') atras.y = yDe('rampa', atras.z);
+        seg(atras, 0.55, 'golpe');
+        seg({ ...pos }, 0.9 + r() * 0.7, 'tirado');
+        if (r() < 0.2) seg({ ...pos }, 2.5, 'cae'); // se cayó al agua: vuelve al último punto
       }
     }
   }
@@ -285,6 +334,6 @@ export function posBot(mapaId, ruta, t, semilla) {
   if (s.tipo === 'salto') y += Math.sin(k * Math.PI) * (s.t1 - s.t0 > 0.8 ? 2.4 : 1.6);
   if (s.tipo === 'cae') y -= Math.min(8, k * 14);
   const ry = Math.atan2(-(b.x - a.x), -(b.z - a.z)) || 0;
-  const anim = t > ruta.fin ? 'festeja' : s.tipo === 'salto' ? 'salto' : s.tipo === 'golpe' || s.tipo === 'cae' ? 'golpe' : s.tipo === 'camina' ? 'corre' : 'quieto';
+  const anim = t > ruta.fin ? 'festeja' : s.tipo === 'salto' ? 'salto' : s.tipo === 'golpe' || s.tipo === 'cae' ? 'golpe' : s.tipo === 'tirado' ? 'tirado' : s.tipo === 'camina' ? 'corre' : 'quieto';
   return { x, y, z, ry: s.tipo === 'camina' || s.tipo === 'salto' ? ry : 0, a: anim };
 }

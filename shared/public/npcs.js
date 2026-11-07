@@ -10,7 +10,7 @@ export const NPCS = [
   {
     id: 'glinsky',
     nombre: 'Glinsky',
-    look: { piel: '#e8c4a8', pelo: { estilo: 'poco', color: '#e9e6e0' }, ojos: '#5a3a22', cuerpo: 'flaco', ropa: { remera: '#3f5a7a', pantalon: '#2b2b33' }, genero: 'h' },
+    look: { piel: '#e8c4a8', pelo: { estilo: 'poco', color: '#e9e6e0' }, ojos: '#4a2c18', cuerpo: 'flaco', ropa: { remera: '#3f5a7a', pantalon: '#2b2b33', franja: '#f4f1ea' }, genero: 'h' },
     frases: [
       '¡Qué grande que sos, Julo!',
       'Julo es el Momo de la informática.',
@@ -26,7 +26,7 @@ export const NPCS = [
   {
     id: 'julo',
     nombre: 'Julo',
-    look: { piel: '#f0cfb4', pelo: { estilo: 'calvo', color: '#000' }, ojos: '#3d7fd6', cuerpo: 'gordito', ropa: { remera: '#2f6b4f', pantalon: '#33302c' }, genero: 'h' },
+    look: { piel: '#f0cfb4', pelo: { estilo: 'calvo', color: '#000' }, ojos: '#2f6fd6', cuerpo: 'gordito', auriculares: '#1d1d22', ropa: { remera: '#2f6b4f', pantalon: '#33302c', franja: '#c5f04a' }, genero: 'h' },
     frases: [
       'Si cacheás el kernel en el ruteador, el JSON se desfragmenta solo.',
       'El puntero apunta a sí mismo. Eso es amor.',

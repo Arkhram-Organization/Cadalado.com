@@ -13,7 +13,7 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 | Portal (inicio, equipo, entrar, club) | [`portal`](portal) | `main` | `cadalado.com` |
 | Ajedrez | [`games/chessort`](games/chessort) | `chessort` | `cadalado.com/ajedrez` |
 | Truco | [`games/truco`](games/truco) | `truco` | `cadalado.com/truco` |
-| Fall Pibes (carrera de obstáculos 3D) | [`games/carrera`](games/carrera) | `chessort` | `cadalado.com/carrera` |
+| Ángeles Peña (carrera de obstáculos 3D) | [`games/carrera`](games/carrera) | `chessort` | `cadalado.com/carrera` |
 | El casino de Dobro (ruleta, blackjack, slots) | [`games/casino`](games/casino) | `chessort` | `cadalado.com/casino` |
 | Make it Meme | [`games/memes`](games/memes) | `chessort` | `cadalado.com/memes` |
 | Cuentas, historial, amigos y chats | [`shared`](shared) | `main` | `cadalado.com/club` |

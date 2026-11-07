@@ -195,3 +195,33 @@ test('jugando solo se juegan los tres mapas', async () => {
   assert.equal(v.estado.fase, 'podio');
   assert.ok(v.estado.resultados[0].paso);
 });
+
+test('los bots siempre pisan algo firme (no caminan por el aire ni sobre baldosas que se caen)', () => {
+  for (const m of [1, 2, 3]) {
+    const j = new Jugador(m, 77);
+    for (let i = 0; i < 11; i++) for (const sem of [77, 4242]) {
+      const ruta = rutaBot(m, sem, i);
+      for (let t = 0; t < ruta.fin; t += 0.1) {
+        const sg = ruta.segs.find((g) => t < g.t1);
+        if (!sg || !['camina', 'quieto', 'tirado', 'plataforma'].includes(sg.tipo)) continue;
+        const p = posBot(m, ruta, t, sem);
+        const s = j.suelo(p.x, p.z, p.y + 0.6, moviles(m, t, sem));
+        assert.ok(s.y > p.y - 0.6, `mapa ${m} bot ${i}: sin piso en x ${p.x.toFixed(1)} z ${p.z.toFixed(1)} (t ${t.toFixed(1)})`);
+      }
+    }
+  }
+});
+
+test('los obstáculos y las piñas te tiran al piso un rato', () => {
+  const j = new Jugador(1, 7);
+  j.ubicar(0, 0, -10);
+  j.recibirGolpe(1, 0);
+  let tirado = false;
+  for (let i = 0; i < 90; i++) {
+    j.paso(1 / 60, 1, { x: 0, z: 1 }, 0);
+    if (j.anim === 'tirado') tirado = true;
+  }
+  assert.ok(tirado, 'quedó tirado');
+  for (let i = 0; i < 60; i++) j.paso(1 / 60, 3, { x: 0, z: 1 }, 0);
+  assert.notEqual(j.anim, 'tirado', 'se levanta');
+});

@@ -10,7 +10,8 @@ const SALTO = 9.4;
 const DOBLE = 8.2;
 const G = 27;
 const BUCEO = 9;
-export const ENFRIAR_GOLPE = 10; // segundos entre piñas
+export const ENFRIAR_GOLPE = 4; // segundos entre piñas
+const TIRADO = 1.35; // cuánto queda en el piso cuando lo voltean
 
 export class Jugador {
   constructor(mapaId, semilla) {
@@ -74,14 +75,20 @@ export class Jugador {
     return true;
   }
 
+  // Lo voltean (piña, obstáculo): vuela un poco, cae y queda tirado un ratito, como un muñeco.
+  voltear(vx, vy, vz, dur = TIRADO) {
+    this.vx = vx;
+    this.vy = vy;
+    this.vz = vz;
+    this.enSuelo = false;
+    this.aturdido = dur;
+    this.aturdidoMax = dur;
+    this.buceo = 0;
+  }
+
   recibirGolpe(dx, dz) {
     const d = Math.hypot(dx, dz) || 1;
-    this.vx = (dx / d) * 7;
-    this.vz = (dz / d) * 7;
-    this.vy = 5;
-    this.enSuelo = false;
-    this.aturdido = 0.8;
-    this.buceo = 0;
+    this.voltear((dx / d) * 6.5, 5.5, (dz / d) * 6.5, TIRADO + 0.15);
   }
 
   // input: { x, z (entre -1 y 1, relativos a la cámara), salto, buceo }; camYaw: hacia dónde mira la cámara
@@ -108,11 +115,18 @@ export class Jugador {
     const rz = -Math.sin(camYaw);
     const qx = (fx * iz + rx * ix) * VEL;
     const qz = (fz * iz + rz * ix) * VEL;
-    const control = this.aturdido > 0 ? 0.15 : this.buceo > 0 ? 0.1 : 1;
+    const control = this.aturdido > 0 ? 0 : this.buceo > 0 ? 0.1 : 1;
     const acel = (this.enSuelo ? ACEL_SUELO : ACEL_AIRE) * control * dt;
     const acercar = (v, obj) => (Math.abs(obj - v) <= acel ? obj : v + Math.sign(obj - v) * acel);
-    this.vx = acercar(this.vx, qx);
-    this.vz = acercar(this.vz, qz);
+    if (this.aturdido > 0 && this.enSuelo) {
+      // tirado en el piso: se frena de a poco
+      const fr = 14 * dt;
+      this.vx = Math.abs(this.vx) <= fr ? 0 : this.vx - Math.sign(this.vx) * fr;
+      this.vz = Math.abs(this.vz) <= fr ? 0 : this.vz - Math.sign(this.vz) * fr;
+    } else if (control > 0) {
+      this.vx = acercar(this.vx, qx);
+      this.vz = acercar(this.vz, qz);
+    }
 
     // salto y doble salto
     if (input.salto && this.aturdido <= 0 && !this.llego) {
@@ -184,25 +198,19 @@ export class Jugador {
         this.vz -= vn * nz;
       }
       if (vx && Math.sign(vx) === Math.sign(nx) && Math.abs(vx) > 1) {
-        this.vx = vx * 1.2;
         if (this.aturdido <= 0.2) {
-          this.aturdido = 0.4;
+          this.voltear(vx * 1.2, 4.5, (Math.random() - 0.5) * 2);
           ev.push('golpe');
-        }
+        } else this.vx = vx * 1.2;
       }
     };
     for (const c of this.est.cajas) empujar(c);
     for (const p of mov.pistones) empujar(p, p.vx);
 
     // obstáculos que te voltean (más suave que antes)
-    const golpe = (vx, vy, vz, dur = 0.6) => {
-      if (this.aturdido > 0.25) return;
-      this.vx = vx;
-      this.vy = vy;
-      this.vz = vz;
-      this.enSuelo = false;
-      this.aturdido = dur;
-      this.buceo = 0;
+    const golpe = (vx, vy, vz) => {
+      if (this.aturdido > 0) return;
+      this.voltear(vx, vy, vz);
       ev.push('golpe');
     };
     for (const b of mov.barras) {
@@ -281,7 +289,8 @@ export class Jugador {
       d = Math.atan2(Math.sin(d), Math.cos(d));
       this.ry += d * Math.min(1, dt * 12);
     }
-    this.anim = this.llego ? 'festeja' : this.pina > 0 ? this.tipoGolpe : this.aturdido > 0 ? 'golpe' : this.buceo > 0 ? 'buceo' : !this.enSuelo ? 'salto' : vh > 0.8 ? 'corre' : 'quieto';
+    const tirado = this.aturdido > 0 && this.enSuelo && this.aturdido < (this.aturdidoMax || TIRADO) - 0.2;
+    this.anim = this.llego ? 'festeja' : this.pina > 0 ? this.tipoGolpe : tirado ? 'tirado' : this.aturdido > 0 ? 'golpe' : this.buceo > 0 ? 'buceo' : !this.enSuelo ? 'salto' : vh > 0.8 ? 'corre' : 'quieto';
     return ev;
   }
 

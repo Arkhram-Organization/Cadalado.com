@@ -1,4 +1,4 @@
-// Fall Pibes: carrera de obstáculos por rondas con eliminación.
+// Ángeles Peña: carrera de obstáculos por rondas con eliminación.
 // El servidor arma la sala, larga cada ronda, ordena las llegadas (con SU reloj), decide quién clasifica
 // y presenta a los jugadores entre sí para que se pasen las posiciones directo (WebRTC).
 // Los bots son los NPC de cadalado y se calculan igual en todos lados (pista.js).
@@ -92,7 +92,7 @@ function cerrarRonda(r, ctx) {
     r.fase = 'podio';
     r.fin = ctx.now + PODIO_MS;
     const g = r.resultados[0];
-    ctx.sistema(g?.paso ? `¡${g.nombre} ganó Fall Pibes!` : 'Nadie llegó a la meta.');
+    ctx.sistema(g?.paso ? `¡${g.nombre} ganó Ángeles Peña!` : 'Nadie llegó a la meta.');
   } else {
     r.fase = 'ronda';
     r.fin = ctx.now + RONDA_MS;
@@ -250,7 +250,7 @@ export const carrera = crearJuego({
   },
   lobby(r) {
     const host = r.jugadores[r.host];
-    return { titulo: host ? `Fall Pibes de ${host.nombre}` : 'Fall Pibes', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
+    return { titulo: host ? `Ángeles Peña de ${host.nombre}` : 'Ángeles Peña', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
   },
   async despues(r, antes) {
     if (r.fase !== 'podio' || antes.fase === 'podio') return;

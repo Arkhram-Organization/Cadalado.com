@@ -1,4 +1,4 @@
-// Dibujo 3D de Fall Pibes con three.js: mapas, obstáculos, personitas y cámara.
+// Dibujo 3D de Ángeles Peña con three.js: mapas, obstáculos, personitas y cámara.
 import * as THREE from '../vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
 import { MAPAS, estaticos, moviles, rng } from './pista.js';

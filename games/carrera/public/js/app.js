@@ -7,7 +7,7 @@ import { rutaBot, posBot, COLORES, MAPAS, LIMITE_S } from './pista.js';
 
 const app = document.querySelector('#app');
 const COLOR = '#4fd1c5';
-const cuenta = await marco({ juego: 'Fall Pibes', color: COLOR, volver: '/carrera/' });
+const cuenta = await marco({ juego: 'Ángeles Peña', color: COLOR, volver: '/carrera/' });
 let limpiar = [];
 
 function ir(ruta) {
@@ -32,10 +32,10 @@ function ruteo() {
 
 // ---------------------------------------------------------------- menú
 function menu() {
-  document.title = 'Fall Pibes · cadalado';
+  document.title = 'Ángeles Peña · cadalado';
   app.innerHTML = `
   <div class="menu">
-    <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · rondas con eliminación · hasta 16</span><h1>Fall <em>Pibes.</em></h1>
+    <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · rondas con eliminación · hasta 16</span><h1>Ángeles <em>Peña.</em></h1>
       <p>Tres mapas: barras que barren el piso, martillos, molinos, pistones, cintas, baldosas que se caen y huecos de doble salto. En cada ronda clasifican los primeros; en la final gana el que llega primero. Con la <b>E</b> le pegás una piña al de al lado.</p></div></div>
     <section class="panel">
       <h2>Armar una partida</h2>
@@ -106,7 +106,7 @@ const lookBot = (npc) => ({ ...POR_ID[npc]?.look });
 
 // ---------------------------------------------------------------- sala y partida
 function abrirSala(code) {
-  document.title = `Fall Pibes ${code} · cadalado`;
+  document.title = `Ángeles Peña ${code} · cadalado`;
   document.body.classList.add('en-carrera');
   app.innerHTML = `
   <div class="juego">
@@ -192,7 +192,7 @@ function abrirSala(code) {
       ir('/carrera/');
     },
   });
-  recordar('carrera', `/carrera/sala/${code}`, `Fall Pibes ${code}`);
+  recordar('carrera', `/carrera/sala/${code}`, `Ángeles Peña ${code}`);
   limpiar.push(() => {
     sala.cerrar();
     red.actual?.cerrar();
@@ -315,7 +315,7 @@ function abrirSala(code) {
       const det = (x) => (x.paso ? (x.tiempo != null ? `${(x.tiempo / 1000).toFixed(2)} s` : 'final') : `afuera en ronda ${x.ronda}`);
       const miPuesto = r.findIndex((x) => x.id === e.yo) + 1;
       const gane = miPuesto === 1 && r[0]?.paso;
-      pod.innerHTML = `<h2>${gane ? '¡Ganaste Fall Pibes!' : miPuesto ? `Terminaste ${miPuesto}º` : 'Resultados'}</h2>
+      pod.innerHTML = `<h2>${gane ? '¡Ganaste Ángeles Peña!' : miPuesto ? `Terminaste ${miPuesto}º` : 'Resultados'}</h2>
         <div class="podio-top">${top.map((x, i) => (x ? `<div class="p${[2, 1, 3][i]}"><span class="mono" style="font-size:24px">${['2º', '1º', '3º'][i]}</span><b>${esc(x.nombre)}</b><span class="mono">${det(x)}</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
         <div class="tabla-res">${r.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' <small style="color:var(--gris)">bot</small>' : ''}</span><span class="mono">${det(x)}</span></div>`).join('')}</div>
         ${esHost ? '<button class="btn btn-lima btn-grande" data-otra style="width:100%;margin-top:14px">Otra partida</button>' : '<p style="margin-top:12px">En unos segundos vuelven a la largada.</p>'}`;
@@ -437,8 +437,8 @@ function abrirSala(code) {
       const a = alcance(r.obj);
       if (a) red.actual?.golpe(id, a.dx, a.dz);
     }
-    for (const b of botsRonda) if (alcance(posBot(mapa, b.ruta, t, semilla))) golpeados.set('bot' + b.i, performance.now() + 900);
-    if (fase === 'lobby') charlasLobby.forEach((_, i) => alcance(posLobby(i)) && golpeados.set('bot' + i, performance.now() + 900));
+    for (const b of botsRonda) if (alcance(posBot(mapa, b.ruta, t, semilla))) golpeados.set('bot' + b.i, performance.now() + 1500);
+    if (fase === 'lobby') charlasLobby.forEach((_, i) => alcance(posLobby(i)) && golpeados.set('bot' + i, performance.now() + 1500));
   }
   const posLobby = (i) => ({ x: ((i % 6) - 2.5) * 2.2, y: 0, z: -10 - Math.floor(i / 6) * 2.2, ry: Math.PI });
   const enJuego = (id) => (fase === 'lobby' || fase === 'podio' ? true : est.vivos.includes(id));
@@ -500,7 +500,7 @@ function abrirSala(code) {
         for (const e of ev) {
           if (e === 'salto' || e === 'buceo') sonar('salto');
           if (e === 'doble') sonar('aviso');
-          if (e === 'golpe') sonar('clic');
+          if (e === 'golpe') sonar('pina');
           if (e === 'caida') aviso('¡Al agua! Volvés al último punto', true);
           if (e === 'checkpoint' && fase === 'carrera') aviso(`Punto de control: ${MAPAS[mapa].CHECKPOINTS[jugador.cp].nombre}`);
           if (e === 'meta' && fase === 'carrera' && !enviadoMeta) {
@@ -552,7 +552,7 @@ function abrirSala(code) {
         const id = 'bot' + b.i;
         escena.personaje(id, lookBot(b.npc), nombreBot(b.i));
         const e = posBot(mapa, b.ruta, tp, semilla);
-        if ((golpeados.get(id) || 0) > ahora) e.a = 'golpe';
+        if ((golpeados.get(id) || 0) > ahora) e.a = (golpeados.get(id) - ahora > 1250 ? 'golpe' : 'tirado');
         escena.mover(id, e, dt);
         // charlas: de vez en cuando, en un globito
         while (b.prox < b.charlas.length && b.charlas[b.prox].t <= t) {
@@ -571,7 +571,7 @@ function abrirSala(code) {
       charlasLobby.forEach((c, i) => {
         const id = 'bot' + i;
         escena.personaje(id, lookBot(c.npc), nombreBot(i));
-        escena.mover(id, { ...posLobby(i), a: (golpeados.get(id) || 0) > ahora ? 'golpe' : 'quieto' }, dt);
+        escena.mover(id, { ...posLobby(i), a: (golpeados.get(id) || 0) > ahora ? 'tirado' : 'quieto' }, dt);
         while (c.prox < c.lista.length && c.lista[c.prox].t <= tl) {
           if (c.lista[c.prox].t > tl - 2) escena.decir(id, c.lista[c.prox].texto.replace('{jugador}', algunJugador()));
           c.prox++;
