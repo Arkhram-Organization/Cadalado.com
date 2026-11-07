@@ -171,3 +171,8 @@ body.memes-sala {
 .memes-sala .espera p { color: #4a3f63; }
 .memes-sala .fila-bots .btn-lima { background: #ffd166; }
 .memes-sala .grilla-res { align-items: start; }
+
+.jug { position: relative; }
+.globo-jug { position: absolute; left: 54px; bottom: calc(100% - 8px); z-index: 5; max-width: 200px; width: max-content; padding: 6px 10px; border-radius: 12px; background: #fff; color: #1a1030; font-size: 12px; font-weight: 700; border: 2px solid #1a1030; box-shadow: 3px 3px 0 #1a1030; animation: globo .3s cubic-bezier(.2,1.5,.4,1); }
+@keyframes globo { from { transform: scale(.5); opacity: 0; } }
+.memes-sala .chat-log .bot b { color: #ff2d8a; }

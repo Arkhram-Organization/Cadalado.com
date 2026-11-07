@@ -69,3 +69,4 @@ kbd { font: 700 11px var(--mono); padding: 2px 6px; border-radius: 5px; backgrou
 .tabla-res div.afuera { opacity: .55; }
 @media (max-width: 760px) { .pina-hud { display: none; } }
 @media (max-width: 760px) { .panel-flota { top: 58px; left: 8px; padding: 14px; } .puesto { font-size: 32px; } .chat-mini { display: none; } }
+.chat-mini .log .bot b { color: #ffd166; }

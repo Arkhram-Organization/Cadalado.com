@@ -1,5 +1,6 @@
 import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { POR_ID, charlas, rngNpc } from '/comun/npcs.js';
+import { dicho } from '/comun/dichos.js';
 import { Escena } from './escena.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
 import { Red } from './red.js';
@@ -411,6 +412,18 @@ function abrirSala(code) {
     i.blur();
   };
 
+  // un bot habla: globito arriba de su muñeco y también en el chat
+  function botDice(id, nombre, texto) {
+    escena.decir(id, texto);
+    const log = $('[data-log]');
+    const d = document.createElement('div');
+    d.className = 'bot';
+    d.innerHTML = `<b>${esc(nombre)}:</b> ${esc(texto)}`;
+    log.append(d);
+    while (log.children.length > 30) log.firstChild.remove();
+    log.scrollTop = log.scrollHeight;
+  }
+
   function aviso(texto, malo = false, clase = '') {
     $('[data-aviso]').innerHTML = `<span class="${malo ? 'malo' : ''} ${clase}">${esc(texto)}</span>`;
     clearTimeout(aviso.t);
@@ -554,9 +567,14 @@ function abrirSala(code) {
         const e = posBot(mapa, b.ruta, tp, semilla);
         if ((golpeados.get(id) || 0) > ahora) e.a = (golpeados.get(id) - ahora > 1250 ? 'golpe' : 'tirado');
         escena.mover(id, e, dt);
+        // cuando llega a la meta, festeja (o se queja si no clasificó)
+        if (!b.llego && tp >= b.ruta.fin) {
+          b.llego = true;
+          if (tp - b.ruta.fin < 2 && (b.i * 7 + est.ronda) % 3 === 0) botDice(id, nombreBot(b.i), dicho(b.npc, 'gana', algunJugador(), rngNpc(semilla + b.i)));
+        }
         // charlas: de vez en cuando, en un globito
         while (b.prox < b.charlas.length && b.charlas[b.prox].t <= t) {
-          if (b.charlas[b.prox].t > t - 2) escena.decir(id, b.charlas[b.prox].texto.replace('{jugador}', algunJugador()));
+          if (b.charlas[b.prox].t > t - 2) botDice(id, nombreBot(b.i), b.charlas[b.prox].texto.replace('{jugador}', algunJugador()));
           b.prox++;
         }
       }
@@ -573,7 +591,7 @@ function abrirSala(code) {
         escena.personaje(id, lookBot(c.npc), nombreBot(i));
         escena.mover(id, { ...posLobby(i), a: (golpeados.get(id) || 0) > ahora ? 'tirado' : 'quieto' }, dt);
         while (c.prox < c.lista.length && c.lista[c.prox].t <= tl) {
-          if (c.lista[c.prox].t > tl - 2) escena.decir(id, c.lista[c.prox].texto.replace('{jugador}', algunJugador()));
+          if (c.lista[c.prox].t > tl - 2) botDice(id, nombreBot(i), c.lista[c.prox].texto.replace('{jugador}', algunJugador()));
           c.prox++;
         }
       });

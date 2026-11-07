@@ -3,7 +3,7 @@
 import { PLANTILLAS } from '../public/js/plantillas.js';
 import { crearJuego, idPublico, mezclar, entero } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
-import { textosBot, nombresBots, votoBot, MAX_BOTS } from './bots.js';
+import { textosBot, nombresBots, votoBot, reaccionBot, MAX_BOTS } from './bots.js';
 
 const POR_ID = new Map(PLANTILLAS.map((p) => [p.id, p]));
 const VOTO_MS = 10_000; // cada meme se vota durante este tiempo
@@ -72,11 +72,25 @@ function empezarVotacion(r, ctx) {
   if (!r.orden.length) return mostrarResultados(r, ctx);
   r.fase = 'votando';
   r.fin = ctx.now + VOTO_MS;
-  votanBots(r);
+  votanBots(r, ctx);
 }
-function votanBots(r) {
+function votanBots(r, ctx) {
   const autor = r.orden[r.idx];
   for (const b of r.botsSala || []) if (b.pid !== autor) (r.votos[autor] ||= {})[b.pid] = votoBot();
+  // a veces un bot comenta el meme que se está votando
+  const otros = (r.botsSala || []).filter((b) => b.pid !== autor);
+  if (ctx && otros.length && Math.random() < 0.35) {
+    const b = otros[Math.floor(Math.random() * otros.length)];
+    ctx.evento({ k: 'chat', de: b.pid, nombre: b.nombre, texto: reaccionBot(b.nombre, 'comenta'), bot: true });
+  }
+}
+function reaccionesFinales(r, ronda, ctx) {
+  const bots = r.botsSala || [];
+  if (!bots.length || !ronda.length) return;
+  const top = bots.find((b) => b.pid === ronda[0].autor);
+  if (top) ctx.evento({ k: 'chat', de: top.pid, nombre: top.nombre, texto: reaccionBot(top.nombre, 'gana'), bot: true });
+  const otro = bots.filter((b) => b !== top)[Math.floor(Math.random() * Math.max(1, bots.length - (top ? 1 : 0)))];
+  if (otro && Math.random() < 0.6) ctx.evento({ k: 'chat', de: otro.pid, nombre: otro.nombre, texto: reaccionBot(otro.nombre, 'pierde'), bot: true });
 }
 
 function puntosDe(r, autor) {
@@ -88,6 +102,7 @@ function mostrarResultados(r, ctx) {
   for (const m of ronda) r.puntos[m.autor] = (r.puntos[m.autor] || 0) + m.puntos;
   ronda.sort((a, b) => b.puntos - a.puntos);
   r.resultados = ronda;
+  reaccionesFinales(r, ronda, ctx);
   if (ronda[0] && (!r.mejor || ronda[0].puntos > r.mejor.puntos)) r.mejor = { ...ronda[0], ronda: r.ronda };
   r.fase = r.ronda >= r.rondas ? 'final' : 'resultados';
   r.fin = r.fase === 'final' ? 0 : ctx.now + RESULTADOS_MS;
@@ -102,7 +117,7 @@ function avanzarVoto(r, ctx) {
   if (r.idx >= r.orden.length) mostrarResultados(r, ctx);
   else {
     r.fin = ctx.now + VOTO_MS;
-    votanBots(r);
+    votanBots(r, ctx);
   }
 }
 

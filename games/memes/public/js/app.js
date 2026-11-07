@@ -173,7 +173,17 @@ function abrirSala(code) {
       if (ev.sistema) {
         d.className = 'sis';
         d.textContent = ev.texto;
-      } else d.innerHTML = `<b>${esc(ev.nombre)}:</b> ${esc(ev.texto)}`;
+      } else {
+        d.innerHTML = `<b>${esc(ev.nombre)}:</b> ${esc(ev.texto)}`;
+        if (ev.bot) d.className = 'bot';
+        // globito sobre el avatar de quien habló
+        const j = [...app.querySelectorAll('.jug')].find((x) => x.dataset.nombre === ev.nombre);
+        if (j) {
+          j.querySelector('.globo-jug')?.remove();
+          j.insertAdjacentHTML('beforeend', `<span class="globo-jug">${esc(ev.texto)}</span>`);
+          setTimeout(() => j.querySelector('.globo-jug')?.remove(), 4500);
+        }
+      }
       log.append(d);
       log.scrollTop = log.scrollHeight;
     },
@@ -220,7 +230,7 @@ function abrirSala(code) {
     $('[data-jugadores]').innerHTML = lista.map((j) => {
       const listo = est.fase === 'creando' && est.listos.includes(j.id);
       const sub = j.bot && est.fase !== 'creando' ? 'bot' : j.id === est.host ? 'arma la sala' : est.fase === 'creando' ? (listo ? 'meme listo' : est.participantes.includes(j.id) ? 'creando…' : 'entra en la próxima') : j.online ? 'conectado' : 'desconectado';
-      return `<div class="jug ${j.online ? '' : 'off'} ${j.bot ? 'bot' : ''}"><span class="av">${avatarDe(j)}</span>
+      return `<div class="jug ${j.online ? '' : 'off'} ${j.bot ? 'bot' : ''}" data-nombre="${esc(j.nombre)}"><span class="av">${avatarDe(j)}</span>
         <span class="n">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}<small>${sub}</small></span>
         ${listo ? '<span class="ok">✓</span>' : ''}<span class="pts">${est.puntos[j.id] || 0}</span></div>`;
     }).join('');

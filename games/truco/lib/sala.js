@@ -10,6 +10,8 @@ import { botAction, botSena, botClaims } from '../public/js/bot.js';
 import { getStore } from '../../../shared/store.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { quien, mover } from '../../casino/lib/fichas.js';
+import { NPCS } from '../../../shared/public/npcs.js';
+import { dicho } from '../../../shared/public/dichos.js';
 
 export const SENAS = [
   'ancho_espada', 'ancho_basto', 'siete_espada', 'siete_oro', 'tres', 'dos', 'ancho_falso',
@@ -140,10 +142,19 @@ function freeSeat(r) {
   return free.find((i) => team(i) === prefer) ?? free[0] ?? null;
 }
 
-function botName(r) {
+// Los bots son los NPC de cadalado (Mati Nadeo aparece poco).
+function nuevoBot(r) {
   const used = new Set(r.seats.filter(Boolean).map((s) => s.name));
-  const names = BOT_NAMES.filter((n) => !used.has(n));
-  return names[Math.floor(rng() * names.length)] || 'Bot';
+  const libres = NPCS.filter((n) => !used.has(n.nombre) && (!n.raro || rng() < 0.15));
+  const n = libres[Math.floor(rng() * libres.length)];
+  return n ? { bot: true, name: n.nombre, npc: n.id } : { bot: true, name: BOT_NAMES.find((x) => !used.has(x)) || 'Bot' };
+}
+// Un bot comenta algo en el chat según cómo viene la partida.
+function botHabla(r, seat, situacion) {
+  const s = r.seats[seat];
+  if (!s?.bot || !s.npc) return;
+  const humano = r.seats.find((x) => x && !x.bot)?.name || 'alguien';
+  pushChat(r, { name: s.name, seat, text: dicho(s.npc, situacion, humano, rng), ts: Date.now() });
 }
 
 function evento(r, e) {
@@ -193,8 +204,23 @@ function onGameChange(r) {
     const t = r.game.winner;
     const names = r.seats.filter((_, i) => team(i) === t).map((s) => s.name).join(' y ');
     systemChat(r, `Ganaron ${names} (${r.game.score[t]} a ${r.game.score[1 - t]})`);
+    const bots = r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0);
+    if (bots.length) {
+      const b = bots[Math.floor(rng() * bots.length)];
+      botHabla(r, b, team(b) === t ? 'gana' : 'pierde');
+    }
   } else if (r.game.h.phase === 'ended' && !r.handEndedAt) {
     r.handEndedAt = Date.now();
+    // al terminar la mano, a veces un bot comenta (gana o pierde según los puntos que sumó su equipo)
+    const antes = r.puntosMano || [0, 0];
+    const ahora = r.game.score;
+    const gano = ahora[0] - antes[0] >= ahora[1] - antes[1] ? 0 : 1;
+    r.puntosMano = [...ahora];
+    const bots = r.seats.map((s, i) => (s?.bot ? i : -1)).filter((i) => i >= 0);
+    if (bots.length && rng() < 0.45) {
+      const b = bots[Math.floor(rng() * bots.length)];
+      botHabla(r, b, team(b) === gano ? 'gana' : rng() < 0.5 ? 'pierde' : 'turno');
+    }
   } else if (r.game.h.phase === 'show' && !r.showSince) {
     r.showSince = Date.now();
     const sh = r.game.h.show;
@@ -260,7 +286,7 @@ export function accion(r, msg, { pid, uid, nombreCuenta, now, pres }) {
       if (!isHost || r.status !== 'lobby') return {};
       const to = Number.isInteger(msg.seat) && !r.seats[msg.seat] ? msg.seat : freeSeat(r);
       if (to == null || to >= r.seats.length) return {};
-      r.seats[to] = { bot: true, name: botName(r) };
+      r.seats[to] = nuevoBot(r);
       return {};
     }
     case 'removebot':
@@ -289,12 +315,14 @@ export function accion(r, msg, { pid, uid, nombreCuenta, now, pres }) {
     }
     case 'start': {
       if (!isHost || r.status !== 'lobby') return {};
-      if (msg.fillBots) r.seats = r.seats.map((s) => s || { bot: true, name: botName(r) });
+      if (msg.fillBots) r.seats = r.seats.map((s) => s || nuevoBot(r));
       if (r.seats.some((s) => !s)) return { error: 'Faltan jugadores (o llená con bots)' };
       r.status = 'playing';
       r.game = newGame({ mode: r.cfg.mode, target: r.cfg.target, ayudas: r.cfg.ayudas, trucoDesdeSegunda: r.cfg.trucoDesdeSegunda !== false, dealer: Math.floor(rng() * r.seats.length) }, rng);
       systemChat(r, '¡Arranca la partida! Reparte ' + r.seats[r.game.dealer].name);
       afterDeal(r);
+      r.puntosMano = [0, 0];
+      r.seats.forEach((s, i) => s?.bot && rng() < 0.4 && botHabla(r, i, 'saludo'));
       return {};
     }
     case 'act': {
@@ -323,6 +351,7 @@ export function accion(r, msg, { pid, uid, nombreCuenta, now, pres }) {
     case 'rematch':
       if (seat == null || r.status !== 'ended') return {};
       rematch(r.game, rng);
+      r.puntosMano = [0, 0];
       r.status = 'playing';
       systemChat(r, '¡Revancha!');
       afterDeal(r);
