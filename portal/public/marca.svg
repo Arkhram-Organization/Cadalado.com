@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Dos piezas enfrentadas: el espacio entre ellas forma la C de cadalado -->
-  <path fill="#f4f1ea" d="M14 4H50A10 10 0 0 1 60 14V16H36A16 16 0 0 0 36 48H60V50A10 10 0 0 1 50 60H14A10 10 0 0 1 4 50V14A10 10 0 0 1 14 4Z"/>
-  <path fill="#c5f04a" d="M60 21H36A11 11 0 0 0 36 43H60Z"/>
+  <!-- Un dado: "cada lado" es cada cara. Arriba lima, a la izquierda blanco cálido, a la derecha gris. -->
+  <g transform="matrix(24 -13 24 13 8 19)"><rect x=".05" y=".05" width=".9" height=".9" rx=".14" fill="#c5f04a"/><circle cx=".5" cy=".5" r=".15" fill="#141413"/></g>
+  <g transform="matrix(24 13 0 27 8 19)"><rect x=".05" y=".05" width=".9" height=".9" rx=".14" fill="#f4f1ea"/><circle cx=".3" cy=".3" r=".11" fill="#141413"/><circle cx=".7" cy=".7" r=".11" fill="#141413"/></g>
+  <g transform="matrix(24 -13 0 27 32 32)"><rect x=".05" y=".05" width=".9" height=".9" rx=".14" fill="#6d6a63"/><circle cx=".27" cy=".27" r=".1" fill="#f4f1ea"/><circle cx=".5" cy=".5" r=".1" fill="#f4f1ea"/><circle cx=".73" cy=".73" r=".1" fill="#f4f1ea"/></g>
 </svg>

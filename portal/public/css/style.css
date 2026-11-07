@@ -398,3 +398,94 @@ a.novedad:hover { transform: translateY(-4px); }
   html { scroll-behavior: auto; }
 }
 .btn-borde.btn-chico, .btn-borde.btn-chico:active { box-shadow: inset 0 0 0 2px var(--borde-2); }
+
+/* =====================================================================
+   Identidad v3: el dado. Misma paleta (carbón + lima), tipografías nuevas.
+   ===================================================================== */
+:root {
+  --titulo: "Unbounded", system-ui, sans-serif;
+  --texto: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body { font-family: var(--texto); }
+h1, h2, h3 { font-family: var(--titulo); text-transform: none; letter-spacing: -0.035em; line-height: 1.03; font-weight: 800; }
+.logo { font-family: var(--titulo); font-size: 21px; letter-spacing: -0.045em; }
+.logo img { width: 34px; height: 34px; }
+.logo:hover img { transform: rotate(-14deg) scale(1.06); }
+.nav a { font-weight: 700; }
+.btn { font-family: var(--titulo); text-transform: none; letter-spacing: -0.01em; font-size: 14px; font-weight: 700; border-radius: 12px; }
+.btn-grande { font-size: 16px; padding: 16px 24px; border-radius: 14px; }
+.btn-chico { font-size: 12px; }
+.hero h1 { font-size: clamp(42px, 6.2vw, 88px); }
+.hero h1 em { display: inline; }
+.seccion-cabeza h2, .equipo-intro h2 { font-size: clamp(30px, 4.2vw, 54px); }
+.cierre h2 { font-size: clamp(46px, 8vw, 112px); }
+.juego-cuerpo h3 { font-size: 26px; }
+.juego-cuerpo h3 i { width: auto; height: auto; background: none; font-style: normal; font-size: .95em; }
+.paso h3 { font-size: 20px; }
+.novedad h3 { font-size: 19px; }
+.persona h3 { font-size: 22px; }
+.vacio b, .reciente b { font-family: var(--titulo); text-transform: none; font-size: 18px; }
+.panel h3 { font-size: 20px; }
+.perfil-cabeza h1 { font-size: 40px; }
+.club-tabs button, .pestanas button { font-family: var(--titulo); text-transform: none; font-size: 16px; }
+.avatar { font-family: var(--titulo); }
+.stat b { font-family: var(--titulo); }
+.chip-nuevo { background: var(--blanco); color: var(--carbon); }
+
+/* ---------- el dado de la portada ---------- */
+.dado-zona { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+.dado-escena { position: relative; width: 250px; height: 250px; perspective: 1000px; cursor: pointer; margin-top: 10px; }
+.dado { position: absolute; inset: 0; transform-style: preserve-3d; }
+.cara {
+  position: absolute; inset: 0; border-radius: 38px; backface-visibility: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 60%, color-mix(in srgb, var(--c) 75%, #000));
+  box-shadow: inset 0 0 0 5px rgba(255,255,255,.28), inset 0 -14px 0 rgba(0,0,0,.14);
+  color: #15140f;
+}
+.cara .ico { font-size: 76px; line-height: 1; filter: drop-shadow(0 4px 0 rgba(0,0,0,.15)); }
+.cara b { font-family: var(--titulo); font-weight: 800; font-size: 19px; letter-spacing: -0.03em; }
+.cara .pips { position: absolute; top: 16px; right: 18px; display: grid; grid-template-columns: repeat(3, 7px); gap: 3px; }
+.cara .pips s { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,.45); }
+.c0 { transform: translateZ(125px); }
+.c1 { transform: rotateY(90deg) translateZ(125px); }
+.c2 { transform: rotateY(180deg) translateZ(125px); }
+.c3 { transform: rotateY(-90deg) translateZ(125px); }
+.c4 { transform: rotateX(90deg) translateZ(125px); }
+.c5 { transform: rotateX(-90deg) translateZ(125px); }
+.dado-sombra { position: absolute; left: 10%; right: 10%; bottom: -46px; height: 30px; border-radius: 50%; background: radial-gradient(rgba(0,0,0,.6), transparent 70%); filter: blur(4px); }
+.dado-escena:hover .dado { filter: brightness(1.05); }
+.dado-resultado { margin-top: 34px; min-height: 92px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.dado-resultado b { font-family: var(--titulo); font-size: 26px; letter-spacing: -0.03em; }
+.dado-resultado.ver { animation: aparece .45s cubic-bezier(.2,1.4,.4,1); }
+@keyframes aparece { from { opacity: 0; transform: translateY(10px) scale(.95); } }
+
+/* ---------- juegos: los protagonistas ---------- */
+.juegos { grid-template-columns: repeat(6, 1fr); }
+.juego-grande { grid-column: span 3; }
+.juego-chico { grid-column: span 2; }
+.juego-chico .juego-captura { aspect-ratio: 16 / 10; }
+.juego-chico .juego-datos { grid-template-columns: 1fr; }
+.juego-chico .juego-datos div:first-child { grid-column: auto; }
+.juego-chico .juego-cuerpo h3 { font-size: 22px; }
+
+/* ---------- ideas ---------- */
+.ideas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.idea { padding: 20px; border-radius: 16px; border: 1.5px dashed var(--borde-2); display: flex; flex-direction: column; gap: 10px; }
+.idea h3 { font-size: 19px; }
+.idea p { color: var(--blanco-2); font-size: 15px; }
+
+@media (max-width: 1000px) {
+  .juegos { grid-template-columns: 1fr 1fr; }
+  .juego-grande, .juego-chico { grid-column: span 1; }
+  .ideas { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .juegos, .ideas { grid-template-columns: 1fr; }
+  .dado-escena { width: 190px; height: 190px; }
+  .c0 { transform: translateZ(95px); } .c1 { transform: rotateY(90deg) translateZ(95px); } .c2 { transform: rotateY(180deg) translateZ(95px); }
+  .c3 { transform: rotateY(-90deg) translateZ(95px); } .c4 { transform: rotateX(90deg) translateZ(95px); } .c5 { transform: rotateX(-90deg) translateZ(95px); }
+  .cara { border-radius: 28px; }
+  .cara .ico { font-size: 54px; }
+  .cara b { font-size: 15px; }
+}

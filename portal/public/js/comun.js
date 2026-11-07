@@ -127,7 +127,7 @@ function pie() {
       <div>
         <h4>Créditos</h4>
         <small>Piezas de ajedrez: “Cburnett”, Wikimedia Commons, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>.
-        Naipes: “Naipes Libres” de Basquetteur, CC BY-SA 3.0. 3D: three.js (MIT).</small>
+        Naipes: “Naipes Libres” de Basquetteur, CC BY-SA 3.0. Plantillas de memes: imgflip.com. 3D: three.js (MIT).</small>
         <small style="margin-top:10px">Hecho entre amigos · © <span data-anio>2026</span> cadalado.com</small>
       </div>
     </div>

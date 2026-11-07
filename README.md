@@ -1,6 +1,6 @@
 # cadalado.com
 
-**Elegí tu lado.** Juegos clásicos para jugar online con amigos: sin cuentas ni descargas, mandás un link y se juega.
+**¿A qué jugamos hoy?** Club de juegos online con amigos: sin descargas, mandás un link y se juega.
 
 La identidad (logo, colores, tipografía, tono) está en [`MARCA.md`](MARCA.md).
 
@@ -13,6 +13,9 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 | 🏠 Portal (inicio, equipo, entrar, club) | [`portal`](portal) | `main` | `cadalado.com` |
 | ♟️ Ajedrez | [`games/chessort`](games/chessort) | `chessort` | `cadalado.com/ajedrez` |
 | 🃏 Truco | [`games/truco`](games/truco) | `truco` | `cadalado.com/truco` |
+| 🏃 Carrera loca (obstáculos 3D) | [`games/carrera`](games/carrera) | `chessort` | `cadalado.com/carrera` |
+| 🎰 Casino (ruleta, blackjack, slots) | [`games/casino`](games/casino) | `chessort` | `cadalado.com/casino` |
+| 😂 Make it Meme | [`games/memes`](games/memes) | `chessort` | `cadalado.com/memes` |
 | 👤 Cuentas, historial, amigos y chats | [`shared`](shared) | `main` | `cadalado.com/club` |
 
 ```
@@ -20,8 +23,11 @@ portal/public/         el portal: inicio, /equipo, /entrar, /club (HTML, CSS y J
   js/datos.js          catálogo: juegos, equipo y novedades (lo único que hay que tocar para sumar algo)
 games/chessort/        ajedrez: public/ (navegador), api.js + lib/ (servidor), test/
 games/truco/           truco:   public/ (navegador, 3D), api.js + lib/sala.js (servidor), test/
-shared/                lo común: store.js (Redis), cuenta.js (cuentas, historial, amigos, chats), http.js
-api/                   las 3 funciones de Vercel: juegos/ajedrez.js, juegos/truco.js y club.js
+games/memes|casino|carrera/   los juegos nuevos: public/, api.js, lib/ (reglas), test/
+shared/                lo común: store.js (Redis), cuenta.js (cuentas, historial, amigos, chats), http.js,
+                       salas.js (motor de salas que usan memes, casino y carrera)
+shared/public/         se publica en /comun: logo, estilos y cliente de salas de los juegos nuevos
+api/                   funciones de Vercel: juegos/<juego>.js (una por juego) y club.js
 scripts/build.mjs      arma dist/: portal en la raíz y cada juego en /<ruta>
 vercel.json            rutas del sitio
 dev-server.js          todo el sitio en tu compu (npm run dev)
@@ -34,10 +40,24 @@ las jugadas por POST. Las partidas, cuentas y chats se guardan en **Redis** (Ups
 antes hacían las "alarmas" (bots, pausas entre manos, tiempos) lo hace el servidor en esas consultas,
 y `public/js/polling-socket.js` imita un WebSocket para que el código del juego casi no cambie.
 
+### Motor de salas (memes, casino, carrera)
+
+`shared/salas.js` resuelve lo común de cualquier juego por salas: código e invitación, candado en Redis
+para que dos acciones no se pisen, presencia, chat, eventos numerados y un "tick" para los tiempos.
+Cada juego solo escribe sus reglas (`nueva`, `accion`, `tick`, `vista`). Para sumar un juego nuevo,
+mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
+
+- **Casino:** las fichas son de mentira. Con cuenta se guardan en la cuenta; sin cuenta, en el dispositivo.
+  Las mesas públicas (`RULETA`, `BLACKJACK-1`, `SLOTS`…) existen siempre; también hay mesas privadas.
+- **Carrera:** las posiciones viajan **directo entre navegadores** (WebRTC, ~15 por segundo); el servidor solo
+  los presenta y ordena las llegadas con su reloj. Si una red bloquea la conexión directa, se usa el servidor
+  como plan B. Los bots y los obstáculos salen de una "semilla", así que todos ven lo mismo sin mandarse nada.
+- **Make it Meme:** las 100 plantillas son las más usadas de imgflip.com y se cargan desde ahí.
+
 ### Cuentas
 
 - Registro y entrada con usuario y contraseña (guardada con scrypt, nunca en texto plano). La sesión es una cookie.
-- Con cuenta, las partidas de ajedrez y truco quedan en el **historial** (victorias, derrotas, rivales).
+- Con cuenta, las partidas de ajedrez, truco, memes y carrera quedan en el **historial** (victorias, derrotas, rivales).
 - **Amigos** por nombre de usuario, **chat privado** entre amigos y un **chat general** del club.
 - Desde el club se **desafía** a un amigo: se crea la mesa y le llega el link por chat.
 - Para jugar no hace falta cuenta.
