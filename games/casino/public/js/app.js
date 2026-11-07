@@ -204,6 +204,12 @@ function mesa(code) {
       est = e;
       if (!modulo) {
         $('[data-zona]').innerHTML = '';
+        // el blackjack ocupa toda la pantalla (mesa 3D de fondo y todo lo demás encima)
+        if (e.tipo === 'blackjack') {
+          app.querySelector('.mesa').classList.add('mesa-bj');
+          document.body.classList.add('casino-full');
+          limpiar.push(() => document.body.classList.remove('casino-full'));
+        }
         modulo = TIPO[e.tipo].montar($('[data-zona]'), helpers);
         document.title = `${e.nombre} · El casino de Dobro`;
         recordar('casino', `/casino/mesa/${code}`, e.nombre);

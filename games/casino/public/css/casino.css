@@ -275,3 +275,25 @@ button.lugar:hover { border-color: var(--oro); color: var(--oro); }
 .salon-hero p { color: #f3d9c0; }
 .mesa-card { border: 3px solid var(--oro); }
 .mesa-card:hover { transform: translateY(-4px) rotate(-.4deg); }
+
+/* ---------- blackjack a pantalla completa ---------- */
+body.casino-full { overflow: hidden; }
+.mesa-bj { position: fixed; inset: 56px 0 0 0; padding: 0; max-width: none; margin: 0; }
+.mesa-bj .mesa-top { position: absolute; top: 10px; left: 12px; right: 12px; z-index: 6; background: rgba(15,10,8,.72); backdrop-filter: blur(6px); border-radius: 16px; padding: 8px 12px; margin: 0; }
+.mesa-bj .mesa-cuerpo { display: block; height: 100%; }
+.mesa-bj [data-zona] { position: absolute; inset: 0; }
+.mesa-bj .bj3d-pano { height: 100%; border-radius: 0; padding: 0; box-shadow: none; background: #120d0a; }
+.mesa-bj .bj3d-pano::after { display: none; }
+.mesa-bj .bj3d { position: absolute; inset: 0; height: auto; min-height: 0; border-radius: 0; }
+.mesa-bj [data-controles] { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 5; margin: 0 !important; background: rgba(8,36,22,.86); backdrop-filter: blur(6px); border-radius: 18px; padding: 10px 14px; width: min(900px, calc(100% - 24px)); box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 0 0 1px rgba(242,201,76,.35); }
+.mesa-bj [data-controles]:empty { display: none; }
+.mesa-bj .reloj-mesa { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; z-index: 5; border-radius: 0; height: 5px; }
+.mesa-bj [data-desafio] { position: absolute; left: 12px; top: 74px; z-index: 5; width: min(330px, calc(100% - 24px)); }
+.mesa-bj [data-desafio] .desafio { margin: 0; background: rgba(15,10,8,.78); backdrop-filter: blur(6px); }
+.mesa-bj .chat { position: absolute; right: 12px; top: 74px; bottom: 120px; width: 290px; z-index: 5; background: rgba(15,10,8,.7); backdrop-filter: blur(6px); display: flex; flex-direction: column; }
+.mesa-bj .chat .chat-log { flex: 1; min-height: 0; }
+.mesa-bj .bj3d-full { top: auto; bottom: 120px; left: 12px; right: auto; }
+.mesa-bj .bj3d-ayuda { bottom: 96px; }
+.mesa-bj .banner { top: 42%; }
+@media (max-width: 900px) { .mesa-bj .chat { display: none; } .mesa-bj [data-desafio] { top: auto; bottom: 150px; } }
+.mesa-bj .chat { bottom: auto; height: min(300px, calc(100% - 220px)); width: 270px; }

@@ -6,10 +6,12 @@ const ANCHO = { flaco: 0.27, normal: 0.31, gordito: 0.38 };
 
 // Estilo "muñequito de juguete": cabeza grande, cuerpo redondeado, brazos largos con manos y piernas cortas.
 // Mide ~1.85 de alto. La cara mira hacia -Z.
+const est0 = (L) => L.pelo.estilo === 'calvo';
+
 export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
   const L = {
     piel: '#e8c4a8',
-    ojos: '#1b1410',
+    ojos: '#5a3a22',
     cuerpo: 'normal',
     pelo: { estilo: 'corto', color: '#2b1d14' },
     ropa: { remera: '#7aa2ff', pantalon: '#2b2b33' },
@@ -89,32 +91,62 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
 
   // cabeza
   // la cabeza se arma chica y se agranda entera (así pelo, lentes y gorros quedan en su lugar)
+  // cuello
+  malla(new THREE.CylinderGeometry(0.075, 0.09, 0.16, 14), L.smoking ? piel : piel, 0, CADERA + 0.66, 0);
   const cabeza = new THREE.Group();
-  cabeza.position.y = CADERA + 0.88;
-  cabeza.scale.setScalar(1.75);
+  cabeza.position.y = CADERA + 0.9;
+  cabeza.scale.setScalar(1.5);
   torso.parent.add(cabeza);
-  const craneo = malla(new THREE.SphereGeometry(0.19, 24, 18), piel, 0, 0, 0, cabeza);
-  craneo.scale.set(L.cuerpo === 'gordito' ? 1.06 : 1, 1, 0.98);
-  // ojos ovalados oscuros con brillo, cejas y boca simple
-  const ojo = mat(L.ojos, { roughness: 0.2 });
-  const brillo = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  for (const x of [-0.06, 0.06]) {
-    const o = malla(new THREE.SphereGeometry(0.026, 12, 10), ojo, x, 0.03, -0.172, cabeza);
-    o.scale.set(0.8, 1.35, 0.6);
-    malla(new THREE.SphereGeometry(0.008, 6, 4), brillo, x + 0.008, 0.048, -0.186, cabeza);
-    if (L.pelo.estilo !== 'calvo' || L.barba) {
-      const c = malla(new THREE.BoxGeometry(0.05, 0.01, 0.015), pelo, x, 0.085, -0.172, cabeza);
-      c.rotation.z = x > 0 ? -0.15 : 0.15;
-    }
+  const craneo = malla(new THREE.SphereGeometry(0.19, 28, 22), piel, 0, 0, 0, cabeza);
+  craneo.scale.set(L.cuerpo === 'gordito' ? 1.02 : 0.94, 1.1, 0.98);
+  // orejas
+  if (!L.robot) for (const x of [-0.178, 0.178]) {
+    const o = malla(new THREE.SphereGeometry(0.035, 10, 8), piel, x, -0.005, 0.01, cabeza);
+    o.scale.set(0.45, 1, 0.75);
   }
-  const mejilla = new THREE.MeshBasicMaterial({ color: 0xff8a7a, transparent: true, opacity: 0.35 });
-  if (!L.robot) for (const x of [-0.11, 0.11]) malla(new THREE.CircleGeometry(0.028, 12), mejilla, x, -0.03, -0.17, cabeza).rotation.y = Math.PI + (x > 0 ? 0.55 : -0.55);
-  const boca = malla(new THREE.BoxGeometry(0.06, 0.012, 0.01), mat('#5a2b25'), 0, -0.07, -0.182, cabeza);
+  // ojos humanos: blanco, iris de color, pupila, brillo y párpado
+  const esclera = mat('#f7f3ee', { roughness: 0.25 });
+  const iris = mat(L.robot ? '#38d9e6' : L.ojos, { roughness: 0.2, emissive: L.robot ? '#38d9e6' : '#000000', emissiveIntensity: L.robot ? 0.8 : 0 });
+  const pupila = mat('#0b0b0b', { roughness: 0.1 });
+  const brillo = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const parpado = mat(L.piel, { roughness: 0.6 });
+  for (const x of [-0.062, 0.062]) {
+    const e = malla(new THREE.SphereGeometry(0.03, 16, 12), esclera, x, 0.02, -0.158, cabeza);
+    e.scale.set(1.25, 0.85, 0.55);
+    malla(new THREE.SphereGeometry(0.0165, 14, 10), iris, x * 0.98, 0.019, -0.172, cabeza).scale.set(1, 1, 0.45);
+    malla(new THREE.SphereGeometry(0.0085, 10, 8), pupila, x * 0.98, 0.019, -0.1775, cabeza).scale.set(1, 1, 0.4);
+    malla(new THREE.SphereGeometry(0.004, 6, 4), brillo, x * 0.98 + 0.006, 0.026, -0.18, cabeza);
+    // párpado de arriba (le da mirada) y pestañas
+    const p = malla(new THREE.SphereGeometry(0.032, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.22), parpado, x, 0.031, -0.156, cabeza);
+    p.scale.set(1.28, 0.7, 0.6);
+    p.rotation.x = -0.12;
+    const pest = malla(new THREE.BoxGeometry(0.066, 0.004, 0.006), mat('#2a1d16'), x, 0.041, -0.172, cabeza);
+    pest.rotation.z = x > 0 ? -0.08 : 0.08;
+    // cejas (más gruesas, del color del pelo; si es pelado, finitas)
+    const ceja = malla(new THREE.BoxGeometry(0.06, est0(L) ? 0.01 : 0.014, 0.014), mat(L.barba || (est0(L) ? '#6b5a4e' : L.pelo.color), { roughness: 0.9 }), x * 1.05, 0.072, -0.168, cabeza);
+    ceja.rotation.z = x > 0 ? -0.12 : 0.12;
+  }
+  // nariz
+  const nariz = malla(new THREE.SphereGeometry(0.026, 14, 10), piel, 0, -0.025, -0.185, cabeza);
+  nariz.scale.set(0.85, 1.25, 1);
+  for (const x of [-0.013, 0.013]) malla(new THREE.SphereGeometry(0.006, 6, 4), mat('#6b3b30'), x, -0.045, -0.196, cabeza);
+  // boca con labios
+  const labios = mat(L.robot ? '#5d6773' : '#b9675e', { roughness: 0.5 });
+  const boca = new THREE.Group();
+  boca.position.set(0, -0.085, -0.17);
+  cabeza.add(boca);
+  const sup = malla(new THREE.CapsuleGeometry(0.009, 0.04, 4, 8), labios, 0, 0.005, 0, boca);
+  sup.rotation.z = Math.PI / 2;
+  const inf = malla(new THREE.CapsuleGeometry(0.011, 0.034, 4, 8), labios, 0, -0.009, 0.002, boca);
+  inf.rotation.z = Math.PI / 2;
+  // mejillas apenas rosadas
+  const mejilla = new THREE.MeshBasicMaterial({ color: 0xff8a7a, transparent: true, opacity: 0.16 });
+  if (!L.robot) for (const x of [-0.105, 0.105]) malla(new THREE.CircleGeometry(0.03, 12), mejilla, x, -0.035, -0.158, cabeza).rotation.y = Math.PI + (x > 0 ? 0.6 : -0.6);
   // pelo
   const est = L.pelo.estilo;
   if (est === 'corto') {
-    const c = malla(new THREE.SphereGeometry(0.2, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), pelo, 0, 0.02, 0.012, cabeza);
-    c.scale.set(1, 0.9, 1.02);
+    const c = malla(new THREE.SphereGeometry(0.2, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.5), pelo, 0, 0.035, 0.012, cabeza);
+    c.scale.set(0.98, 0.95, 1.02);
   } else if (est === 'poco') {
     // solo a los costados y atrás (pelado arriba)
     const c = malla(new THREE.TorusGeometry(0.175, 0.04, 8, 24, Math.PI), pelo, 0, -0.02, 0.0, cabeza);
@@ -127,16 +159,20 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
       malla(new THREE.SphereGeometry(0.055, 8, 6), pelo, Math.cos(a) * r, est === 'rulos' ? 0.12 : 0.06 + (i % 2) * 0.03, Math.sin(a) * r + 0.03, cabeza);
     }
   } else if (est === 'largo') {
-    const c = malla(new THREE.SphereGeometry(0.205, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.45), pelo, 0, 0.03, 0.015, cabeza);
+    const c = malla(new THREE.SphereGeometry(0.205, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.45), pelo, 0, 0.04, 0.015, cabeza);
     c.scale.set(1.02, 0.95, 1.04);
     malla(new THREE.BoxGeometry(0.36, 0.34, 0.09), pelo, 0, -0.1, 0.13, cabeza);
   }
   if (L.barba) {
-    const b = malla(new THREE.SphereGeometry(0.17, 14, 10, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), mat(L.barba, { roughness: 0.95 }), 0, 0.01, -0.03, cabeza);
-    b.scale.set(1.04, 1, 1.05);
+    // barba desde abajo de la boca y bigote arriba (la boca se ve)
+    const mb = mat(L.barba, { roughness: 0.95 });
+    const b = malla(new THREE.SphereGeometry(0.19, 22, 12, 0, Math.PI * 2, Math.PI * 0.66, Math.PI * 0.34), mb, 0, 0.0, -0.008, cabeza);
+    b.scale.set(0.99, 1.13, 1.05);
+    const bigote = malla(new THREE.CapsuleGeometry(0.011, 0.05, 4, 8), mb, 0, -0.063, -0.18, cabeza);
+    bigote.rotation.z = Math.PI / 2;
   }
   if (L.kipa) {
-    const k = malla(new THREE.SphereGeometry(0.1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.32), mat(L.kipa), 0, 0.105, 0.06, cabeza);
+    const k = malla(new THREE.SphereGeometry(0.1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.32), mat(L.kipa), 0, 0.13, 0.06, cabeza);
     k.rotation.x = 0.35;
   }
   if (L.lentes) {
@@ -149,8 +185,8 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     a.renderOrder = 1;
   }
   if (L.sombrero) {
-    malla(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 20), mat(L.sombrero), 0, 0.15, 0, cabeza);
-    malla(new THREE.CylinderGeometry(0.16, 0.19, 0.16, 18), mat(L.sombrero), 0, 0.24, 0, cabeza);
+    malla(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 20), mat(L.sombrero), 0, 0.17, 0, cabeza);
+    malla(new THREE.CylinderGeometry(0.16, 0.19, 0.16, 18), mat(L.sombrero), 0, 0.26, 0, cabeza);
   }
   if (L.auriculares) {
     const m = mat(L.auriculares, { roughness: 0.35 });
@@ -244,7 +280,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         cuerpo.rotation.x = 0.3;
         brazoI.rotation.z = -1.9;
         brazoD.rotation.z = 1.9;
-        boca.scale.set(0.6, 4, 1);
+        boca.scale.set(0.8, 2.2, 1);
       } else if (estado === 'tirado') {
         // en el piso panza arriba, como un muñeco tirado
         cuerpo.rotation.x = 1.5;
@@ -253,7 +289,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         brazoD.rotation.z = 1.2 - Math.sin(fase * 2) * 0.15;
         piernaI.rotation.x = -0.3;
         piernaD.rotation.x = 0.2;
-        boca.scale.set(0.6, 4, 1);
+        boca.scale.set(0.8, 2.2, 1);
       } else if (estado === 'pina') {
         brazoD.rotation.x = -1.6;
         torso.rotation.y = 0.5;
@@ -267,7 +303,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         cuerpo.position.y = Math.abs(Math.sin(fase * 1.4)) * 0.45;
         brazoI.rotation.z = -2.6 + s * 0.2;
         brazoD.rotation.z = 2.6 - s * 0.2;
-        boca.scale.set(1.2, 3, 1);
+        boca.scale.set(1.1, 1.8, 1);
       } else if (estado === 'sentado') {
         // sentado: muslos para adelante, manos sobre la mesa
         piernaI.rotation.x = piernaD.rotation.x = -1.5;

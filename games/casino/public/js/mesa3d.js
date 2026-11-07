@@ -201,6 +201,7 @@ export class MesaBJ {
     this.fichas = []; // por asiento: { grupo, monto }
     this.personas = []; // por asiento: { persona, id }
     this.carteles = [];
+    this.primera = -1;
     this.vista = { yaw: 0, pitch: 0.88, dist: 6.8, yawObj: 0, pitchObj: 0.88, distObj: 6.8 };
     this.reloj = 0;
 
@@ -339,22 +340,42 @@ export class MesaBJ {
     });
     this.canvas.addEventListener('pointermove', (e) => {
       if (!arr) return;
-      this.vista.yawObj -= (e.clientX - arr.x) * 0.005;
-      this.vista.pitchObj = Math.max(0.25, Math.min(1.25, this.vista.pitchObj + (e.clientY - arr.y) * 0.004));
+      if (this.primera >= 0) {
+        // mover la cabeza: girar y mirar arriba/abajo
+        this.vista.yawObj = Math.max(-1.5, Math.min(1.5, this.vista.yawObj - (e.clientX - arr.x) * 0.003));
+        this.vista.pitchObj = Math.max(-1.0, Math.min(0.35, this.vista.pitchObj - (e.clientY - arr.y) * 0.003));
+      } else {
+        this.vista.yawObj -= (e.clientX - arr.x) * 0.005;
+        this.vista.pitchObj = Math.max(0.25, Math.min(1.25, this.vista.pitchObj + (e.clientY - arr.y) * 0.004));
+      }
       arr = { x: e.clientX, y: e.clientY };
     });
     this.canvas.addEventListener('pointerup', () => (arr = null));
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
+      if (this.primera >= 0) {
+        this.camara.fov = Math.max(38, Math.min(75, this.camara.fov + e.deltaY * 0.02));
+        return this.camara.updateProjectionMatrix();
+      }
       this.vista.distObj = Math.max(3.5, Math.min(10, this.vista.distObj + e.deltaY * 0.004));
     }, { passive: false });
   }
 
-  // Pone la cámara detrás de mi lugar (o al frente si estoy mirando).
+  // Sentado: la cámara va a tus ojos y mirás la mesa (como en el truco); sin lugar: vista desde arriba.
   mirarDesde(asiento) {
-    this.vista.yawObj = asiento >= 0 ? -anguloAsiento(asiento) : 0;
-    this.vista.pitchObj = 0.88;
-    this.vista.distObj = 6.8;
+    this.primera = asiento;
+    if (asiento >= 0) {
+      this.vista.yaw = this.vista.yawObj = 0;
+      this.vista.pitch = this.vista.pitchObj = -0.32;
+      this.camara.fov = 62;
+    } else {
+      this.vista.yawObj = 0;
+      this.vista.pitchObj = 0.88;
+      this.vista.distObj = 6.8;
+      this.camara.fov = 42;
+    }
+    this.camara.updateProjectionMatrix();
+    this.personas.forEach((p, i) => p && (p.persona.grupo.visible = i !== this.primera));
   }
 
   ficha(v) {
@@ -398,6 +419,7 @@ export class MesaBJ {
       const dx = 0 - s.x;
       const dz = CENTRO_Z - s.z;
       p.grupo.rotation.y = Math.atan2(-dx, -dz);
+      p.grupo.visible = i !== this.primera; // a mí no me veo (estoy mirando desde mis ojos)
       this.scene.add(p.grupo);
       this.personas[i] = { persona: p, id: a.id };
     });
@@ -483,20 +505,20 @@ export class MesaBJ {
         this.carteles[clave] = null;
         return;
       }
-      s = cartel(texto, color);
+      s = cartel(texto, color, 'rgba(15,15,15,.82)', 0.17);
       s.position.copy(pos);
       s.firma = firma;
       this.scene.add(s);
       this.carteles[clave] = s;
     };
     e.asientos.forEach((a, i) => {
-      const p = puntoArco(i, 1.62).add(new THREE.Vector3(0, 0.42, 0));
+      const p = puntoArco(i, 1.45).add(new THREE.Vector3(0, 0.16, 0));
       if (!a?.cartas?.length) return total(i, '', p);
       const txt = a.res ? { gana: 'GANA', pierde: 'PIERDE', empate: 'EMPATE', blackjack: 'BLACKJACK' }[a.res] + (a.res === 'pierde' ? '' : ` ${a.total}`) : a.total > 21 ? `${a.total} SE PASÓ` : a.cartas.length === 2 && a.total === 21 ? 'BLACKJACK' : String(a.total);
       const col = a.res === 'gana' || a.res === 'blackjack' ? '#c5f04a' : a.res === 'pierde' || a.total > 21 ? '#ff8a7a' : '#fff';
       total(i, txt, p, col);
     });
-    total('banca', e.banca.length ? `BANCA ${e.bancaTotal}${e.banca.includes('X') ? '' : e.bancaTotal > 21 ? ' SE PASÓ' : ''}` : '', new THREE.Vector3(0, MESA_Y + 0.5, CENTRO_Z + 0.62), e.bancaTotal > 21 ? '#ff8a7a' : '#f2c94c');
+    total('banca', e.banca.length ? `BANCA ${e.bancaTotal}${e.banca.includes('X') ? '' : e.bancaTotal > 21 ? ' SE PASÓ' : ''}` : '', new THREE.Vector3(0, MESA_Y + 0.2, CENTRO_Z + 0.32), e.bancaTotal > 21 ? '#ff8a7a' : '#f2c94c');
 
     // turno: la persona que juega se marca
     this.turno = e.fase === 'jugando' ? e.turno : -1;
@@ -521,9 +543,19 @@ export class MesaBJ {
     v.yaw += (v.yawObj - v.yaw) * k;
     v.pitch += (v.pitchObj - v.pitch) * k;
     v.dist += (v.distObj - v.dist) * k;
-    const objetivo = new THREE.Vector3(0, MESA_Y + 0.25, CENTRO_Z + 0.7);
-    this.camara.position.set(objetivo.x + Math.sin(v.yaw) * Math.cos(v.pitch) * v.dist, objetivo.y + Math.sin(v.pitch) * v.dist, objetivo.z + Math.cos(v.yaw) * Math.cos(v.pitch) * v.dist);
-    this.camara.lookAt(objetivo);
+    if (this.primera >= 0) {
+      // ojos de mi personaje sentado, mirando hacia Dobro (más lo que gire la cabeza)
+      const ojo = puntoArco(this.primera, 3.05);
+      ojo.y = 1.62;
+      const base = Math.atan2(0 - ojo.x, CENTRO_Z - 0.3 - ojo.z);
+      const yaw = base + v.yaw;
+      this.camara.position.copy(ojo);
+      this.camara.lookAt(ojo.x + Math.sin(yaw) * Math.cos(v.pitch), ojo.y + Math.sin(v.pitch), ojo.z + Math.cos(yaw) * Math.cos(v.pitch));
+    } else {
+      const objetivo = new THREE.Vector3(0, MESA_Y + 0.25, CENTRO_Z + 0.7);
+      this.camara.position.set(objetivo.x + Math.sin(v.yaw) * Math.cos(v.pitch) * v.dist, objetivo.y + Math.sin(v.pitch) * v.dist, objetivo.z + Math.cos(v.yaw) * Math.cos(v.pitch) * v.dist);
+      this.camara.lookAt(objetivo);
+    }
     this.pantalla.visible = this.camara.position.y < 3.3; // desde muy arriba taparía la mesa
 
     // cartas volando

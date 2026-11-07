@@ -20,15 +20,21 @@ export function montarBlackjack(zona, h) {
   const mesa = new MesaBJ($('[data-escena]'));
   const desafio = montarDesafio($('[data-desafio]'), h);
   $('[data-full]').onclick = () => {
-    const el = zona.querySelector('.bj3d-pano');
     if (document.fullscreenElement) document.exitFullscreen?.();
-    else el.requestFullscreen?.().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
   };
   const alCambiarPantalla = () => {
     zona.querySelector('[data-full]').textContent = document.fullscreenElement ? 'Salir de pantalla completa' : 'Pantalla completa';
     setTimeout(() => mesa.redimensionar(), 60);
   };
   document.addEventListener('fullscreenchange', alCambiarPantalla);
+  // la primera vez que tocás la mesa, pasa a pantalla completa de verdad (el navegador lo pide con un toque)
+  zona.addEventListener('pointerdown', () => {
+    if (!document.fullscreenElement && !zona.dataset.yaFull) {
+      zona.dataset.yaFull = '1';
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+  }, { once: true });
 
   function pintarControles() {
     const e = est;
