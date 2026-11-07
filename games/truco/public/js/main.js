@@ -880,8 +880,27 @@ class RoomClient {
           <button class="btn primary big" data-start="0" ${full ? '' : 'disabled'}>Empezar</button>
           <button class="btn big" data-start="1">Empezar llenando con bots</button>
         </div>` : '<p class="hint">Esperando que el anfitrión empiece la partida…</p>'}
+      ${this.apuestaHtml()}
       ${st.you == null ? '<p class="hint">Estás mirando. Tocá “Sentarme” en un lugar libre para jugar.</p>' : ''}
     </div>`;
+  }
+
+  // Apuesta de fichas (las del casino, de mentira): proponer, aceptar o salirse.
+  apuestaHtml() {
+    const r = this.st.room;
+    const a = r.apuesta;
+    const yo = this.you;
+    const fmt = (n) => Number(n).toLocaleString('es-AR');
+    if (!a) {
+      if (yo == null) return '';
+      return `<div class="apuesta"><b>Jugar por fichas</b><span class="hint" style="margin:0">Cada uno pone lo mismo; el equipo ganador se lleva todo.</span>
+        <div class="row">${[500, 1000, 5000, 10000].map((m) => `<button class="btn small" data-apuesta="proponer" data-monto="${m}">${fmt(m)}</button>`).join('')}</div></div>`;
+    }
+    const nombres = a.en.map((i) => esc(r.seats[i]?.name || '—')).join(', ');
+    const adentro = yo != null && a.en.includes(yo);
+    return `<div class="apuesta on"><b>Se juega por ${fmt(a.monto)} fichas cada uno</b><span class="hint" style="margin:0">Adentro: ${nombres} · pozo ${fmt(a.monto * a.en.length)}</span>
+      <div class="row">${yo != null && !adentro ? `<button class="btn primary small" data-apuesta="aceptar">Aceptar ${fmt(a.monto)}</button>` : ''}
+      ${adentro ? `<button class="btn small" data-apuesta="salir">${a.de === yo ? 'Retirar la apuesta' : 'No juego por fichas'}</button>` : ''}</div></div>`;
   }
 
   renderResult() {
@@ -901,7 +920,7 @@ class RoomClient {
         ${this.you != null ? '<button class="btn primary big" data-rematch="1">Revancha</button>' : ''}
         ${st.isHost ? '<button class="btn big" data-tolobby="1">Volver a la sala</button>' : ''}
         <button class="btn big" data-exit="1">Salir</button>
-      </div></div>`;
+      </div>${this.apuestaHtml()}</div>`;
   }
 
   toast(html, kind = '', ms = 3200) {
@@ -1058,6 +1077,7 @@ function bindGameUI() {
     else if (d.unbot) room.send({ t: 'removebot', seat: Number(d.unbot) });
     else if (d.kick) room.send({ t: 'kick', seat: Number(d.kick) });
     else if (d.start) room.send({ t: 'start', fillBots: d.start === '1' });
+    else if (d.apuesta) room.send({ t: 'apuesta-' + d.apuesta, monto: Number(d.monto) || undefined });
     else if (d.copy) {
       navigator.clipboard?.writeText(d.copy);
       room.toast('Copiado', 'good', 1200);
@@ -1077,6 +1097,7 @@ function bindGameUI() {
     const b = e.target.closest('button');
     if (!b || !room) return;
     if (b.dataset.rematch) room.send({ t: 'rematch' });
+    if (b.dataset.apuesta) room.send({ t: 'apuesta-' + b.dataset.apuesta, monto: Number(b.dataset.monto) || undefined });
     if (b.dataset.tolobby) room.send({ t: 'to-lobby' });
     if (b.dataset.exit) $('#leave').click();
   });

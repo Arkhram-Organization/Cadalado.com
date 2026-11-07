@@ -71,7 +71,7 @@ async function encuesta(request, code, body, url) {
   const errores = [];
 
   if (msg && pid) {
-    const u = msg.t === 'join' || msg.t === 'sit' ? await usuarioActual(request) : null;
+    const u = msg.t === 'join' || msg.t === 'sit' || String(msg.t).startsWith('apuesta-') ? await usuarioActual(request) : null;
     const res = await sala.mutar(code, (rm, ctx) => sala.accion(rm, msg, { pid, uid: u?.id, nombreCuenta: u?.nombre, ...ctx }));
     if (res.notfound) return json({ msgs: [{ t: 'notfound' }] }, 404);
     if (res.error) errores.push({ t: 'error', msg: res.error });

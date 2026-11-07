@@ -9,6 +9,7 @@ import { MODES, newGame, act, nextHand, rematch, viewFor, waitingFor, team, clos
 import { botAction, botSena, botClaims } from '../public/js/bot.js';
 import { getStore } from '../../../shared/store.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { quien, mover } from '../../casino/lib/fichas.js';
 
 export const SENAS = [
   'ancho_espada', 'ancho_basto', 'siete_espada', 'siete_oro', 'tres', 'dos', 'ancho_falso',
@@ -98,7 +99,8 @@ export async function mutar(code, fn) {
     const pres = await presencia(code);
     const antes = JSON.stringify(r);
     const estadoAntes = r.status;
-    const res = fn(r, { now: Date.now(), pres }) || {};
+    const res = (await fn(r, { now: Date.now(), pres })) || {};
+    await ordenarApuesta(r, estadoAntes);
     if (JSON.stringify(r) !== antes) {
       await guardar(r);
       await actualizarLobby(r, pres);
@@ -225,6 +227,7 @@ export function accion(r, msg, { pid, uid, nombreCuenta, now, pres }) {
   const isHost = !!pid && pid === r.host;
   const name = nombreCuenta || cleanName(msg.name);
 
+  if (msg.t?.startsWith('apuesta-')) return apuestaAccion(r, msg, { pid, uid, seat });
   switch (msg.t) {
     case 'join': {
       if (seat != null) {
@@ -335,6 +338,79 @@ export function accion(r, msg, { pid, uid, nombreCuenta, now, pres }) {
   }
 }
 
+// ---------------------------------------------------------------- apuesta de fichas entre jugadores
+// Alguien propone poner X fichas (las del casino, de mentira); los demás sentados aceptan o no.
+// Arranca si hay gente de los dos equipos; al final el equipo ganador se reparte el pozo.
+const APUESTA_MAX = 50_000;
+async function apuestaAccion(r, msg, { pid, uid, seat }) {
+  const a = r.apuesta;
+  const quienSoy = quien(pid, uid);
+  const nombre = seat != null ? r.seats[seat].name : 'Alguien';
+  const abierta = r.status === 'lobby' || r.status === 'ended';
+  try {
+    if (msg.t === 'apuesta-proponer') {
+      if (seat == null || !abierta) return { error: 'Se apuesta antes de empezar (o para la revancha)' };
+      if (a) return { error: 'Ya hay una apuesta propuesta' };
+      const monto = Math.round(Number(msg.monto));
+      if (!(monto >= 100 && monto <= APUESTA_MAX)) return { error: 'La apuesta va de 100 a 50.000 fichas' };
+      await mover(quienSoy, -monto);
+      r.apuesta = { monto, de: pid, en: { [pid]: uid || null }, activa: false };
+      systemChat(r, `${nombre} propone jugar por ${monto.toLocaleString('es-AR')} fichas cada uno. ¿Quién acepta?`);
+    } else if (msg.t === 'apuesta-aceptar') {
+      if (!a || a.activa || seat == null || !abierta || pid in a.en) return {};
+      await mover(quienSoy, -a.monto);
+      a.en[pid] = uid || null;
+      systemChat(r, `${nombre} aceptó la apuesta.`);
+    } else if (msg.t === 'apuesta-salir') {
+      if (!a || a.activa || !(pid in a.en)) return {};
+      if (pid === a.de) await devolverApuesta(r, 'Se retiró la apuesta.');
+      else {
+        await mover(quienSoy, a.monto);
+        delete a.en[pid];
+        systemChat(r, `${nombre} no juega por fichas.`);
+      }
+    }
+  } catch (e) {
+    return { error: e.message || 'No se pudo' };
+  }
+  return {};
+}
+async function devolverApuesta(r, texto) {
+  const a = r.apuesta;
+  if (!a) return;
+  for (const [p, u] of Object.entries(a.en)) await mover(quien(p, u), a.monto);
+  r.apuesta = null;
+  if (texto) systemChat(r, texto);
+}
+// Después de cada cambio: los que se pararon recuperan lo suyo; al empezar se activa; al terminar se paga.
+async function ordenarApuesta(r, estadoAntes) {
+  const a = r.apuesta;
+  if (!a) return;
+  if (!a.activa) {
+    if (seatOf(r, a.de) == null) return devolverApuesta(r, 'Se fue quien propuso la apuesta: se devolvieron las fichas.');
+    for (const p of Object.keys(a.en)) if (seatOf(r, p) == null) {
+      await mover(quien(p, a.en[p]), a.monto);
+      delete a.en[p];
+    }
+  }
+  if (r.status === 'playing' && estadoAntes !== 'playing' && !a.activa) {
+    const equipos = new Set(Object.keys(a.en).map((p) => team(seatOf(r, p))));
+    if (equipos.size < 2) return devolverApuesta(r, 'La apuesta necesita gente de los dos equipos: se devolvieron las fichas.');
+    a.activa = true;
+    systemChat(r, `Se juegan ${(a.monto * Object.keys(a.en).length).toLocaleString('es-AR')} fichas.`);
+  }
+  if (r.status === 'ended' && estadoAntes !== 'ended' && a.activa) {
+    const ganan = Object.keys(a.en).filter((p) => team(seatOf(r, p)) === r.game.winner);
+    if (!ganan.length) return devolverApuesta(r, 'Nadie del equipo ganador había apostado: se devolvieron las fichas.');
+    const pozo = a.monto * Object.keys(a.en).length;
+    const parte = Math.floor(pozo / ganan.length);
+    for (const [i, p] of ganan.entries()) await mover(quien(p, a.en[p]), parte + (i === 0 ? pozo - parte * ganan.length : 0));
+    systemChat(r, `${ganan.map((p) => r.seats[seatOf(r, p)].name).join(' y ')} se ${ganan.length > 1 ? 'reparten' : 'lleva'} ${pozo.toLocaleString('es-AR')} fichas.`);
+    r.ultimaApuesta = { pozo, ganan: ganan.map((p) => seatOf(r, p)), n: (r.ultimaApuesta?.n || 0) + 1 };
+    r.apuesta = null;
+  }
+}
+
 // ---------------------------------------------------------------- lo que antes hacía la alarma
 // ¿Cuándo tiene que intervenir el servidor? (bots, pausas, tiempos). Infinity = nada pendiente.
 export function proximoTick(r, now, pres) {
@@ -435,6 +511,8 @@ function publicRoom(r, online) {
     status: r.status,
     seats: r.seats.map((s) => (s ? { name: s.name, bot: !!s.bot, online: s.bot || online.has(s.pid), host: !s.bot && s.pid === r.host } : null)),
     spectators,
+    apuesta: r.apuesta ? { monto: r.apuesta.monto, de: seatOf(r, r.apuesta.de), en: Object.keys(r.apuesta.en).map((p) => seatOf(r, p)).filter((x) => x != null), activa: r.apuesta.activa } : null,
+    ultimaApuesta: r.ultimaApuesta || null,
   };
 }
 
