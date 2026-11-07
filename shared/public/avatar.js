@@ -67,13 +67,22 @@ export function avatarSvg(look = {}, { fondo = null, titulo = '' } = {}) {
     }
   }
   // cara
-  const ojo = L.robot ? '#38d9e6' : L.ojos || '#1b1410';
-  s += `<ellipse cx="${cx - 7.5}" cy="${cy + 1}" rx="3" ry="4.2" fill="${ojo}"/><ellipse cx="${cx + 7.5}" cy="${cy + 1}" rx="3" ry="4.2" fill="${ojo}"/>`;
-  s += `<circle cx="${cx - 6.5}" cy="${cy - 0.5}" r="1.1" fill="#fff"/><circle cx="${cx + 8.5}" cy="${cy - 0.5}" r="1.1" fill="#fff"/>`;
-  if (!L.robot) s += `<circle cx="${cx - 13}" cy="${cy + 9}" r="3.4" fill="#ff8a7a" opacity=".35"/><circle cx="${cx + 13}" cy="${cy + 9}" r="3.4" fill="#ff8a7a" opacity=".35"/>`;
-  if (est !== 'calvo' || L.barba) s += `<path d="M${cx - 11} ${cy - 7} l7 -1.5 M${cx + 11} ${cy - 7} l-7 -1.5" stroke="${pelo}" stroke-width="2.2" stroke-linecap="round"/>`;
-  if (L.barba) s += `<path d="M${cx - rx + 2} ${cy + 4} Q${cx - rx + 2} ${cy + ry + 6} ${cx} ${cy + ry + 6} Q${cx + rx - 2} ${cy + ry + 6} ${cx + rx - 2} ${cy + 4} Q${cx + 8} ${cy + 12} ${cx} ${cy + 12} Q${cx - 8} ${cy + 12} ${cx - rx + 2} ${cy + 4}Z" fill="${L.barba}"/>`;
-  s += `<path d="M${cx - 5} ${cy + 11} Q${cx} ${cy + 15} ${cx + 5} ${cy + 11}" stroke="#5a2b25" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  // ojos con blanco, iris, pupila y brillo; nariz; labios
+  const iris = L.robot ? '#38d9e6' : L.ojos || '#5a3a22';
+  for (const dx of [-7.5, 7.5]) {
+    s += `<ellipse cx="${cx + dx}" cy="${cy + 1}" rx="4.6" ry="3.4" fill="#f8f5f0"/>`;
+    s += `<circle cx="${cx + dx}" cy="${cy + 1.2}" r="2.5" fill="${iris}"/><circle cx="${cx + dx}" cy="${cy + 1.2}" r="1.2" fill="#0b0b0b"/><circle cx="${cx + dx + 0.9}" cy="${cy + 0.3}" r=".7" fill="#fff"/>`;
+    s += `<path d="M${cx + dx - 4.8} ${cy - 0.4} Q${cx + dx} ${cy - 3.8} ${cx + dx + 4.8} ${cy - 0.4}" stroke="#2a1d16" stroke-width="1.1" fill="none"/>`;
+  }
+  if (!L.robot) {
+    s += `<circle cx="${cx - 13}" cy="${cy + 10}" r="3.4" fill="#ff8a7a" opacity=".18"/><circle cx="${cx + 13}" cy="${cy + 10}" r="3.4" fill="#ff8a7a" opacity=".18"/>`;
+    s += `<path d="M${cx} ${cy + 2} Q${cx - 2.6} ${cy + 8} ${cx - 2.2} ${cy + 9} Q${cx} ${cy + 10.2} ${cx + 2.2} ${cy + 9}" stroke="${oscurecer(piel, 0.7)}" stroke-width="1.3" fill="none" stroke-linecap="round"/>`;
+  }
+  s += `<path d="M${cx - 2.2} ${cy - 6.5}" />`;
+  const ceja = L.barba || (est === 'calvo' ? oscurecer(piel, 0.6) : pelo);
+  s += `<path d="M${cx - 12} ${cy - 5} Q${cx - 7.5} ${cy - 7.5} ${cx - 3} ${cy - 5.5} M${cx + 12} ${cy - 5} Q${cx + 7.5} ${cy - 7.5} ${cx + 3} ${cy - 5.5}" stroke="${ceja}" stroke-width="${est === 'calvo' ? 1.3 : 2}" fill="none" stroke-linecap="round"/>`;
+  if (L.barba) s += `<path d="M${cx - rx + 2} ${cy + 6} Q${cx - rx + 2} ${cy + ry + 6} ${cx} ${cy + ry + 6} Q${cx + rx - 2} ${cy + ry + 6} ${cx + rx - 2} ${cy + 6} Q${cx + 8} ${cy + 16} ${cx} ${cy + 16} Q${cx - 8} ${cy + 16} ${cx - rx + 2} ${cy + 6}Z" fill="${L.barba}"/><path d="M${cx - 6} ${cy + 12} Q${cx} ${cy + 10} ${cx + 6} ${cy + 12}" stroke="${L.barba}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  s += `<path d="M${cx - 4.5} ${cy + 13.5} Q${cx} ${cy + 12.2} ${cx + 4.5} ${cy + 13.5} Q${cx} ${cy + 16.4} ${cx - 4.5} ${cy + 13.5}Z" fill="#b9675e"/>`;
   // accesorios
   if (L.lentes) s += `<g fill="none" stroke="${L.lentes}" stroke-width="2"><circle cx="${cx - 7.5}" cy="${cy + 1}" r="6"/><circle cx="${cx + 7.5}" cy="${cy + 1}" r="6"/><path d="M${cx - 1.5} ${cy + 1}h3"/></g>`;
   if (L.antifaz) s += `<rect x="${cx - rx + 1}" y="${cy - 5}" width="${rx * 2 - 2}" height="10" rx="5" fill="${L.antifaz}" opacity=".9"/><ellipse cx="${cx - 7.5}" cy="${cy}" rx="3" ry="3" fill="#fff"/><ellipse cx="${cx + 7.5}" cy="${cy}" rx="3" ry="3" fill="#fff"/>`;
