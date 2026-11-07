@@ -63,7 +63,8 @@ function menu() {
       <h2>Armar una sala</h2>
       <form data-crear style="display:grid;gap:12px">
         ${cuenta ? '' : `<label><span class="etq">Tu nombre</span><input class="entrada" name="nombre" maxlength="20" required value="${esc(nombreGuardado())}" placeholder="¿Cómo te llaman?"></label>`}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <label><span class="etq">Bots</span><select class="entrada" name="bots"><option>0</option><option selected>2</option><option>3</option><option>4</option></select></label>
           <label><span class="etq">Rondas</span><select class="entrada" name="rondas"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
           <label><span class="etq">Tiempo para crear</span><select class="entrada" name="segundos"><option value="60">60 s</option><option value="90" selected>90 s</option><option value="120">120 s</option></select></label>
         </div>
@@ -84,7 +85,7 @@ function menu() {
     if (!cuenta) guardarNombre(f.get('nombre'));
     e.target.querySelector('button').disabled = true;
     try {
-      const { code } = await api('/api/memes/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { rondas: f.get('rondas'), segundos: f.get('segundos'), publica: f.get('publica') === 'on' } });
+      const { code } = await api('/api/memes/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: Number(f.get('bots')), rondas: f.get('rondas'), segundos: f.get('segundos'), publica: f.get('publica') === 'on' } });
       ir(`/memes/sala/${code}`);
     } catch (err) {
       toast(err.message, true);
@@ -159,6 +160,8 @@ function abrirSala(code) {
     intervalo: (e) => (e?.fase === 'votando' ? 700 : e?.fase === 'lobby' ? 1500 : 1000),
     onEstado: (e) => {
       est = e;
+      // los bots aparecen como jugadores más (siempre conectados)
+      est.jugadores = [...e.jugadores, ...(e.bots || []).map((b) => ({ ...b, online: true, bot: true }))];
       pintarJugadores();
       pintarFase();
     },
@@ -205,7 +208,7 @@ function abrirSala(code) {
     const lista = [...est.jugadores].sort((a, b) => (est.puntos[b.id] || 0) - (est.puntos[a.id] || 0));
     $('[data-jugadores]').innerHTML = lista.map((j) => {
       const listo = est.fase === 'creando' && est.listos.includes(j.id);
-      const sub = j.id === est.host ? 'arma la sala' : est.fase === 'creando' ? (listo ? 'meme listo' : est.participantes.includes(j.id) ? 'creando…' : 'entra en la próxima') : j.online ? 'conectado' : 'desconectado';
+      const sub = j.bot && est.fase !== 'creando' ? 'bot' : j.id === est.host ? 'arma la sala' : est.fase === 'creando' ? (listo ? 'meme listo' : est.participantes.includes(j.id) ? 'creando…' : 'entra en la próxima') : j.online ? 'conectado' : 'desconectado';
       return `<div class="jug ${j.online ? '' : 'off'}"><span class="avatar" style="--av:${colorDe(j.id)}">${esc(j.nombre[0]?.toUpperCase() || '?')}</span>
         <span class="n">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}<small>${sub}</small></span>
         ${listo ? '<span class="ok">✓</span>' : ''}<span class="pts">${est.puntos[j.id] || 0}</span></div>`;
@@ -231,6 +234,7 @@ function abrirSala(code) {
         <h2>¿Quiénes juegan?</h2>
         <p>Mandá el link de la sala. Cuando estén todos, ${esHost ? 'tocá empezar' : 'el que armó la sala empieza'}.</p>
         <div class="fila-form" style="max-width:520px;margin:0 auto"><input class="entrada mono" readonly value="${esc(link)}"><button class="btn" data-copiar2>Copiar</button></div>
+        ${esHost ? `<div class="fila-bots"><span class="etq">Bots que memean</span>${[0, 1, 2, 3, 4].map((k) => `<button class="btn btn-chico ${k === (est.bots || []).length ? 'btn-lima' : ''}" data-bots="${k}">${k}</button>`).join('')}</div>` : ''}
         <div style="margin-top:18px">${esHost ? `<button class="btn btn-lima btn-grande" data-empezar ${n < 2 ? 'disabled' : ''}>Empezar (${n} ${n === 1 ? 'jugador' : 'jugadores'})</button>` : `<span class="chip">${n} conectados · esperando que empiece</span>`}</div>
         <div class="reglas">
           <div><b>1 · Plantilla</b>Te toca una al azar. Si no te convence, pedí otra.</div>
@@ -239,6 +243,7 @@ function abrirSala(code) {
         </div></div>`;
       c.querySelector('[data-copiar2]').onclick = () => app.querySelector('[data-copiar]').click();
       c.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
+      c.querySelectorAll('[data-bots]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'bots', n: Number(b.dataset.bots) })));
       return;
     }
 

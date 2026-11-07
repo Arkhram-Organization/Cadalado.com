@@ -101,3 +101,6 @@
   .votos button { width: 58px; padding: 10px 4px 8px; font-size: 12px; }
   .votos button span { font-size: 26px; }
 }
+.fila-bots { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.fila-bots .etq { margin-right: 6px; }
+.fila-bots .btn { min-width: 38px; }

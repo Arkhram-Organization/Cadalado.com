@@ -3,6 +3,7 @@
 import { PLANTILLAS } from '../public/js/plantillas.js';
 import { crearJuego, idPublico, mezclar, entero } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { textosBot, nombresBots, votoBot, MAX_BOTS } from './bots.js';
 
 const POR_ID = new Map(PLANTILLAS.map((p) => [p.id, p]));
 const VOTO_MS = 13_000; // cada meme se vota durante este tiempo
@@ -34,6 +35,12 @@ function limpiarTextos(lista) {
   }));
 }
 const tieneTexto = (m) => m?.textos?.some((t) => t.t.trim());
+const esBot = (pid) => typeof pid === 'string' && pid.startsWith('bot-');
+const nombreDe = (r, pid) => (esBot(pid) ? (r.botsSala || []).find((b) => b.pid === pid)?.nombre : r.jugadores[pid]?.nombre) || '—';
+function armarBots(r, n) {
+  const nombres = nombresBots(n);
+  r.botsSala = nombres.map((nombre, i) => ({ pid: `bot-${i}-${nombre.toLowerCase().replace(/[^a-z]/g, '')}`, nombre }));
+}
 
 function empezarRonda(r, ctx) {
   r.ronda += 1;
@@ -43,7 +50,16 @@ function empezarRonda(r, ctx) {
   r.asignadas = {};
   r.cambios = {};
   r.participantes = Object.keys(r.jugadores);
+  r.listoBot = {};
+  r.botsSala ||= [];
+  r.frasesBot ||= [];
+  for (const b of r.botsSala) r.participantes.push(b.pid);
   for (const pid of r.participantes) r.asignadas[pid] = nuevaPlantilla(r);
+  // los bots tienen su meme enseguida, pero "lo mandan" un rato después (como una persona)
+  for (const b of r.botsSala) {
+    r.memes[b.pid] = { plantilla: r.asignadas[b.pid], textos: textosBot(POR_ID.get(r.asignadas[b.pid])?.cajas, r.frasesBot) };
+    r.listoBot[b.pid] = ctx.now + (0.2 + Math.random() * 0.45) * r.segCrear * 1000;
+  }
   ctx.sistema(`Ronda ${r.ronda} de ${r.rondas}: ¡a memear!`);
 }
 
@@ -54,6 +70,11 @@ function empezarVotacion(r, ctx) {
   if (!r.orden.length) return mostrarResultados(r, ctx);
   r.fase = 'votando';
   r.fin = ctx.now + VOTO_MS;
+  votanBots(r);
+}
+function votanBots(r) {
+  const autor = r.orden[r.idx];
+  for (const b of r.botsSala || []) if (b.pid !== autor) (r.votos[autor] ||= {})[b.pid] = votoBot();
 }
 
 function puntosDe(r, autor) {
@@ -70,22 +91,30 @@ function mostrarResultados(r, ctx) {
   r.fin = r.fase === 'final' ? 0 : ctx.now + RESULTADOS_MS;
   if (r.fase === 'final') {
     const top = Object.entries(r.puntos).sort((a, b) => b[1] - a[1])[0];
-    if (top) ctx.sistema(`¡Ganó ${r.jugadores[top[0]]?.nombre || 'alguien'} con ${top[1]} puntos!`);
+    if (top) ctx.sistema(`¡Ganó ${nombreDe(r, top[0])} con ${top[1]} puntos!`);
   }
 }
 
 function avanzarVoto(r, ctx) {
   r.idx += 1;
   if (r.idx >= r.orden.length) mostrarResultados(r, ctx);
-  else r.fin = ctx.now + VOTO_MS;
+  else {
+    r.fin = ctx.now + VOTO_MS;
+    votanBots(r);
+  }
 }
 
-const votantes = (r, autor, online) => r.participantes.filter((p) => p !== autor && r.jugadores[p] && (!online || online.has(p)));
+// quiénes votan: los bots ya votaron solos; online filtra a las personas conectadas
+const votantes = (r, autor, online) => r.participantes.filter((p) => p !== autor && (esBot(p) ? !online : r.jugadores[p] && (!online || online.has(p))));
 
 export const memes = crearJuego({
   id: 'memes',
   nueva(opts) {
-    return {
+    const nb = Number(opts.bots);
+    const r = {
+      botsSala: [],
+      frasesBot: [],
+      listoBot: {},
       fase: 'lobby',
       rondas: [2, 3, 4, 5].includes(Number(opts.rondas)) ? Number(opts.rondas) : 3,
       segCrear: [60, 90, 120].includes(Number(opts.segundos)) ? Number(opts.segundos) : 90,
@@ -103,6 +132,8 @@ export const memes = crearJuego({
       resultados: [],
       mejor: null,
     };
+    armarBots(r, Number.isInteger(nb) && nb >= 0 && nb <= MAX_BOTS ? nb : 0);
+    return r;
   },
   unirse(r, j, ctx) {
     // si entra en medio de una ronda con tiempo, juega esta ronda
@@ -118,7 +149,7 @@ export const memes = crearJuego({
         if (!ctx.esHost) return { error: 'Solo quien creó la sala puede empezar' };
         if (!['lobby', 'final'].includes(r.fase)) return {};
         const conectados = Object.keys(r.jugadores).filter((p) => ctx.online.has(p) || p === pid);
-        if (conectados.length < 2) return { error: 'Hacen falta al menos 2 jugadores. ¡Mandá el link!' };
+        if (conectados.length + (r.botsSala || []).length < 2) return { error: 'Hacen falta al menos 2 jugadores. ¡Mandá el link o sumá bots!' };
         // los que se fueron no siguen en la tabla
         for (const p of Object.keys(r.jugadores)) if (!conectados.includes(p)) delete r.jugadores[p];
         r.ronda = 0;
@@ -156,6 +187,11 @@ export const memes = crearJuego({
         if (!faltan.length) r.fin = Math.min(r.fin, ctx.now + 1800);
         return {};
       }
+      case 'bots': {
+        const n = Number(msg.n);
+        if (ctx.esHost && ['lobby', 'final'].includes(r.fase) && Number.isInteger(n) && n >= 0 && n <= MAX_BOTS) armarBots(r, n);
+        return {};
+      }
       case 'siguiente':
         if (ctx.esHost && r.fase === 'resultados') r.fin = ctx.now;
         return {};
@@ -181,7 +217,8 @@ export const memes = crearJuego({
       fin: r.fin,
       puntos: Object.fromEntries(Object.entries(r.puntos).map(([p, n]) => [id(p), n])),
       participantes: r.participantes.map(id),
-      listos: Object.keys(r.memes).map(id),
+      listos: Object.keys(r.memes).filter((p) => !esBot(p) || (r.listoBot?.[p] || 0) <= ctx.now).map(id),
+      bots: (r.botsSala || []).map((b) => ({ id: id(b.pid), nombre: b.nombre })),
     };
     if (r.fase === 'creando' && r.participantes.includes(pid)) {
       v.miPlantilla = r.asignadas[pid];
@@ -203,9 +240,9 @@ export const memes = crearJuego({
       };
     }
     if (r.fase === 'resultados' || r.fase === 'final') {
-      v.resultados = r.resultados.map((m) => ({ ...m, autor: id(m.autor), nombre: r.jugadores[m.autor]?.nombre || '—' }));
+      v.resultados = r.resultados.map((m) => ({ ...m, autor: id(m.autor), nombre: nombreDe(r, m.autor) }));
     }
-    if (r.fase === 'final' && r.mejor) v.mejor = { ...r.mejor, autor: id(r.mejor.autor), nombre: r.jugadores[r.mejor.autor]?.nombre || '—' };
+    if (r.fase === 'final' && r.mejor) v.mejor = { ...r.mejor, autor: id(r.mejor.autor), nombre: nombreDe(r, r.mejor.autor) };
     return v;
   },
   lobby(r) {
@@ -228,7 +265,7 @@ export const memes = crearJuego({
         resultado: pts === max ? (ganadores > 1 ? 'tablas' : 'victoria') : 'derrota',
         detalle: `${r.rondas} rondas`,
         marcador: `${pts} pts · ${tabla.findIndex(([p]) => p === pid) + 1}º de ${tabla.length}`,
-        rivales: tabla.filter(([p]) => p !== pid).map(([p]) => r.jugadores[p]?.nombre).filter(Boolean),
+        rivales: tabla.filter(([p]) => p !== pid).map(([p]) => nombreDe(r, p)),
       });
     }
   },

@@ -14,7 +14,7 @@ test('partida de memes completa: crear, votar anónimo, puntos y final', async (
   const { data } = await req('POST', '/crear', { pid: P[0], nombre: 'Ana', opciones: { rondas: 2, publica: true } });
   const code = data.code;
   await accion(code, P[0], { t: 'join', nombre: 'Ana' });
-  assert.equal((await accion(code, P[0], { t: 'empezar' })).data.error, 'Hacen falta al menos 2 jugadores. ¡Mandá el link!');
+  assert.equal((await accion(code, P[0], { t: 'empezar' })).data.error, 'Hacen falta al menos 2 jugadores. ¡Mandá el link o sumá bots!');
   await accion(code, P[1], { t: 'join', nombre: 'Beto' });
   await accion(code, P[2], { t: 'join', nombre: 'Caro' });
   assert.equal((await accion(code, P[1], { t: 'empezar' })).data.error, 'Solo quien creó la sala puede empezar');
@@ -62,4 +62,36 @@ test('partida de memes completa: crear, votar anónimo, puntos y final', async (
   assert.ok(v.estado.mejor);
   const lobby = (await req('GET', '/lobby')).data.salas;
   assert.ok(lobby.some((s) => s.code === code));
+});
+
+test('bots: juegan solos con una persona, votan, no repiten frases y no se votan a sí mismos', async () => {
+  const A = 'pidMemeSolo1';
+  const { code } = (await req('POST', '/crear', { pid: A, nombre: 'Ana', opciones: { rondas: 2, bots: 3 } })).data;
+  await accion(code, A, { t: 'join', nombre: 'Ana' });
+  let v = await ver(code, A);
+  assert.equal(v.estado.bots.length, 3);
+  const nombres = v.estado.bots.map((b) => b.nombre);
+  assert.equal(new Set(nombres).size, 3);
+  await accion(code, A, { t: 'bots', n: 2 });
+  v = (await accion(code, A, { t: 'empezar' })).data.estado;
+  assert.equal(v.fase, 'creando');
+  assert.equal(v.participantes.length, 3);
+  assert.ok(!v.listos.some((id) => v.bots.find((b) => b.id === id)), 'los bots tardan un rato en mandar');
+  await accion(code, A, { t: 'enviar', textos: [{ t: 'mi meme' }] });
+  const textosVistos = [];
+  for (let k = 0; k < 2; k++) {
+    // forzamos el paso del tiempo
+    const { getStore } = await import('../../../shared/store.js');
+    const key = `sala:memes:${code}`;
+    const r = JSON.parse(await getStore().get(key));
+    r.fin = Date.now() - 1;
+    await getStore().set(key, JSON.stringify(r), 3600);
+    v = await ver(code, A);
+    if (v.estado.fase === 'votando') {
+      textosVistos.push(v.estado.voto.textos.map((t) => t.t).join(' / '));
+      if (!v.estado.voto.esMio) assert.ok(v.estado.voto.votaron >= 1, 'el otro bot ya votó');
+    }
+  }
+  assert.ok(textosVistos.length >= 1);
+  assert.equal(new Set(textosVistos).size, textosVistos.length);
 });
