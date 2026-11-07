@@ -546,7 +546,7 @@ export class MesaBJ {
     if (this.primera >= 0) {
       // ojos de mi personaje sentado, mirando hacia Dobro (más lo que gire la cabeza)
       const ojo = puntoArco(this.primera, 3.05);
-      ojo.y = 1.62;
+      ojo.y = 1.4;
       const base = Math.atan2(0 - ojo.x, CENTRO_Z - 0.3 - ojo.z);
       const yaw = base + v.yaw;
       this.camara.position.copy(ojo);
