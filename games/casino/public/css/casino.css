@@ -262,3 +262,16 @@ button.lugar:hover { border-color: var(--oro); color: var(--oro); }
 .bj3d-full { position: absolute; right: 10px; top: 10px; z-index: 3; }
 .bj3d-pano:fullscreen { border-radius: 0; padding: 10px; display: flex; flex-direction: column; overflow-y: auto; }
 .bj3d-pano:fullscreen .bj3d { flex: 1; height: auto; min-height: 0; }
+
+/* salón con alfombra roja y luces doradas */
+.salon { position: relative; }
+.salon::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(242,201,76,.25) 0 120px, transparent 121px),
+    radial-gradient(circle at 85% 18%, rgba(242,201,76,.18) 0 160px, transparent 161px),
+    repeating-linear-gradient(45deg, rgba(0,0,0,.08) 0 2px, transparent 2px 14px),
+    radial-gradient(ellipse at 50% 0%, #8a1325, #3a0710 70%, #1d0408); }
+.salon-hero h1 { text-shadow: 0 4px 0 #000, 0 0 30px rgba(242,201,76,.35); }
+.salon-hero p { color: #f3d9c0; }
+.mesa-card { border: 3px solid var(--oro); }
+.mesa-card:hover { transform: translateY(-4px) rotate(-.4deg); }

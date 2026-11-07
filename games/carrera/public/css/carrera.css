@@ -70,3 +70,20 @@ kbd { font: 700 11px var(--mono); padding: 2px 6px; border-radius: 5px; backgrou
 @media (max-width: 760px) { .pina-hud { display: none; } }
 @media (max-width: 760px) { .panel-flota { top: 58px; left: 8px; padding: 14px; } .puesto { font-size: 32px; } .chat-mini { display: none; } }
 .chat-mini .log .bot b { color: #ffd166; }
+
+/* paneles con onda de juego */
+.panel-flota { background: #fffaf0; color: #16101f; border: 3px solid #16101f; box-shadow: 7px 7px 0 #16101f; backdrop-filter: none; }
+.panel-flota h2 { color: #16101f; text-transform: uppercase; }
+.panel-flota p { color: #4a3f5c; }
+.panel-flota .etq { color: #0f766e; }
+.lista-j div { background: #fff; border: 2px solid #16101f; color: #16101f; }
+.lista-j div:nth-child(3n+1) { background: #e0fbf7; } .lista-j div:nth-child(3n+2) { background: #ffe3f1; } .lista-j div:nth-child(3n) { background: #fff4cc; }
+.lista-j small { color: #5c5270; }
+.lista-j div.dorado { background: linear-gradient(90deg, #ffe9a0, #fff4cc); }
+.teclas { color: #4a3f5c; }
+.panel-flota .btn { border: 2px solid #16101f; box-shadow: 3px 3px 0 #16101f; }
+.panel-flota .entrada { background: #fff; color: #16101f; border: 2px solid #16101f; box-shadow: none; }
+.tabla-res div { background: #fff; border: 2px solid #16101f; color: #16101f; }
+.tabla-res .mono { color: #4a3f5c; }
+.podio-top div { background: #fff; border: 2px solid #16101f; color: #16101f; }
+.podio-top .p1 { background: #ffd166; }
