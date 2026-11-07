@@ -138,3 +138,47 @@ test('mesas públicas existen solas y aparecen en el lobby', async () => {
   const { salas } = (await req('GET', '/lobby')).data;
   assert.ok(salas.some((s) => s.code === 'SLOTS'));
 });
+
+test('desafío entre jugadores: se acepta, el que más gana se lleva el pozo; si nadie acepta, se devuelve', async () => {
+  const { data } = await req('POST', '/crear', { pid: 'pidDesafioAA', nombre: 'Ana', opciones: { tipo: 'ruleta' } });
+  const mesa = data.code;
+  const A = 'pidDesafio' + rnd();
+  const B = 'pidDesafio' + rnd();
+  const C = 'pidDesafio' + rnd();
+  for (const [p, n] of [[A, 'Ana'], [B, 'Beto'], [C, 'Caro']]) await accion(mesa, p, { t: 'join', nombre: n });
+  // nadie acepta: vuelve
+  await accion(mesa, A, { t: 'desafiar', monto: 1000 });
+  assert.equal((await ver(mesa, A)).saldo, 9000);
+  assert.equal((await accion(mesa, B, { t: 'desafiar', monto: 500 })).data.error, 'Ya hay un desafío en la mesa');
+  await adelantar(mesa);
+  let v = await ver(mesa, A);
+  assert.equal(v.estado.desafio, null);
+  assert.equal(v.saldo, 10000);
+  await adelantar(mesa);
+  await ver(mesa, A);
+  await adelantar(mesa);
+  v = await ver(mesa, A);
+  assert.equal(v.estado.fase, 'apuestas');
+  // Ana desafía, Beto y Caro aceptan; Ana apuesta a todo el paño (siempre recupera algo), los otros no apuestan
+  await accion(mesa, A, { t: 'desafiar', monto: 1000 });
+  await accion(mesa, B, { t: 'aceptar' });
+  await accion(mesa, C, { t: 'aceptar' });
+  assert.equal((await accion(mesa, A, { t: 'aceptar' })).data.error, undefined);
+  v = await ver(mesa, B);
+  assert.equal(v.estado.desafio.aceptan.length, 2);
+  assert.equal(v.saldo, 9000);
+  for (let k = 0; k <= 36; k++) await accion(mesa, B, { t: 'apostar', casillero: 'n' + k, monto: 10 }); // Beto: neto +360 - 370 = -10
+  await accion(mesa, C, { t: 'apostar', casillero: 'n0', monto: 10 }); // Caro: casi seguro pierde 10
+  await adelantar(mesa);
+  await ver(mesa, A);
+  await adelantar(mesa);
+  v = await ver(mesa, A);
+  assert.equal(v.estado.fase, 'pago');
+  const n = v.estado.resultado;
+  // Ana no apostó: neto 0, es la mejor salvo que Caro acierte el 0
+  if (n !== 0) {
+    assert.deepEqual(v.estado.desafioRes.nombres, ['Ana']);
+    assert.equal(v.saldo, 9000 + 3000);
+  }
+  assert.equal(v.estado.desafio, null);
+});

@@ -7,10 +7,75 @@ import { quien, mover, saldo } from './fichas.js';
 // ============================================================ RULETA (europea, un solo cero)
 export const RUEDA = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 export const ROJOS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const APUESTAS_MS = 22_000;
+const APUESTAS_MS = 35_000; // más tiempo para armar la jugada
 const GIRO_MS = 8_000;
 const PAGO_MS = 6_500;
 const FICHAS_VALIDAS = [10, 50, 100, 500, 1000, 5000];
+
+// ============================================================ DESAFÍO ENTRE JUGADORES
+// Alguien propone poner X fichas; los demás aceptan o no. Las fichas quedan en un pozo y
+// el que más gane en la próxima ronda (ruleta o mano de blackjack) se lleva todo. Si nadie acepta, se devuelve.
+const DESAFIO_MAX = 50_000;
+async function desafioAccion(r, msg, ctx, abierta) {
+  const { pid, jugador } = ctx;
+  const q = quien(pid, jugador.uid);
+  const d = r.desafio;
+  if (msg.t === 'desafiar') {
+    if (!abierta) return { error: 'Los desafíos se proponen mientras se apuesta' };
+    if (d) return { error: 'Ya hay un desafío en la mesa' };
+    const monto = Math.round(Number(msg.monto));
+    if (!(monto >= 100 && monto <= DESAFIO_MAX)) return { error: 'El desafío va de 100 a 50.000 fichas' };
+    await mover(q, -monto);
+    r.desafio = { de: pid, monto, aceptan: [], jugando: false };
+    ctx.sistema(`${jugador.nombre} desafía a la mesa: ${monto.toLocaleString('es-AR')} fichas para el que más gane en esta ronda. ¿Quién acepta?`);
+    return {};
+  }
+  if (msg.t === 'aceptar') {
+    if (!d || d.jugando || !abierta) return { error: 'Ese desafío ya no está abierto' };
+    if (d.de === pid || d.aceptan.includes(pid)) return {};
+    if (d.aceptan.length >= 9) return { error: 'El desafío está lleno' };
+    await mover(q, -d.monto);
+    d.aceptan.push(pid);
+    ctx.sistema(`${jugador.nombre} aceptó el desafío. Pozo: ${(d.monto * (d.aceptan.length + 1)).toLocaleString('es-AR')}`);
+    return {};
+  }
+  if (msg.t === 'retirar') {
+    if (!d || d.de !== pid || d.jugando || d.aceptan.length) return {};
+    await mover(q, d.monto);
+    r.desafio = null;
+    return {};
+  }
+  return null;
+}
+// Al cerrar las apuestas: si nadie aceptó, se devuelve; si no, queda en juego.
+async function desafioCerrar(r, ctx) {
+  const d = r.desafio;
+  if (!d || d.jugando) return;
+  if (!d.aceptan.length) {
+    await mover(quien(d.de, r.jugadores[d.de]?.uid), d.monto);
+    r.desafio = null;
+    ctx.sistema('Nadie aceptó el desafío: se devolvieron las fichas.');
+  } else d.jugando = true;
+}
+// Al pagar: netos = { pid: ganancia neta en la ronda }.
+async function desafioPagar(r, netos, ctx) {
+  const d = r.desafio;
+  if (!d?.jugando) return;
+  const todos = [d.de, ...d.aceptan];
+  const pozo = d.monto * todos.length;
+  const mejor = Math.max(...todos.map((p) => netos[p] ?? 0));
+  const ganan = todos.filter((p) => (netos[p] ?? 0) === mejor);
+  const parte = Math.floor(pozo / ganan.length);
+  for (const [i, p] of ganan.entries()) await mover(quien(p, r.jugadores[p]?.uid), parte + (i === 0 ? pozo - parte * ganan.length : 0));
+  const nombres = ganan.map((p) => r.jugadores[p]?.nombre || '—');
+  r.desafioRes = { ganan: ganan.map(idPublico), nombres, pozo, n: (r.desafioRes?.n || 0) + 1 };
+  ctx.sistema(ganan.length === todos.length ? `Desafío empatado: cada uno recupera lo suyo.` : `Desafío: ${nombres.join(' y ')} se ${ganan.length > 1 ? 'reparten' : 'lleva'} ${pozo.toLocaleString('es-AR')} fichas.`);
+  r.desafio = null;
+}
+const desafioVista = (r) => ({
+  desafio: r.desafio ? { de: idPublico(r.desafio.de), nombre: r.jugadores[r.desafio.de]?.nombre || '—', monto: r.desafio.monto, aceptan: r.desafio.aceptan.map(idPublico), jugando: r.desafio.jugando } : null,
+  desafioRes: r.desafioRes || null,
+});
 
 // Casillero de apuesta → números que cubre y cuánto paga (además de devolver lo apostado).
 export function casillero(k) {
@@ -38,6 +103,8 @@ function ruletaNueva() {
 }
 
 async function ruletaAccion(r, msg, ctx) {
+  const dres = await desafioAccion(r, msg, ctx, r.fase === 'apuestas');
+  if (dres) return dres;
   const { pid, jugador } = ctx;
   const q = quien(pid, jugador.uid);
   if (msg.t === 'apostar') {
@@ -78,6 +145,7 @@ async function ruletaTick(r, ctx) {
     return;
   }
   if (r.fase === 'apuestas') {
+    await desafioCerrar(r, ctx);
     r.fase = 'girando';
     r.resultado = entero(37);
     r.giro += 1;
@@ -98,6 +166,7 @@ async function ruletaTick(r, ctx) {
     }
     const grandes = Object.entries(r.pagos).filter(([, p]) => p.gana > p.puso).sort((a, b) => b[1].gana - a[1].gana);
     ctx.sistema(`Salió el ${n} ${n === 0 ? 'verde' : ROJOS.has(n) ? 'rojo' : 'negro'}` + (grandes[0] ? ` · ${r.jugadores[grandes[0][0]]?.nombre} se lleva ${grandes[0][1].gana.toLocaleString('es-AR')}` : ''));
+    await desafioPagar(r, Object.fromEntries(Object.entries(r.pagos).map(([p, x]) => [p, x.gana - x.puso])), ctx);
     r.historial = [n, ...r.historial].slice(0, 16);
     r.ultimas = Object.fromEntries(Object.entries(r.apuestas).filter(([, l]) => l.length));
     r.apuestas = {};
@@ -120,6 +189,7 @@ function ruletaVista(r, { pid }) {
     apuestas: Object.entries(r.apuestas).map(([p, l]) => ({ id: id(p), lista: l })),
     pagos: r.fase === 'pago' ? Object.entries(r.pagos).map(([p, x]) => ({ id: id(p), ...x })) : [],
     puedeRepetir: !!r.ultimas?.[pid]?.length,
+    ...desafioVista(r),
   };
 }
 
@@ -204,11 +274,14 @@ async function bjLiquidar(r, ctx) {
     if (cobra > a.apuesta) nombres.push(r.jugadores[a.pid]?.nombre);
   }
   ctx.sistema(`La banca hizo ${banca > 21 ? `${banca} y se pasó` : banca}${nombres.length ? ` · ganan ${nombres.join(', ')}` : ''}`);
+  await desafioPagar(r, Object.fromEntries(r.asientos.filter((a) => a?.apuesta && a.cartas.length).map((a) => [a.pid, a.cobra - a.apuesta])), ctx);
   r.fase = 'pago';
   r.fin = ctx.now + BJ_PAGO_MS;
 }
 
 async function bjAccion(r, msg, ctx) {
+  const dres = await desafioAccion(r, msg, ctx, r.fase === 'apuestas');
+  if (dres) return dres;
   const { pid, jugador } = ctx;
   const q = quien(pid, jugador.uid);
   const mio = r.asientos.findIndex((a) => a?.pid === pid);
@@ -284,6 +357,7 @@ async function bjTick(r, ctx) {
       if (a && !a.apuesta && !ctx.online.has(a.pid)) r.asientos[i] = null;
     });
     const jugando = r.asientos.filter((a) => a?.apuesta > 0);
+    if (jugando.length) await desafioCerrar(r, ctx);
     if (!jugando.length) {
       if (r.asientos.some(Boolean)) r.fin = ctx.now + BJ_APUESTAS_MS;
       else r.fase = 'espera';
@@ -345,6 +419,7 @@ function bjVista(r, { pid }) {
         : null
     ),
     quedan: r.zapato.length,
+    ...desafioVista(r),
   };
 }
 
