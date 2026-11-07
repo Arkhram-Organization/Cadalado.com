@@ -1,4 +1,5 @@
-import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
+import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
+import { avatarSvg, lookDeId, lookDeNombre } from '/comun/avatar.js';
 import { PLANTILLAS } from './plantillas.js';
 
 const PL = new Map(PLANTILLAS.map((p) => [p.id, p]));
@@ -63,10 +64,9 @@ function menu() {
       <h2>Armar una sala</h2>
       <form data-crear style="display:grid;gap:12px">
         ${cuenta ? '' : `<label><span class="etq">Tu nombre</span><input class="entrada" name="nombre" maxlength="20" required value="${esc(nombreGuardado())}" placeholder="¿Cómo te llaman?"></label>`}
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <label><span class="etq">Bots</span><select class="entrada" name="bots"><option>0</option><option selected>2</option><option>3</option><option>4</option></select></label>
           <label><span class="etq">Rondas</span><select class="entrada" name="rondas"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
-          <label><span class="etq">Tiempo para crear</span><select class="entrada" name="segundos"><option value="60">60 s</option><option value="90" selected>90 s</option><option value="120">120 s</option></select></label>
         </div>
         <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="publica" checked style="accent-color:${COLOR};width:18px;height:18px"> Sala pública (aparece en la lista)</label>
         <button class="btn btn-lima btn-grande">Crear sala</button>
@@ -85,7 +85,7 @@ function menu() {
     if (!cuenta) guardarNombre(f.get('nombre'));
     e.target.querySelector('button').disabled = true;
     try {
-      const { code } = await api('/api/memes/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: Number(f.get('bots')), rondas: f.get('rondas'), segundos: f.get('segundos'), publica: f.get('publica') === 'on' } });
+      const { code } = await api('/api/memes/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: Number(f.get('bots')), rondas: f.get('rondas'), publica: f.get('publica') === 'on' } });
       ir(`/memes/sala/${code}`);
     } catch (err) {
       toast(err.message, true);
@@ -123,6 +123,8 @@ app.addEventListener('click', (e) => {
 // ---------------------------------------------------------------- sala
 function abrirSala(code) {
   document.title = `Sala ${code} · Make it Meme`;
+  document.body.classList.add('memes-sala');
+  limpiar.push(() => document.body.classList.remove('memes-sala'));
   app.innerHTML = `
   <div class="sala">
     <aside class="lateral izq">
@@ -142,7 +144,6 @@ function abrirSala(code) {
   $('[data-copiar]').onclick = async (e) => {
     try { await navigator.clipboard.writeText(link); } catch {}
     e.target.textContent = 'Link copiado';
-    sonar('clic');
     setTimeout(() => (e.target.textContent = 'Copiar link'), 1600);
   };
   $('[data-chat]').onsubmit = (e) => {
@@ -188,10 +189,14 @@ function abrirSala(code) {
   const reloj = setInterval(() => {
     const bar = app.querySelector('[data-reloj]');
     if (!bar || !est?.fin) return;
-    const total = est.fase === 'creando' ? est.segCrear * 1000 : est.fase === 'votando' ? 13000 : 16000;
+    const total = est.fase === 'creando' ? est.segCrear * 1000 : est.fase === 'votando' ? 10000 : 16000;
     const queda = Math.max(0, est.fin - sala.ahora());
-    bar.querySelector('i').style.transform = `scaleX(${Math.min(1, queda / total)})`;
-    bar.classList.toggle('apurado', queda < 10000);
+    // círculo que se va vaciando
+    const C = 2 * Math.PI * 19;
+    bar.querySelector('.arco').style.strokeDasharray = C;
+    bar.querySelector('.arco').style.strokeDashoffset = C * (1 - Math.min(1, queda / total));
+    bar.querySelector('[data-seg-ring]').textContent = Math.ceil(queda / 1000);
+    bar.classList.toggle('apurado', queda < Math.min(10000, total * 0.3));
     const seg = app.querySelector('[data-seg]');
     if (seg) seg.textContent = Math.ceil(queda / 1000);
     // envío automático: si se acaba el tiempo y escribiste algo, se manda solo
@@ -203,21 +208,27 @@ function abrirSala(code) {
   limpiar.push(() => clearInterval(reloj));
 
   const nombreDe = (id) => est.jugadores.find((j) => j.id === id)?.nombre || '—';
+  const avatares = new Map();
+  const avatarDe = (j) => {
+    const k = j.id + j.nombre;
+    if (!avatares.has(k)) avatares.set(k, avatarSvg(j.bot ? lookDeNombre(j.nombre) : lookDeId(j.id, colorDe(j.id)), { titulo: j.nombre }));
+    return avatares.get(k);
+  };
 
   function pintarJugadores() {
     const lista = [...est.jugadores].sort((a, b) => (est.puntos[b.id] || 0) - (est.puntos[a.id] || 0));
     $('[data-jugadores]').innerHTML = lista.map((j) => {
       const listo = est.fase === 'creando' && est.listos.includes(j.id);
       const sub = j.bot && est.fase !== 'creando' ? 'bot' : j.id === est.host ? 'arma la sala' : est.fase === 'creando' ? (listo ? 'meme listo' : est.participantes.includes(j.id) ? 'creando…' : 'entra en la próxima') : j.online ? 'conectado' : 'desconectado';
-      return `<div class="jug ${j.online ? '' : 'off'}"><span class="avatar" style="--av:${colorDe(j.id)}">${esc(j.nombre[0]?.toUpperCase() || '?')}</span>
+      return `<div class="jug ${j.online ? '' : 'off'} ${j.bot ? 'bot' : ''}"><span class="av">${avatarDe(j)}</span>
         <span class="n">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}<small>${sub}</small></span>
         ${listo ? '<span class="ok">✓</span>' : ''}<span class="pts">${est.puntos[j.id] || 0}</span></div>`;
     }).join('');
   }
 
   function cabeza(titulo, extra = '') {
-    return `<div class="cabeza-fase"><div><span class="etq">Ronda <b>${est.ronda}</b> de <b>${est.rondas}</b></span><h2>${titulo}</h2></div>${extra}</div>
-      <div class="reloj" data-reloj><i></i></div>`;
+    return `<div class="cabeza-fase"><div><span class="etq">Ronda <b>${est.ronda}</b> de <b>${est.rondas}</b></span><h2>${titulo}</h2></div><div class="cabeza-der">${extra}<div class="reloj-circ" data-reloj><svg viewBox="0 0 44 44"><circle class="fondo" cx="22" cy="22" r="19"/><circle class="arco" cx="22" cy="22" r="19"/></svg><b data-seg-ring></b></div></div></div>
+      `;
   }
 
   function pintarFase() {
@@ -261,7 +272,6 @@ function abrirSala(code) {
         if (txt) txt.textContent = faltan > 0 ? `Faltan ${faltan}` : 'Están todos';
         return;
       }
-      if (cambio && est.ronda && (!ed || ed.ronda !== est.ronda)) sonar('aviso');
       const textos = ed?.textos?.length && ed.ronda === est.ronda ? ed.textos : inicialTextos(PL.get(est.miPlantilla));
       ed = { plantilla: est.miPlantilla, ronda: est.ronda, textos, sel: 0, enviado: !!est.miMeme, auto: false, fallos: ed?.fallos || 0 };
       pintarEditor(c);
@@ -270,12 +280,10 @@ function abrirSala(code) {
 
     if (est.fase === 'votando') {
       const v = est.voto;
-      if (cambio) sonar('aviso');
       c.innerHTML = `${cabeza(`Meme ${v.idx + 1} de ${v.total}`, `<span class="chip">${v.votaron}/${v.pueden} votaron</span>`)}
         <div class="marco-meme">${memeHtml(v.plantilla, v.textos)}</div>
         ${v.esMio ? '<div class="secreto">Este es tuyo. No digas nada y mirá cómo lo votan.</div>' : `<div class="votos">${VOTOS.map(([n, e, t]) => `<button data-voto="${n}" class="${v.miVoto === n ? 'on' : ''}"><span>${e}</span>${t}</button>`).join('')}</div>`}`;
       c.querySelectorAll('[data-voto]').forEach((b) => (b.onclick = () => {
-        sonar('clic');
         c.querySelectorAll('[data-voto]').forEach((x) => x.classList.toggle('on', x === b));
         sala.enviar({ t: 'votar', n: Number(b.dataset.voto) });
       }));
@@ -284,7 +292,6 @@ function abrirSala(code) {
 
     if (est.fase === 'resultados' || est.fase === 'final') {
       if (!cambio) return;
-      sonar('gana');
       const grilla = !est.resultados.length ? '<div class="panel espera"><h2>Nadie mandó meme</h2><p>Esta ronda quedó vacía.</p></div>' : `<div class="grilla-res">${est.resultados.map((m, i) => `<div class="res ${i === 0 ? 'top' : ''}" style="animation-delay:${i * 0.12}s">
           ${memeHtml(m.plantilla, m.textos)}<div class="pie"><b>${i === 0 ? '1º · ' : ''}${esc(m.nombre)}</b><span class="mono">+${m.puntos}</span></div></div>`).join('')}</div>`;
       if (est.fase === 'resultados') {
@@ -338,7 +345,6 @@ function abrirSala(code) {
       pintarFilas(true);
     };
     c.querySelector('[data-otra]').onclick = () => {
-      sonar('carta');
       sala.enviar({ t: 'cambiar' });
     };
     c.querySelector('[data-enviar]').onclick = enviarMeme;
@@ -440,7 +446,6 @@ function abrirSala(code) {
     const r = await sala.enviar({ t: 'enviar', textos: ed.textos });
     if (r && !r.error) {
       ed.enviado = true;
-      sonar('ficha');
       app.querySelector('[data-listo]')?.classList.remove('hidden');
     }
   }

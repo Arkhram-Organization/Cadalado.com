@@ -6,88 +6,24 @@ import { mezclar, entero } from '../../../shared/salas.js';
 export const NOMBRES_BOT = ['Lior', 'Polshu', 'Familia Maica', 'Guivi', 'Glinsky', 'Milton Giménez', 'Julo', 'Maica', 'Mafi', 'Simja Tora', 'Faur', 'Dobro', 'Herma'];
 export const MAX_BOTS = 4;
 
-// Arriba / abajo: se combinan al azar, así salen memes distintos cada vez.
+// Textos cortos (que entren en el meme). Muchos son chistes internos del grupo.
+// Una sola palabra o nombre: queda solo, como título del meme.
+const SOLAS = [
+  'Dobro', 'Julo', 'Glinsky', 'Estanca', 'Polshu', 'Lior', 'Maica', 'Mati Nadeo', 'Queque',
+  'Exponencial', 'Tecnologías exponenciales', 'La tesina', 'Dobro a las 4 AM', 'Julo compilando',
+  'Glinsky con Claude', 'Estanca en la previa', 'Polshu llegando', 'Lior con un plan', 'Maica organizando',
+  'Mati Nadeo y el Queque', 'Yo con la tesina', 'El kernel', 'Otra mano, Dobro',
+];
+// Arriba y abajo (se combinan al azar)
 const ARRIBA = [
-  'Yo a las 3 AM',
-  'Cuando decís "una más y me voy"',
-  'Mi plan para el finde',
-  'El grupo de WhatsApp de la familia',
-  'Cuando el profe dice "esto no entra"',
-  'Yo explicándole a mi vieja qué es la nube',
-  'Lunes 8 AM',
-  'Cuando llega la boleta de la luz',
-  'Mi heladera a fin de mes',
-  'Yo después de un mate lavado',
-  'El colectivo cuando corrés para alcanzarlo',
-  'Cuando te dicen "tenemos que hablar"',
-  'Mi cerebro en el examen',
-  'Cuando el Wi-Fi anda',
-  'El asado cuando llegás tarde',
-  'Cuando ponés "voy" y estás en la ducha',
-  'Mi presupuesto',
-  'Yo jurando que hoy me acuesto temprano',
-  'La tesina',
-  'El que trae hielo',
-  'Cuando el delivery dice "a dos cuadras"',
-  'Yo leyendo los términos y condiciones',
-  'Mi perro cuando abro un paquete',
-  'Cuando encontrás plata en la campera',
-  'El último pedazo de pizza',
-  'Yo programando sin dormir',
-  'El aguinaldo',
-  'Cuando el audio dura 7 minutos',
-  'Cuando te mandan "jaja" sin la J mayúscula',
-  'El GPS cuando no hay señal',
+  'Glinsky:', 'Julo:', 'Dobro:', 'Estanca:', 'Polshu:', 'Lior:', 'Maica:', 'Nadie:', 'La IA:', 'Yo:',
+  'La tesina', 'Lunes 8 AM', 'El grupo', 'Mati Nadeo', 'Dobro', 'Julo', 'Glinsky', 'Estanca',
 ];
 const ABAJO = [
-  'No me arrepiento de nada',
-  'Bueno, era eso',
-  'Todo bien, todo tranqui',
-  'Y sin embargo, acá estamos',
-  'Esto es cine',
-  'Ni idea, pero con confianza',
-  'Error 404: ganas no encontradas',
-  'Lo dejo para mañana',
-  'Fuente: me lo contó un amigo',
-  'Siempre fue así, no sé de qué te sorprendés',
-  'Plan perfecto, cero fallas',
-  'Spoiler: no salió bien',
-  'La previa más larga del mundo',
-  'Confíen en el proceso',
-  'Esto es exponencial',
-  'Lo compilé en la heladera',
-  'Queque',
-  'Me dijeron que era fácil',
-  'Mañana arranco el gimnasio',
-  'Nadie:',
-  'Y no paró de llover',
-  'Tranqui, tengo un primo que sabe',
-  'Lo vi en un TikTok',
-  'Si sale, sale',
-  'Era un martes cualquiera',
-  'Con la mejor onda',
-  'Necesito vacaciones de mis vacaciones',
-  'Igual vamos a ganar',
-  'Jamás le fallé a nadie (mentira)',
-  'Por algo será',
-];
-// Frases que van solas (una sola caja o para todas).
-const SOLAS = [
-  'Cuando la bocha no entra pero la querés igual',
-  'Yo armando el equipo ideal y me toca el arquero',
-  'Ese momento en que el mate se tapa',
-  'Cuando ponés la alarma y te despertás antes',
-  'Cuando te decís "último capítulo" y son las 5',
-  'Cuando el profe toma lo único que no leíste',
-  'Mi cara cuando dicen "es un ratito nomás"',
-  'Cuando la playlist es tuya y nadie la banca',
-  'Yo cuando me ofrecen una porción más',
-  'Cuando el grupo dice "a las 9" y son las 11',
-  'Cuando te dan vuelto de más',
-  'Ese amigo que siempre dice "yo invito" y nunca invita',
-  'Cuando ganás una mano y te sentís experto',
-  'Cuando la paloma te mira raro',
-  'Mi vida en una imagen',
+  'Es exponencial', 'Usen Claude, chicos', 'Una mano más', 'Queque', 'Compilé la heladera',
+  'El bit 7 está cansado', 'Hice un deploy', 'La casa siempre gana', 'Esto va al final',
+  'Llegué tarde', 'Tengo un plan', 'Ya organicé todo', 'Mañana arranco', 'En 3 años lo hace una IA',
+  'Recursioná el firewall', 'Aplausos para Julo', 'Saber parar', 'Exponencial', 'Ni idea',
 ];
 
 // Arma los textos de un bot para una plantilla con `cajas` lugares.
@@ -101,17 +37,19 @@ export function textosBot(cajas, usadas) {
     return f;
   };
   const n = Math.max(2, Math.min(4, cajas || 2));
-  const caja = (i, t) => (n === 2 ? { x: 0.05, y: i ? 0.8 : 0.03, w: 0.9, s: 0.08, c: 'blanco', t } : { x: 0.08, y: 0.04 + (i * 0.82) / (n - 1), w: 0.84, s: 0.06, c: 'blanco', t });
+  // tamaño según lo largo del texto (los cortos, grandes)
+  const tam = (t) => (t.length <= 8 ? 0.13 : t.length <= 14 ? 0.1 : 0.075);
+  const caja = (i, t) => (n === 2 ? { x: 0.05, y: i ? 0.78 : 0.03, w: 0.9, s: tam(t), c: 'blanco', t } : { x: 0.08, y: 0.04 + (i * 0.82) / (n - 1), w: 0.84, s: Math.min(0.08, tam(t)), c: 'blanco', t });
   const r = Math.random();
-  if (r < 0.25) return [caja(1, sacar(SOLAS, 's'))]; // a veces una sola frase abajo
-  if (n === 2 || r < 0.6) return [caja(0, sacar(ARRIBA, 'a')), caja(n - 1, sacar(ABAJO, 'b'))];
-  // varias cajas: arriba, alguna del medio y abajo
-  const medio = 1 + entero(n - 2);
-  return [caja(0, sacar(ARRIBA, 'a')), caja(medio, sacar(SOLAS, 's')), caja(n - 1, sacar(ABAJO, 'b'))];
+  if (r < 0.4) {
+    const t = sacar(SOLAS, 's');
+    return [caja(Math.random() < 0.6 ? n - 1 : 0, t)]; // una sola palabra o nombre
+  }
+  return [caja(0, sacar(ARRIBA, 'a')), caja(n - 1, sacar(ABAJO, 'b'))];
 }
 
 // Nombres para los bots de una sala (sin repetir).
 export const nombresBots = (n) => mezclar([...NOMBRES_BOT]).slice(0, n);
 
-// Voto de un bot: generoso pero no siempre 5.
-export const votoBot = () => [2, 3, 3, 4, 4, 4, 5, 5][entero(8)];
+// Voto de un bot: variado (no regala la partida). A veces 1, casi nunca siempre 5.
+export const votoBot = () => [1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 5][entero(12)];

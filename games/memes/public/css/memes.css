@@ -104,3 +104,70 @@
 .fila-bots { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
 .fila-bots .etq { margin-right: 6px; }
 .fila-bots .btn { min-width: 38px; }
+
+/* ---------- sala con onda de salón de juegos ---------- */
+body.memes-sala {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,209,102,.35) 0 80px, transparent 81px),
+    radial-gradient(circle at 88% 12%, rgba(122,162,255,.35) 0 120px, transparent 121px),
+    radial-gradient(circle at 80% 85%, rgba(197,240,74,.3) 0 110px, transparent 111px),
+    radial-gradient(rgba(255,255,255,.12) 1.5px, transparent 1.6px) 0 0 / 18px 18px,
+    linear-gradient(135deg, #ff4fa3, #a855f7 55%, #6d28d9);
+  background-attachment: fixed;
+}
+.memes-sala .sala { --tinta: #1a1030; --papel: #fffaf0; }
+.memes-sala .sala .panel { background: var(--papel); color: var(--tinta); border: 3px solid var(--tinta); border-radius: 20px; box-shadow: 6px 6px 0 var(--tinta); }
+.memes-sala .sala .etq { color: #7c3aed; }
+.memes-sala .sala h2, .memes-sala .sala h3 { color: var(--tinta); }
+.memes-sala .codigo b { color: #ff2d8a; text-shadow: 2px 2px 0 #ffd166; }
+.memes-sala .sala .btn { border: 2px solid var(--tinta); box-shadow: 3px 3px 0 var(--tinta); }
+.memes-sala .sala .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--tinta); }
+.memes-sala .jug { background: #fff; border: 2px solid var(--tinta); border-radius: 14px; color: var(--tinta); padding: 6px 8px; }
+.memes-sala .jug:nth-child(4n+1) { background: #ffe3f1; } .memes-sala .jug:nth-child(4n+2) { background: #e3ecff; }
+.memes-sala .jug:nth-child(4n+3) { background: #fff4cc; } .memes-sala .jug:nth-child(4n) { background: #e8fbd0; }
+.memes-sala .jug .n small { color: #6b5f86; }
+.memes-sala .jug .pts { color: var(--tinta); background: #ffd166; border: 2px solid var(--tinta); border-radius: 10px; padding: 2px 8px; font-size: 14px; }
+.memes-sala .jug .ok { color: #16a34a; }
+.av { width: 44px; height: 44px; flex: none; display: block; filter: drop-shadow(2px 2px 0 var(--tinta)); }
+.av svg, .avatar-svg { width: 100%; height: 100%; display: block; }
+.memes-sala .chat .chat-log { color: var(--tinta); }
+.memes-sala .chat .chat-log .sis { color: #7c3aed; font-style: normal; font-weight: 700; }
+.memes-sala .chat .entrada, .memes-sala .sala .entrada { background: #fff; color: var(--tinta); border: 2px solid var(--tinta); }
+.memes-sala .cabeza-fase { background: var(--papel); border: 3px solid var(--tinta); border-radius: 20px; padding: 12px 16px; box-shadow: 6px 6px 0 var(--tinta); }
+.memes-sala .cabeza-fase h2 { font-size: 30px; color: var(--tinta); text-transform: uppercase; }
+.memes-sala .cabeza-fase .etq b { color: var(--tinta); }
+.cabeza-der { display: flex; align-items: center; gap: 12px; }
+.memes-sala .chip { background: #fff4cc; color: var(--tinta); border: 2px solid var(--tinta); }
+.reloj-circ { position: relative; width: 58px; height: 58px; flex: none; }
+.reloj-circ svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.reloj-circ circle { fill: none; stroke-width: 6; }
+.reloj-circ .fondo { stroke: rgba(26,16,48,.12); fill: #fff; }
+.reloj-circ .arco { stroke: #7c3aed; stroke-linecap: round; transition: stroke-dashoffset .25s linear, stroke .3s; }
+.reloj-circ b { position: absolute; inset: 0; display: grid; place-items: center; font: 900 20px var(--titulo); color: #1a1030; }
+.reloj-circ.apurado .arco { stroke: #ff2d55; }
+.reloj-circ.apurado b { color: #ff2d55; animation: late .5s infinite alternate; }
+@keyframes late { to { transform: scale(1.15); } }
+.memes-sala .marco-meme { background: #fff; padding: 10px; border: 3px solid var(--tinta); border-radius: 18px; box-shadow: 8px 8px 0 var(--tinta); }
+.memes-sala .marco-meme:not([data-lienzo]) { transform: rotate(-.6deg); }
+.memes-sala .votos button { width: 74px; height: 74px; border-radius: 50%; border: 3px solid var(--tinta); box-shadow: 4px 4px 0 var(--tinta); color: var(--tinta); font: 900 30px var(--titulo); }
+.memes-sala .votos button:nth-child(1) { background: #ff8a8a; } .memes-sala .votos button:nth-child(2) { background: #ffb36b; }
+.memes-sala .votos button:nth-child(3) { background: #ffe066; } .memes-sala .votos button:nth-child(4) { background: #b5f26b; }
+.memes-sala .votos button:nth-child(5) { background: #6ee7b7; }
+.memes-sala .votos button.on { transform: translateY(-4px) scale(1.12) rotate(-4deg); box-shadow: 6px 8px 0 var(--tinta); outline: 4px solid #fff; }
+.memes-sala .secreto { background: #fff4cc; color: var(--tinta); border: 3px dashed var(--tinta); }
+.memes-sala .res { background: #fff; border: 3px solid var(--tinta); box-shadow: 5px 5px 0 var(--tinta); }
+.memes-sala .res:nth-child(odd) { transform: rotate(-1deg); } .memes-sala .res:nth-child(even) { transform: rotate(1deg); }
+.memes-sala .res .pie b { color: var(--tinta); }
+.memes-sala .res .pie .mono { color: #fff; background: #7c3aed; border-radius: 10px; padding: 2px 8px; }
+.memes-sala .res.top { box-shadow: 5px 5px 0 var(--tinta), 0 0 0 5px #ffd166; }
+.memes-sala .podio div { background: #fff; border: 3px solid var(--tinta); color: var(--tinta); }
+.memes-sala .podio .p1 { background: #ffd166; }
+.memes-sala .podio .mono { color: #7c3aed; }
+.memes-sala .texto-fila { background: #fff; box-shadow: none; border: 2px solid var(--tinta); }
+.memes-sala .texto-fila textarea { background: #fffaf0; color: var(--tinta); border: 2px solid #d8cfe8; }
+.memes-sala .listo-banner { background: #e8fbd0; border: 3px solid var(--tinta); color: var(--tinta); }
+.memes-sala .listo-banner b { color: #16a34a; }
+.memes-sala .reglas div { background: #fff; border: 2px solid var(--tinta); color: var(--tinta); }
+.memes-sala .espera p { color: #4a3f63; }
+.memes-sala .fila-bots .btn-lima { background: #ffd166; }
+.memes-sala .grilla-res { align-items: start; }

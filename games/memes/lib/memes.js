@@ -6,7 +6,8 @@ import { registrarPartida } from '../../../shared/cuenta.js';
 import { textosBot, nombresBots, votoBot, MAX_BOTS } from './bots.js';
 
 const POR_ID = new Map(PLANTILLAS.map((p) => [p.id, p]));
-const VOTO_MS = 13_000; // cada meme se vota durante este tiempo
+const VOTO_MS = 10_000; // cada meme se vota durante este tiempo
+const CREAR_S = 60; // segundos para armar el meme
 const RESULTADOS_MS = 16_000;
 const COLORES = ['blanco', 'negro', 'amarillo', 'rojo'];
 const MAX_TEXTOS = 8;
@@ -45,6 +46,7 @@ function armarBots(r, n) {
 function empezarRonda(r, ctx) {
   r.ronda += 1;
   r.fase = 'creando';
+  r.segCrear = CREAR_S;
   r.fin = ctx.now + r.segCrear * 1000;
   r.memes = {};
   r.asignadas = {};
@@ -117,7 +119,7 @@ export const memes = crearJuego({
       listoBot: {},
       fase: 'lobby',
       rondas: [2, 3, 4, 5].includes(Number(opts.rondas)) ? Number(opts.rondas) : 3,
-      segCrear: [60, 90, 120].includes(Number(opts.segundos)) ? Number(opts.segundos) : 90,
+      segCrear: CREAR_S,
       ronda: 0,
       puntos: {},
       usadas: [],

@@ -126,6 +126,19 @@ export const NPCS = [
 
 export const POR_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));
 
+// Personajes que aparecen como bots en Make it Meme (además de los NPC de arriba).
+export const LOOKS_EXTRA = {
+  Lior: { piel: '#e9c3a0', pelo: { estilo: 'rulos', color: '#2a1a10' }, cuerpo: 'normal', ropa: { remera: '#ff7a45' } },
+  Polshu: { piel: '#f0cfb4', pelo: { estilo: 'corto', color: '#6b4226' }, cuerpo: 'flaco', lentes: '#1d1d22', ropa: { remera: '#4fd1c5' } },
+  'Familia Maica': { piel: '#e3b48f', pelo: { estilo: 'largo', color: '#3b2a1e' }, cuerpo: 'normal', ropa: { remera: '#ffd166', franja: '#ff4fa3' } },
+  Guivi: { piel: '#d9a982', pelo: { estilo: 'corto', color: '#141414' }, cuerpo: 'gordito', ropa: { remera: '#7aa2ff' } },
+  'Milton Giménez': { piel: '#b98463', pelo: { estilo: 'corto', color: '#141414' }, cuerpo: 'normal', ropa: { remera: '#1d4ed8', franja: '#f2c94c' } },
+  Maica: { piel: '#f2d2b8', pelo: { estilo: 'largo', color: '#c49a5a' }, cuerpo: 'flaco', ropa: { remera: '#e599f7' } },
+  Mafi: { piel: '#e8c4a8', pelo: { estilo: 'largo', color: '#141414' }, cuerpo: 'normal', lentes: '#7a1f2b', ropa: { remera: '#9be15d' } },
+  'Simja Tora': { piel: '#ecc8a6', pelo: { estilo: 'rulosPoco', color: '#3b2a1e' }, cuerpo: 'normal', kipa: '#2f6fd6', barba: '#3b2a1e', ropa: { remera: '#f4f1ea' } },
+  Herma: { piel: '#e3b48f', pelo: { estilo: 'poco', color: '#6b4226' }, cuerpo: 'gordito', barba: '#6b4226', ropa: { remera: '#c084fc' } },
+};
+
 // Generador determinístico (misma semilla → mismos resultados en todos lados).
 export function rngNpc(semilla) {
   let s = semilla >>> 0;
