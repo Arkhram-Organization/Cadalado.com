@@ -91,5 +91,70 @@ export function avatarSvg(look = {}, { fondo = null, titulo = '' } = {}) {
   if (L.auriculares) s += `<path d="M${cx - rx - 2} ${cy + 2} Q${cx - rx} ${cy - ry - 8} ${cx} ${cy - ry - 7} Q${cx + rx} ${cy - ry - 8} ${cx + rx + 2} ${cy + 2}" stroke="${L.auriculares}" stroke-width="3.5" fill="none"/><rect x="${cx - rx - 6}" y="${cy - 4}" width="7" height="12" rx="3" fill="${L.auriculares}"/><rect x="${cx + rx - 1}" y="${cy - 4}" width="7" height="12" rx="3" fill="${L.auriculares}"/>`;
   if (L.robot) s += `<path d="M${cx} ${cy - ry} v-8" stroke="#8a96a3" stroke-width="2"/><circle cx="${cx}" cy="${cy - ry - 9}" r="3" fill="#ff6b5b"/>`;
   const brillo = L.dorado ? `<circle cx="50" cy="50" r="47" fill="none" stroke="#f2c94c" stroke-width="5"/>` : '';
-  return `<svg viewBox="0 0 100 100" class="avatar-svg" role="img" aria-label="${String(titulo).replace(/"/g, '')}"><defs><clipPath id="cr"><circle cx="50" cy="50" r="48"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="${bg}"/><g clip-path="url(#cr)">${s}</g>${brillo}</svg>`;
+  const clave = encodeURIComponent(JSON.stringify(L));
+  const clip = `retrato-${++numeroAvatar}`;
+  return `<svg viewBox="0 0 100 100" class="avatar-svg" data-retrato-3d="${clave}" data-fondo="${bg}" role="img" aria-label="${String(titulo).replace(/[&<>"']/g, '')}"><defs><clipPath id="${clip}"><circle cx="50" cy="50" r="48"/></clipPath></defs><circle cx="50" cy="50" r="48" fill="${bg}"/><g clip-path="url(#${clip})">${s}</g>${brillo}</svg>`;
+}
+
+let numeroAvatar = 0;
+
+// Cada avatar es una foto del mismo muñeco que aparece en la isla, la carrera y las mesas.
+// Se conserva el SVG inmediato como fallback accesible si WebGL no está disponible.
+// Un único contexto y caché compartidos evitan abrir un renderer por cada jugador.
+if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
+  const pendientes = new Set(), cache = new Map();
+  let ocupado = false, motor = null, fallido = false;
+  async function procesar() {
+    if (ocupado || fallido || !pendientes.size) return;
+    ocupado = true;
+    try {
+      if (!motor) {
+        const [THREE, { crearPersona }] = await Promise.all([import('./vendor/three.module.min.js'), import('./persona3d.js')]);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+        renderer.setSize(256, 256); renderer.setPixelRatio(1); renderer.setClearColor(0, 0);
+        renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.35;
+        const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight('#f7f0e5', '#5e6874', 2.4));
+        const luz = new THREE.DirectionalLight('#fff0dc', 3.1); luz.position.set(-3, 5, -4); scene.add(luz);
+        const relleno = new THREE.DirectionalLight('#c1d9ff', 1.9); relleno.position.set(4, 3, 2); scene.add(relleno);
+        const camara = new THREE.OrthographicCamera(-.60, .60, .60, -.60, .1, 20);
+        camara.position.set(1.6, 1.8, -5); camara.lookAt(0, 1.36, 0);
+        motor = { THREE, crearPersona, renderer, scene, camara };
+        renderer.domElement.addEventListener('webglcontextlost', () => { fallido = true; });
+      }
+      // Una foto por cuadro: entrar a una sala poblada no congela los controles.
+      const el = pendientes.values().next().value; pendientes.delete(el);
+      if (el?.isConnected && el.dataset.retrato3d) {
+        const key = el.dataset.retrato3d;
+        let url = cache.get(key);
+        if (!url) {
+          const p = motor.crearPersona(motor.THREE, JSON.parse(decodeURIComponent(key)), { sombras: false });
+          motor.scene.add(p.grupo); p.animar('quieto', 0);
+          motor.renderer.render(motor.scene, motor.camara); url = motor.renderer.domElement.toDataURL('image/png');
+          p.dispose(); cache.set(key, url);
+          if (cache.size > 128) cache.delete(cache.keys().next().value);
+        }
+        const clip = `retrato-${++numeroAvatar}`, bg = el.dataset.fondo || '#414c47';
+        el.innerHTML = `<defs><clipPath id="${clip}"><circle cx="50" cy="50" r="48"/></clipPath><radialGradient id="${clip}-luz" cx="35%" cy="20%" r="80%"><stop stop-color="#aaa998"/><stop offset="1" stop-color="${bg}"/></radialGradient></defs><circle cx="50" cy="50" r="48" fill="url(#${clip}-luz)"/><image href="${url}" width="100" height="100" clip-path="url(#${clip})"/>`;
+        delete el.dataset.retrato3d;
+      }
+    } catch (e) {
+      // Mantener el retrato vectorial en equipos sin WebGL.
+      fallido = true; motor?.renderer.dispose(); console.info('Retratos: se usa la versión vectorial.', e.message);
+    } finally { ocupado = false; if (pendientes.size && !fallido) requestAnimationFrame(procesar); }
+  }
+  const visible = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) { pendientes.add(e.target); visible.unobserve(e.target); }
+    procesar();
+  }, { rootMargin: '200px' }) : null;
+  function buscar(root) {
+    const lista = [];
+    if (root.matches?.('[data-retrato-3d]')) lista.push(root);
+    root.querySelectorAll?.('[data-retrato-3d]').forEach(e => lista.push(e));
+    for (const el of lista) { if (visible) visible.observe(el); else pendientes.add(el); }
+    if (!visible) procesar();
+  }
+  new MutationObserver(registros => {
+    for (const r of registros) for (const n of r.addedNodes) if (n.nodeType === 1) buscar(n);
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  buscar(document);
 }

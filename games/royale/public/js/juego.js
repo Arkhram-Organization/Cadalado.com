@@ -1,5 +1,6 @@
 // Lógica de la partida en el navegador: mi personaje, las balas y la IA de los bots (los simula el anfitrión).
 import { ARMAS, VIDA, ESCUDO_MAX, moverCirculo, choqueBala, seVen, zona, tipoEn, T } from './mundo.js';
+import { CASILLEROS, OBJETOS, recoger, comenzarUso, avanzarUso } from './inventario.js';
 
 export const RADIO = 5;
 const VEL = 78; // px/s
@@ -10,27 +11,30 @@ export const ARMA_DE_CODIGO = { p: 'pistola', s: 'subfusil', e: 'escopeta', r: '
 export class Peleador {
   constructor(id, x, y) {
     Object.assign(this, { id, x, y, ang: 0, vida: VIDA, escudo: 0, vivo: true, mueve: false });
-    this.slots = [{ tipo: 'pistola', bala: ARMAS.pistola.cargador }, null];
+    this.slots = Array.from({length: CASILLEROS}, (_,i) => i ? null : {tipo:'pistola',bala:ARMAS.pistola.cargador});
+    this.usando = null;
     this.actual = 0;
     this.enfriar = 0;
     this.recargando = 0;
   }
   get arma() {
-    return this.slots[this.actual] || this.slots[0];
+    return this.slots[this.actual] || {tipo:'vacio',bala:0};
   }
   get datosArma() {
-    return ARMAS[this.arma.tipo];
+    return ARMAS[this.arma.tipo] || ARMAS.pistola;
   }
   cambiar(i = null) {
-    const n = i ?? (this.actual === 0 ? 1 : 0);
+    let n = i;
+    if (n == null) { n=(this.actual+1)%CASILLEROS;for(let k=0;k<CASILLEROS&&!this.slots[n];k++) n=(n+1)%CASILLEROS; }
     if (this.slots[n]) {
       this.actual = n;
       this.recargando = 0;
+      this.usando = null;
     }
   }
   recargar() {
     const a = this.arma;
-    if (this.recargando > 0 || a.bala >= ARMAS[a.tipo].cargador) return;
+    if (!ARMAS[a.tipo] || this.usando || this.recargando > 0 || a.bala >= ARMAS[a.tipo].cargador) return;
     this.recargando = ARMAS[a.tipo].recarga;
   }
   // Agarra un arma: si tiene lugar va al slot libre, si no reemplaza la actual. Devuelve el arma que suelta (o null).
@@ -46,9 +50,12 @@ export class Peleador {
     this.recargando = 0;
     return vieja?.tipo || null;
   }
+  recoger(tipo,item=null) { return recoger(this,tipo,ARMAS,item); }
+  usar() { return comenzarUso(this); }
   // Recibe daño (primero se gasta el escudo). Devuelve true si murió.
   dano(d) {
     if (!this.vivo) return false;
+    this.usando = null;
     const contra = Math.min(this.escudo, d);
     this.escudo -= contra;
     this.vida -= d - contra;
@@ -63,6 +70,7 @@ export class Peleador {
   mover(mundo, dx, dy, dt, factor = 1) {
     const n = Math.hypot(dx, dy);
     this.mueve = n > 0.1;
+    if(this.mueve) this.usando = null;
     if (!this.mueve) return;
     const v = (tipoEn(mundo, this.x, this.y) === T.AGUA ? VEL_AGUA : VEL) * factor;
     const p = moverCirculo(mundo, this.x, this.y, (dx / n) * v * dt, (dy / n) * v * dt, RADIO);
@@ -73,7 +81,7 @@ export class Peleador {
   disparar(rnd = Math.random) {
     const a = this.arma;
     const d = ARMAS[a.tipo];
-    if (!this.vivo || this.enfriar > 0 || this.recargando > 0) return [];
+    if (!d || this.usando || !this.vivo || this.enfriar > 0 || this.recargando > 0) return [];
     if (a.bala <= 0) {
       this.recargar();
       return [];
@@ -89,6 +97,7 @@ export class Peleador {
     return balas;
   }
   tiempo(dt) {
+    avanzarUso(this,dt);
     this.enfriar = Math.max(0, this.enfriar - dt);
     if (this.recargando > 0) {
       this.recargando -= dt;

@@ -1,3 +1,5 @@
+import { Isla3D } from './escena3d.js';
+import { OBJETOS, recoger } from './inventario.js';
 import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { POR_ID } from '/comun/npcs.js';
 import { avatarSvg, lookDeId } from '/comun/avatar.js';
@@ -38,8 +40,8 @@ function menu() {
   document.title = 'Último en pie · cadalado';
   app.innerHTML = `
   <div class="menu">
-    <div class="menu-hero"><div><span class="etq">Battle royale 2D · pixel art · hasta 24</span><h1>Último <em>en pie.</em></h1>
-      <p>Caés en una isla con una pistola. Buscá armas, botiquines y escudos en las casas, quedate adentro de la zona que se achica y sé el último que queda. Los personajes de cadalado completan la isla.</p></div></div>
+    <div class="menu-hero"><div><span class="etq">Battle royale 3D · vista desde arriba · hasta 24</span><h1>Último <em>en pie.</em></h1>
+      <p>Caés con una pistola. Equipá seis casilleros con armas, granadas y curaciones. Usá los objetos cuando los necesites, buscá refugio y ganale a la zona. La isla es 3D; la vista desde arriba sigue siendo la de siempre.</p></div></div>
     <section class="panel">
       <h2>Armar una partida</h2>
       <form data-crear style="display:grid;gap:12px">
@@ -55,7 +57,7 @@ function menu() {
       <h2 style="margin-top:22px">Partidas abiertas</h2>
       <div class="salas" data-salas><div class="vacio">Buscando…</div></div>
       <h2 style="margin-top:22px">Cómo se juega</h2>
-      <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>moverse</span><span><kbd>Mouse</kbd></span><span>apuntar y disparar</span><span><kbd>E</kbd></span><span>agarrar arma</span><span><kbd>R</kbd></span><span>recargar</span><span><kbd>Q</kbd> / <kbd>1</kbd> <kbd>2</kbd></span><span>cambiar de arma</span></div>
+      <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>moverse</span><span><kbd>Mouse</kbd></span><span>apuntar y disparar</span><span><kbd>E</kbd></span><span>recoger objeto</span><span><kbd>R</kbd></span><span>recargar</span><span><kbd>Q</kbd> / <kbd>1–6</kbd></span><span>elegir casillero</span><span><kbd>F</kbd> / clic</span><span>usar objeto (quedate quieto)</span><span><kbd>X</kbd></span><span>soltar objeto</span></div>
     </section>
   </div>`;
   app.querySelector('[data-crear]').onsubmit = async (e) => {
@@ -97,7 +99,7 @@ function abrirSala(code) {
   document.body.classList.add('en-isla');
   app.innerHTML = `
   <div class="isla">
-    <canvas data-lienzo></canvas>
+    <canvas data-lienzo></canvas><canvas data-overlay style="position:absolute;inset:0;pointer-events:none;width:100%;height:100%"></canvas>
     <div class="capa hud-izq"><div class="chip-hud"><span class="etq">Sala</span><b>${esc(code)}</b><button class="btn btn-chico" data-copiar>Invitar</button></div>
       <div class="chip-hud hidden" data-vivos></div></div>
     <div class="capa hud-zona hidden" data-zona></div>
@@ -117,7 +119,10 @@ function abrirSala(code) {
   </div>`;
   const $ = (s) => app.querySelector(s);
   const lienzo = $('[data-lienzo]');
-  const ctx = lienzo.getContext('2d');
+  const vista = new Isla3D(lienzo);
+  limpiar.push(()=>vista.dispose());
+  const overlay = $('[data-overlay]');
+  const ctx = overlay.getContext('2d');
   const bajo = document.createElement('canvas'); // el mundo se dibuja chico y se agranda (pixel art)
   const g = bajo.getContext('2d');
   let W = 400;
@@ -126,8 +131,8 @@ function abrirSala(code) {
   function redimensionar() {
     const w = lienzo.clientWidth || innerWidth;
     const h = lienzo.clientHeight || innerHeight;
-    lienzo.width = Math.round(w * Math.min(devicePixelRatio, 2));
-    lienzo.height = Math.round(h * Math.min(devicePixelRatio, 2));
+    overlay.width = Math.round(w * Math.min(devicePixelRatio, 2));
+    overlay.height = Math.round(h * Math.min(devicePixelRatio, 2));
     W = Math.max(300, Math.min(560, Math.round((H * w) / h)));
     bajo.width = W;
     bajo.height = H;
@@ -153,6 +158,7 @@ function abrirSala(code) {
   let mini = null;
   let yo = null;
   let balas = [];
+  let granadas = [];
   let tomados = new Set();
   const remotos = new Map(); // id → { obj, meta, visto }
   const botsSim = new Map(); // (anfitrión) 'botN' → { p: Peleador, cerebro }
@@ -162,6 +168,7 @@ function abrirSala(code) {
   let espectando = 0;
   let muertePor = null;
   let reportado = false;
+  const guardadoClave='cadalado-royale-'+code;
   const yoId = () => est?.yo;
   const nombreDe = (id) => (String(id).startsWith('bot') ? est?.botNombres?.[Number(String(id).slice(3))] : est?.jugadores.find((j) => j.id === id)?.nombre) || '—';
   const lookDe = (id) => (String(id).startsWith('bot') ? { ...POR_ID[est.botNpc[Number(String(id).slice(3))]]?.look } : lookDeId(id, colorDe(id)));
@@ -182,6 +189,7 @@ function abrirSala(code) {
       red.actual ??= new Red({ sala, code, miId: e.yo, alRecibir: recibir, alMensaje: mensaje, ruta: '/api/royale', accionPlanB: 'mensaje' });
       red.actual.sincronizar(e.jugadores.filter((j) => j.online && j.id !== e.yo).map((j) => j.id));
       for (const id of e.tomados) tomados.add(id);
+      if(mundo) {let nuevo=false;for(const b of e.sueltos||[])if(!mundo.botin.some(x=>x.id===b.id)){mundo.botin.push(b);nuevo=true;}if(nuevo)vista.preparar(mundo);}
       if (e.fase !== fase) cambioDeFase(e.fase);
       pintarPaneles();
     },
@@ -262,6 +270,8 @@ function abrirSala(code) {
       const b = botsSim.get(m.bot);
       if (b) danarBot(b, m.d, m.por);
     } else if (m.k === 'agarre') tomados.add(m.id);
+    else if (m.k === 'granada') granadas.push({...m.g,visual:true});
+    else if (m.k === 'drop' && m.b && !mundo.botin.some(b=>b.id===m.b.id)) { mundo.botin.push(m.b);vista.preparar(mundo); }
   }
 
   // ---------------------------------------------------------------- fases
@@ -269,7 +279,7 @@ function abrirSala(code) {
     if (claveMundo === semilla) return;
     claveMundo = semilla;
     mundo = generarMapa(semilla);
-    mapaPintado = pintarMapa(mundo);
+    vista.preparar(mundo);
     mini = miniMapa(mundo);
   }
   function cambioDeFase(nueva) {
@@ -309,6 +319,7 @@ function abrirSala(code) {
       const p = new Peleador(id, s.x, s.y);
       botsSim.set(id, { p, cerebro: new CerebroBot(p, rng((est.semilla + i * 7919) >>> 0)) });
     });
+    try {const save=JSON.parse(sessionStorage.getItem(guardadoClave)||'null');if(save?.semilla===est.semilla&&save.id===yoId()){if(yo&&save.yo)Object.assign(yo,save.yo,{vivo:est.vivos.includes(yoId())});for(const [id,data] of save.bots||[])if(botsSim.has(id))Object.assign(botsSim.get(id).p,data,{vivo:est.vivos.includes(id)});}}catch{}
     if (soyAnfitrion()) {
       // un par saluda
       est.botNpc.slice(0, 2).forEach((_, i) => setTimeout(() => sala.enviar({ t: 'botdice', bot: 'bot' + i, situacion: 'saludo' }), 1500 + i * 2500));
@@ -330,7 +341,7 @@ function abrirSala(code) {
           <div class="gente">${online.map((j) => `<div><span class="av">${avatarSvg(lookDeId(j.id, colorDe(j.id)))}</span>${esc(j.nombre)}${j.id === e.yo ? ' (vos)' : ''}</div>`).join('')}
             ${e.botNpc.map((n, i) => `<div class="${n === 'mati' ? 'dorado' : ''}"><span class="av">${avatarSvg({ ...POR_ID[n]?.look, smoking: POR_ID[n]?.smoking })}</span>${esc(e.botNombres[i])}<small>bot</small></div>`).join('')}</div>
           ${esHost ? `<div class="fila-lob"><select class="entrada" data-bots>${[0, 3, 5, 7, 9, 11, 15].map((n) => `<option ${n === e.bots ? 'selected' : ''} value="${n}">${n} bots</option>`).join('')}</select><button class="btn btn-lima btn-grande" data-largar>¡A la isla!</button></div>` : ''}
-          <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>moverse</span><span><kbd>Mouse</kbd></span><span>apuntar y disparar</span><span><kbd>E</kbd></span><span>agarrar arma</span><span><kbd>R</kbd></span><span>recargar</span><span><kbd>Q</kbd></span><span>cambiar de arma</span></div>`;
+          <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>moverse</span><span><kbd>Mouse</kbd></span><span>apuntar y disparar</span><span><kbd>E</kbd></span><span>agarrar arma</span><span><kbd>R</kbd></span><span>recargar</span><span><kbd>Q</kbd></span><span>cambiar casillero</span><span><kbd>F</kbd> / clic</span><span>usar objeto seleccionado</span><span><kbd>X</kbd></span><span>soltar objeto</span></div>`;
         lob.querySelector('[data-bots]')?.addEventListener('change', (ev) => sala.enviar({ t: 'bots', n: Number(ev.target.value) }));
         lob.querySelector('[data-largar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
       }
@@ -407,6 +418,7 @@ function abrirSala(code) {
   const teclas = new Set();
   const mouse = { x: 0, y: 0, abajo: false };
   let pedirAgarrar = false;
+  let recogiendo = false;
   const abajo = (e) => {
     if (e.target.closest('input, select, textarea')) return;
     if (e.code === 'Enter') {
@@ -418,13 +430,16 @@ function abrirSala(code) {
       if (e.code === 'KeyE') pedirAgarrar = true;
       if (e.code === 'KeyQ') yo?.cambiar();
       if (e.code === 'Digit1') yo?.cambiar(0);
-      if (e.code === 'Digit2') yo?.cambiar(1);
+      if (/^Digit[2-6]$/.test(e.code)) yo?.cambiar(Number(e.code.slice(-1))-1);
+      if (e.code === 'KeyF') usarObjeto();
+      if (e.code === 'KeyX' && yo?.slots[yo.actual]) { const it=yo.slots[yo.actual]; const id='drop-'+yoId()+'-'+Date.now(); const b={id,tipo:it.tipo,item:{...it},x:Math.max(0,Math.min(LADO,yo.x+Math.cos(yo.ang)*16)),y:Math.max(0,Math.min(LADO,yo.y+Math.sin(yo.ang)*16))}; mundo.botin.push(b);sala.enviar({t:'soltar',b});yo.slots[yo.actual]=null;yo.usando=null;red.actual?.todos({k:'drop',b,n:Math.random()});vista.preparar(mundo); }
       if (mirando() && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) espectando += e.code === 'ArrowLeft' ? -1 : 1;
     }
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
     teclas.add(e.code);
   };
   const arriba = (e) => teclas.delete(e.code);
+  const perderFoco=()=>{teclas.clear();mouse.abajo=false;};addEventListener('blur',perderFoco);limpiar.push(()=>removeEventListener('blur',perderFoco));
   addEventListener('keydown', abajo);
   addEventListener('keyup', arriba);
   lienzo.addEventListener('pointermove', (e) => {
@@ -492,6 +507,13 @@ function abrirSala(code) {
     else yo?.cambiar();
   }));
 
+  function usarObjeto() {
+    if(fase!=='partida'||!yo?.vivo) return;
+    const resultado=yo.usar();
+    if(resultado==='granada') { const g={de:yoId(),x:yo.x,y:yo.y,vx:Math.cos(yo.ang)*110,vy:Math.sin(yo.ang)*110,t:0};granadas.push(g);red.actual?.todos({k:'granada',g,n:Math.random()}); }
+    else if(!resultado && OBJETOS[yo.arma.tipo] && !yo.usando) aviso('No necesitás usar este objeto ahora');
+  }
+  $('[data-slots]').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(b) {yo?.cambiar(+b.dataset.slot);if(OBJETOS[yo?.arma.tipo]) usarObjeto();}});
   const mirando = () => (fase === 'partida' || fase === 'fin') && (!yo || !yo.vivo);
 
   // ---------------------------------------------------------------- bucle
@@ -522,7 +544,7 @@ function abrirSala(code) {
     }
 
     // yo
-    const puedoJugar = yo?.vivo && fase === 'partida' && t >= 0;
+    const puedoJugar = yo?.vivo && fase === 'partida' && t >= 0 && !document.querySelector('.cl-esc') && !document.activeElement?.matches('input,textarea');
     if (yo) {
       yo.tiempo(dt);
       if (puedoJugar) {
@@ -531,8 +553,9 @@ function abrirSala(code) {
         yo.mover(mundo, ix, iy, dt);
         // apuntar: con el mouse (o el joystick derecho)
         if (Math.hypot(joys.tiro.x, joys.tiro.y) > 0.2) yo.ang = Math.atan2(joys.tiro.y, joys.tiro.x);
-        else yo.ang = Math.atan2(mouse.y * H + camY - (yo.y - 6), mouse.x * W + camX - yo.x);
+        else {const a=vista.apuntar(mouse.x,mouse.y);yo.ang=Math.atan2(a.y-yo.y,a.x-yo.x);}
         const disparo = mouse.abajo || Math.hypot(joys.tiro.x, joys.tiro.y) > 0.65;
+        if (disparo && OBJETOS[yo.arma.tipo]) { if(!mouse.usado) usarObjeto();mouse.usado=true; } else if(!disparo) mouse.usado=false;
         if (disparo) {
           const nuevas = yo.disparar();
           if (nuevas.length) {
@@ -540,28 +563,24 @@ function abrirSala(code) {
             red.actual?.todos({ k: 'tiro', de: yoId(), x: Math.round(nuevas[0].x), y: Math.round(nuevas[0].y), a: +yo.ang.toFixed(3), arma: yo.arma.tipo, s: Math.random() });
           }
         }
-        // zona
+        // Todos los objetos se guardan: nunca se consumen al pasar.
+        if(pedirAgarrar&&!recogiendo) for (const b of mundo.botin) {
+          if (tomados.has(b.id) || Math.hypot(b.x-yo.x,b.y-yo.y)>18) continue;
+          const prueba={slots:yo.slots.map(s=>s?{...s}:null)};
+          if(!recoger(prueba,b.tipo,ARMAS,b.item)) {aviso('Inventario lleno · X suelta el objeto seleccionado');break;}
+          recogiendo=true;
+          sala.enviar({t:'agarrar',id:b.id}).then(r=>{if(r&&!r.error&&r.estado?.propietarios?.[b.id]===yoId()&&yo?.vivo){yo.recoger(b.tipo,b.item);tomados.add(b.id);red.actual?.todos({k:'agarre',id:b.id,n:Math.random()});aviso((OBJETOS[b.tipo]||ARMAS[b.tipo]).nombre+' en tu inventario');}}).finally(()=>recogiendo=false);break;
+        }
+      }
+      if(yo.vivo&&fase==='partida'&&t>=0) {
+      // La zona sigue activa aunque el menú esté abierto.
         zonaAcum += dt;
         if (zonaAcum >= 1) {
           zonaAcum = 0;
           const d = danoZona(est.semilla, t, yo.x, yo.y);
           if (d) recibirDano(d, 'zona');
         }
-        // botín: lo que se usa se agarra al pasar; las armas con E
-        for (const b of mundo.botin) {
-          if (tomados.has(b.id) || Math.hypot(b.x - yo.x, b.y - yo.y) > 13) continue;
-          const usar = (b.tipo === 'botiquin' && yo.vida < VIDA) || (b.tipo === 'escudo' && yo.escudo < ESCUDO_MAX);
-          const arma = ARMAS[b.tipo] && pedirAgarrar;
-          if (!usar && !arma) continue;
-          if (b.tipo === 'botiquin') yo.vida = Math.min(VIDA, yo.vida + 40);
-          else if (b.tipo === 'escudo') yo.escudo = Math.min(ESCUDO_MAX, yo.escudo + 25);
-          else yo.agarrarArma(b.tipo);
-          tomados.add(b.id);
-          sala.enviar({ t: 'agarrar', id: b.id });
-          red.actual?.todos({ k: 'agarre', id: b.id, n: Math.random() });
-          aviso(b.tipo === 'botiquin' ? '+40 vida' : b.tipo === 'escudo' ? '+25 escudo' : ARMAS[b.tipo].nombre);
-          break;
-        }
+
       }
       pedirAgarrar = false;
       if (yo.vivo === false && !reportado && fase === 'partida') morir(muertePor || 'zona');
@@ -603,7 +622,8 @@ function abrirSala(code) {
         if (sal.agarra && !tomados.has(sal.agarra.id)) {
           const it = sal.agarra;
           if (it.tipo === 'botiquin' && b.p.vida < VIDA) b.p.vida = Math.min(VIDA, b.p.vida + 40);
-          else if (it.tipo === 'escudo' && b.p.escudo < ESCUDO_MAX) b.p.escudo = Math.min(ESCUDO_MAX, b.p.escudo + 25);
+          else if ((it.tipo === 'escudo'||it.tipo==='mini') && b.p.escudo < ESCUDO_MAX) b.p.escudo = Math.min(ESCUDO_MAX, b.p.escudo + (it.tipo==='mini'?25:50));
+          else if(it.tipo==='venda'&&b.p.vida<75)b.p.vida=Math.min(75,b.p.vida+15);
           else if (ARMAS[it.tipo] && (!b.p.slots[1] || it.tipo === 'rifle' || it.tipo === 'escopeta')) b.p.agarrarArma(it.tipo);
           else continue;
           tomados.add(it.id);
@@ -642,10 +662,18 @@ function abrirSala(code) {
     }
     balas = balas.filter((b) => b.viva);
 
+    for(const gr of granadas) {
+      gr.t+=dt;
+      if(gr.t<.8) {const nx=gr.x+gr.vx*dt,ny=gr.y+gr.vy*dt;const blocked=mundo.t[Math.floor(ny/16)*96+Math.floor(nx/16)]===4;if(blocked){gr.vx*=-.5;gr.vy*=-.5;}else{gr.x=nx;gr.y=ny;}}
+      if(gr.t>=1.65&&!gr.exploto){gr.exploto=true;vista.explosion(gr.x,gr.y);if(!gr.visual) for(const p of blancos){const d=Math.hypot(p.x-gr.x,p.y-gr.y);if(d<58) impacto({de:gr.de,dano:Math.round(85*(1-d/70))},p);}}
+    }
+    granadas=granadas.filter(gr=>gr.t<1.7);
+
     // mandar mi estado (y los bots) ~12 veces por segundo
     envio += dt;
     if (envio > 1 / 12 && enJuego && yo) {
       envio = 0;
+      try{const resumir=p=>({x:p.x,y:p.y,vida:p.vida,escudo:p.escudo,slots:p.slots,actual:p.actual,vivo:p.vivo});sessionStorage.setItem(guardadoClave,JSON.stringify({semilla:est.semilla,id:yoId(),yo:resumir(yo),bots:[...botsSim].map(([id,b])=>[id,resumir(b.p)])}));}catch{}
       let s = codificarP(yo);
       if (anfitrion) s += '#' + [...botsSim.values()].map((b) => `${b.p.id}:${codificarP(b.p)}`).join(';');
       red.actual?.enviar(s);
@@ -671,168 +699,29 @@ function abrirSala(code) {
     if (!foco) foco = { x: LADO / 2 + Math.cos(ms / 9000) * 300, y: LADO / 2 + Math.sin(ms / 11000) * 300 }; // en el barco: paseo por la isla
     camX = Math.round(Math.max(0, Math.min(LADO - W, foco.x - W / 2)));
     camY = Math.round(Math.max(0, Math.min(LADO - H, foco.y - H / 2)));
-    g.imageSmoothingEnabled = false;
-    g.drawImage(mapaPintado, camX, camY, W, H, 0, 0, W, H);
-    // botín
-    if (enJuego) for (const b of mundo.botin) {
-      if (tomados.has(b.id) || b.x < camX - 10 || b.y < camY - 10 || b.x > camX + W + 10 || b.y > camY + H + 10) continue;
-      const flota = Math.round(Math.sin(ms / 300 + b.id) * 1);
-      g.fillStyle = 'rgba(0,0,0,.25)';
-      g.fillRect(Math.round(b.x - camX - 5), Math.round(b.y - camY + 5), 10, 2);
-      g.drawImage(ICONOS[b.tipo], Math.round(b.x - camX - 6), Math.round(b.y - camY - 6 + flota));
-    }
-    // personas (ordenadas por altura para que se tapen bien)
     const gente = [];
-    if (yo?.vivo || (yo && fase !== 'partida')) gente.push({ ...yo, id: yoId(), look: lookDe(yoId()), yo: true, arma: yo.arma.tipo, vivo: yo.vivo });
-    for (const [id, r] of remotos) if (r.obj.vivo || fase === 'lobby') gente.push({ ...r.obj, look: lookDe(id) });
-    for (const p of listaBots) gente.push({ ...p, look: lookDe(p.id), arma: typeof p.arma === 'string' ? p.arma : p.arma?.tipo });
-    gente.sort((a, b) => a.y - b.y);
-    for (const p of gente) {
-      const sx = Math.round(p.x - camX);
-      const sy = Math.round(p.y - camY);
-      if (sx < -20 || sy < -30 || sx > W + 20 || sy > H + 20) continue;
-      const sp = spritesDe(p.look);
-      const espalda = Math.sin(p.ang) < -0.55;
-      const cuadroN = p.mueve ? 1 + (Math.floor(ms / 140) % 2) : 0;
-      const img = (espalda ? sp.espalda : sp.frente)[cuadroN];
-      g.fillStyle = 'rgba(0,0,0,.28)';
-      g.fillRect(sx - 5, sy + 1, 10, 2);
-      const izquierda = Math.cos(p.ang) < 0;
-      // el arma, del lado que apunta (atrás del cuerpo si mira para arriba)
-      const dibujarArma = () => {
-        const d = ARMAS[p.arma] || ARMAS.pistola;
-        const largo = p.arma === 'rifle' || p.arma === 'escopeta' ? 11 : p.arma === 'subfusil' ? 9 : 7;
-        const ox = sx + Math.cos(p.ang) * 3;
-        const oy = sy - 7;
-        g.strokeStyle = '#1b1b1b';
-        g.lineWidth = 3;
-        g.beginPath();
-        g.moveTo(ox, oy);
-        g.lineTo(ox + Math.cos(p.ang) * largo, oy + Math.sin(p.ang) * largo);
-        g.stroke();
-        g.strokeStyle = d.color;
-        g.lineWidth = 1;
-        g.beginPath();
-        g.moveTo(ox, oy);
-        g.lineTo(ox + Math.cos(p.ang) * (largo - 1), oy + Math.sin(p.ang) * (largo - 1));
-        g.stroke();
-      };
-      if (espalda) dibujarArma();
-      g.save();
-      if (izquierda) {
-        g.translate(sx, 0);
-        g.scale(-1, 1);
-        g.drawImage(img, -Math.round(SP_W / 2), sy - SP_H + 1);
-      } else g.drawImage(img, sx - Math.round(SP_W / 2), sy - SP_H + 1);
-      g.restore();
-      if (!espalda) dibujarArma();
+    if(yo?.vivo) gente.push({...yo,id:yoId(),look:lookDe(yoId()),yo:true,arma:yo.arma.tipo});
+    for(const [id,r] of remotos) if(r.obj.vivo) gente.push({...r.obj,look:lookDe(id)});
+    for(const p of listaBots) gente.push({...p,look:lookDe(p.id),arma:typeof p.arma==='string'?p.arma:p.arma?.tipo});
+    const z=(fase==='partida'||fase==='fin')?zona(est.semilla,Math.max(0,t)):null;
+    vista.dibujar({mundo,gente,balas,tomados,foco,W,H,dt,ms,zona:z,granadas});
+    ctx.clearRect(0,0,overlay.width,overlay.height);
+    const ahora=performance.now(),dpr=Math.min(2,devicePixelRatio);
+    ctx.textAlign='center';
+    for(const p of gente) {
+      if(!p.vivo) continue;
+      const pos=vista.proyectar(p.x,p.y,25),sx=pos.x*overlay.width,sy=pos.y*overlay.height;
+      ctx.font='700 '+(12*dpr)+'px Barlow, sans-serif';ctx.lineWidth=3*dpr;ctx.strokeStyle='#24342ae0';ctx.fillStyle=p.yo?'#d7ff70':'#fff';
+      ctx.strokeText(p.yo?'VOS':nombreDe(p.id),sx,sy);ctx.fillText(p.yo?'VOS':nombreDe(p.id),sx,sy);
+      const gl=globos.get(p.id);if(gl&&gl.hasta>ahora){ctx.fillStyle='#fff';ctx.strokeText(gl.texto,sx,sy-20*dpr,250*dpr);ctx.fillText(gl.texto,sx,sy-20*dpr,250*dpr);}
     }
-    // balas
-    g.lineWidth = 1;
-    for (const b of balas) {
-      const x = b.x - camX;
-      const y = b.y - camY;
-      if (x < -10 || y < -10 || x > W + 10 || y > H + 10) continue;
-      g.strokeStyle = 'rgba(255,240,170,.9)';
-      g.beginPath();
-      g.moveTo(x - b.vx * 0.012, y - b.vy * 0.012);
-      g.lineTo(x, y);
-      g.stroke();
-    }
-    // copas de los árboles (encima; transparentes si hay alguien abajo)
-    for (const o of mundo.obstaculos) {
-      if (o.tipo !== 'arbol' || o.x < camX - 20 || o.y < camY - 20 || o.x > camX + W + 20 || o.y > camY + H + 30) continue;
-      const c = copa(o);
-      const alguien = gente.some((p) => Math.hypot(p.x - o.x, p.y - 6 - (o.y - 8)) < o.copa);
-      g.globalAlpha = alguien ? 0.5 : 0.96;
-      g.drawImage(c, Math.round(o.x - camX - c.width / 2), Math.round(o.y - camY - c.height / 2 - 8));
-      g.globalAlpha = 1;
-    }
-    // la zona: afuera se ve violeta
-    if (fase === 'partida' || fase === 'fin') {
-      const z = zona(est.semilla, Math.max(0, t));
-      g.save();
-      g.beginPath();
-      g.rect(0, 0, W, H);
-      g.arc(z.x - camX, z.y - camY, Math.max(0, z.r), 0, Math.PI * 2, true);
-      g.fillStyle = 'rgba(120,40,190,.38)';
-      g.fill('evenodd');
-      g.strokeStyle = 'rgba(255,255,255,.85)';
-      g.lineWidth = 1;
-      g.beginPath();
-      g.arc(z.x - camX, z.y - camY, Math.max(0, z.r), 0, Math.PI * 2);
-      g.stroke();
-      g.setLineDash([3, 3]);
-      g.strokeStyle = 'rgba(255,255,255,.45)';
-      g.beginPath();
-      g.arc(z.siguiente.x - camX, z.siguiente.y - camY, Math.max(0, z.siguiente.r), 0, Math.PI * 2);
-      g.stroke();
-      g.restore();
-      const zEl = $('[data-zona]');
-      const afuera = yo?.vivo && Math.hypot(yo.x - z.x, yo.y - z.y) > z.r;
-      zEl.innerHTML = `${afuera ? '<b class="malo">¡Estás afuera de la zona!</b> · ' : ''}${z.cerrando ? 'La zona se está cerrando' : z.falta > 0 ? `La zona se cierra en ${Math.ceil(z.falta)} s` : 'Zona final'}`;
-    }
-    // agrandar al tamaño de la pantalla
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(bajo, 0, 0, W, H, 0, 0, lienzo.width, lienzo.height);
-    // textos nítidos encima: nombres, barras de vida, globitos y números de daño
-    const fx = lienzo.width / W;
-    const fy = lienzo.height / H;
-    ctx.textAlign = 'center';
-    const ahora = performance.now();
-    for (const p of gente) {
-      const sx = (p.x - camX) * fx;
-      const sy = (p.y - camY - SP_H - 3) * fy;
-      if (sx < -50 || sy < -50 || sx > lienzo.width + 50 || sy > lienzo.height + 50) continue;
-      const dpr = Math.min(2, devicePixelRatio);
-      ctx.font = `800 ${Math.round(12 * dpr)}px Barlow, sans-serif`;
-      const nombre = p.yo ? 'Vos' : nombreDe(p.id);
-      ctx.lineWidth = 3 * dpr;
-      ctx.strokeStyle = 'rgba(10,10,10,.85)';
-      ctx.strokeText(nombre, sx, sy - 4);
-      ctx.fillStyle = p.yo ? '#c5f04a' : String(p.id).startsWith('bot') ? '#ffd166' : '#fff';
-      ctx.fillText(nombre, sx, sy - 4);
-      if (!p.yo && fase !== 'lobby') {
-        const bw = 30 * fx * 0.33;
-        ctx.fillStyle = 'rgba(0,0,0,.55)';
-        ctx.fillRect(sx - bw / 2, sy + 2, bw, 4);
-        ctx.fillStyle = p.vida > 50 ? '#9be15d' : p.vida > 25 ? '#ffd166' : '#ff6b5b';
-        ctx.fillRect(sx - bw / 2, sy + 2, (bw * Math.max(0, p.vida)) / VIDA, 4);
-        if (p.escudo > 0) {
-          ctx.fillStyle = '#7aa2ff';
-          ctx.fillRect(sx - bw / 2, sy - 1, (bw * p.escudo) / ESCUDO_MAX, 2);
-        }
-      }
-      const gl = globos.get(p.yo ? yoId() : p.id);
-      if (gl && gl.hasta > ahora) {
-        ctx.font = `600 ${Math.round(12 * Math.min(2, devicePixelRatio))}px Barlow, sans-serif`;
-        const tw = Math.min(260, ctx.measureText(gl.texto).width + 18);
-        const by = sy - 34 * Math.min(2, devicePixelRatio);
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.roundRect(sx - tw / 2, by - 18, tw, 26, 10);
-        ctx.fill();
-        ctx.fillStyle = '#141413';
-        ctx.fillText(gl.texto, sx, by, 250);
-      }
-    }
-    for (let i = numeros.length - 1; i >= 0; i--) {
-      const n = numeros[i];
-      if (n.hasta < ahora) {
-        numeros.splice(i, 1);
-        continue;
-      }
-      const k = 1 - (n.hasta - ahora) / 700;
-      ctx.font = `900 ${Math.round(14 * Math.min(2, devicePixelRatio))}px Barlow Condensed, sans-serif`;
-      ctx.fillStyle = n.malo ? '#ff6b5b' : '#ffe66b';
-      ctx.fillText(n.texto, (n.x - camX) * fx, (n.y - camY - k * 12) * fy);
-    }
-
+    for(let i=numeros.length-1;i>=0;i--){const n=numeros[i];if(n.hasta<ahora){numeros.splice(i,1);continue;}const p=vista.proyectar(n.x,n.y,28+(1-(n.hasta-ahora)/700)*12);ctx.font='900 '+18*dpr+'px Barlow';ctx.fillStyle=n.malo?'#ff9389':'#fff299';ctx.fillText(n.texto,p.x*overlay.width,p.y*overlay.height);}
+    if(z){const afuera=yo?.vivo&&Math.hypot(yo.x-z.x,yo.y-z.y)>z.r;$('[data-zona]').textContent=(afuera?'¡Volvé a la zona! · ':'')+(z.cerrando?'La zona se está cerrando':z.falta>0?'La zona se cierra en '+Math.ceil(z.falta)+' s':'Zona final');}
     // HUD (si morí, solo se ve lo de mirar)
     $('[data-abajo]').classList.toggle('hidden', !(yo?.vivo && (fase === 'partida' || fase === 'cuenta')));
     let cercaArma = null;
-    if (yo?.vivo && fase === 'partida') for (const b of mundo.botin) if (ARMAS[b.tipo] && !tomados.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 13) cercaArma = b;
-    const pista = cercaArma ? `E · agarrar ${ARMAS[cercaArma.tipo].nombre}` : '';
+    if (yo?.vivo && fase === 'partida') for (const b of mundo.botin) if (!tomados.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 18) cercaArma = b;
+    const pista = cercaArma ? `E · recoger ${(OBJETOS[cercaArma.tipo]||ARMAS[cercaArma.tipo]).nombre}` : '';
     const pEl = $('[data-pista]');
     if (pEl.textContent !== pista) {
       pEl.textContent = pista;
@@ -842,7 +731,10 @@ function abrirSala(code) {
       $('[data-vida]').style.width = `${(yo.vida / VIDA) * 100}%`;
       $('[data-vida-n]').textContent = Math.ceil(yo.vida);
       $('[data-escudo]').style.width = `${(yo.escudo / ESCUDO_MAX) * 100}%`;
-      const slots = yo.slots.map((s, i) => (s ? `<div class="slot ${i === yo.actual ? 'on' : ''}"><small>${i + 1}</small><b>${ARMAS[s.tipo].nombre}</b><span>${yo.recargando > 0 && i === yo.actual ? 'recargando…' : `${s.bala}/${ARMAS[s.tipo].cargador}`}</span></div>` : `<div class="slot vacio"><small>${i + 1}</small><span>vacío</span></div>`)).join('');
+      const slots = yo.slots.map((s,i)=>{
+        const d=s&&(OBJETOS[s.tipo]||ARMAS[s.tipo]);
+        return '<button data-slot="'+i+'" class="slot '+(i===yo.actual?'on ':'')+(!s?'vacio':'')+'" style="--item:'+(d?.color||'#59605b')+'"><small>'+(i+1)+'</small><b>'+(d?.nombre||'Libre')+'</b><span>'+(s?(OBJETOS[s.tipo]?'×'+s.cantidad:(yo.recargando>0&&i===yo.actual?'Recargando':s.bala+'/'+d.cargador)):'—')+'</span></button>';
+      }).join('')+'<div class="uso-item">'+(yo.usando?'Usando '+OBJETOS[yo.usando.tipo].nombre+' · '+Math.max(0,yo.usando.restante).toFixed(1)+' s':'1–6 seleccionar · F usar · X soltar')+'</div>';
       const sl = $('[data-slots]');
       if (sl.dataset.f !== slots) {
         sl.dataset.f = slots;

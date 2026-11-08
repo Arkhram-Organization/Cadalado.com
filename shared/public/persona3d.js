@@ -1,481 +1,413 @@
-// Personajes 3D de cadalado (carrera, blackjack…), estilo personaje de película animada:
-// proporciones de persona (cabeza un poco grande), ojos expresivos, pelo con volumen y ropa con detalle.
-// Recibe THREE para no duplicar la librería.
-// crearPersona(THREE, look) → { grupo, cabeza, altura, decir(texto, seg), animar(estado, dt) }
-// look: ver shared/public/npcs.js (piel, pelo, ojos, cuerpo, ropa, barba, lentes, kipa, sombrero, capa, robot, dorado, smoking, auriculares)
-
-const ANCHO = { flaco: 0.15, normal: 0.17, gordito: 0.21 };
-const CADERA = 0.78; // altura de la cadera parado
-const CABEZA_Y = 0.78; // centro de la cabeza respecto de la cadera (queda a ~1.56 del piso)
-
+// Elenco compartido: muñequitos de proporciones de animación, ropa construida por capas
+// y una cara esculpida. El frente del personaje es -Z (contrato de todos los juegos).
+// Las fotografías futuras sólo necesitan ajustar `look`; el rig y las animaciones se comparten.
 export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
-  const L = {
-    piel: '#e8c4a8',
-    ojos: '#5a3a22',
-    cuerpo: 'normal',
-    pelo: { estilo: 'corto', color: '#2b1d14' },
-    ...look,
-    ropa: { remera: '#7aa2ff', pantalon: '#3a4256', ...(look.ropa || {}) },
+  const L = { piel: '#e8c4a8', ojos: '#5a3a22', cuerpo: 'normal', ...look,
+    pelo: { estilo: 'corto', color: '#2b1d14', ...look.pelo },
+    ropa: { remera: '#7aa2ff', pantalon: '#3a4256', ...look.ropa } };
+  const materiales = new Map();
+  const mat = (color, extra = {}) => {
+    const clave = JSON.stringify([color, extra]);
+    if (!materiales.has(clave)) materiales.set(clave, new THREE.MeshStandardMaterial({ color, roughness: 0.78, ...extra }));
+    return materiales.get(clave);
   };
-  const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.62, ...extra });
-  const piel = L.robot ? mat(L.piel, { metalness: 0.65, roughness: 0.3 }) : mat(L.piel, { roughness: 0.48 });
-  const camisa = mat(L.smoking ? '#f6f4ee' : L.ropa.remera);
-  const saco = mat('#121216', { roughness: 0.5 });
-  const pantalon = mat(L.smoking ? '#121216' : L.ropa.pantalon, { roughness: 0.75 });
-  const bota = mat(L.smoking ? '#0b0b0b' : '#5b3a26', { roughness: 0.45 });
-  const suela = mat('#2a1a10', { roughness: 0.8 });
-  const cuero = mat('#4a2c1a', { roughness: 0.5 });
-  const metal = mat('#d4af37', { metalness: 0.7, roughness: 0.3 });
-  const pelo = mat(L.pelo.color, { roughness: 0.75 });
-  const ancho = ANCHO[L.cuerpo] || ANCHO.normal;
+  const grupo = new THREE.Group(), cuerpo = new THREE.Group();
+  grupo.add(cuerpo);
+  const pieza = (geo, m, x, y, z, parent = cuerpo) => {
+    const p = new THREE.Mesh(geo, m); p.position.set(x, y, z); p.castShadow = sombras; p.receiveShadow = false; parent.add(p); return p;
+  };
+  const bola = (r, m, x, y, z, parent, sx = 1, sy = 1, sz = 1) => {
+    const p = pieza(new THREE.SphereGeometry(r, 24, 16), m, x, y, z, parent); p.scale.set(sx, sy, sz); return p;
+  };
+  const tubo = (r, largo, m, x, y, z, parent) => pieza(new THREE.CapsuleGeometry(r, largo, 5, 12), m, x, y, z, parent);
+  const cubo = (w, h, d, m, x, y, z, parent) => pieza(new THREE.BoxGeometry(w, h, d), m, x, y, z, parent);
+  const aro = (r, grosor, m, x, y, z, parent, arco = Math.PI * 2) => pieza(new THREE.TorusGeometry(r, grosor, 6, 24, arco), m, x, y, z, parent);
+  const piel = mat(L.piel, L.robot ? { metalness: .65, roughness: .34 } : { roughness: .57 });
+  const rosado = mat(new THREE.Color(L.piel).lerp(new THREE.Color('#d17c66'), .25));
+  const tela = mat(L.smoking ? '#20232c' : L.ropa.remera);
+  const pantalon = mat(L.smoking ? '#20232c' : L.ropa.pantalon);
+  const blanco = mat('#eee9de'), negro = mat('#17191e'), pelo = mat(L.pelo.color);
+  const cuero = mat(L.ropa.bolso || '#b8783f'), metal = mat('#a8a9a4', { metalness: .65, roughness: .35 });
+  const ancho = { flaco: .215, normal: .245, gordito: .305 }[L.cuerpo] || .245;
   const gordo = L.cuerpo === 'gordito';
-  const g = new THREE.Group();
-  const cuerpo = new THREE.Group(); // todo lo que se anima
-  g.add(cuerpo);
-  const malla = (geo, m, x = 0, y = 0, z = 0, padre = cuerpo) => {
-    const o = new THREE.Mesh(geo, m);
-    o.position.set(x, y, z);
-    o.castShadow = sombras;
-    padre.add(o);
-    return o;
-  };
-  const capsula = (r, largo, m, x, y, z, padre) => malla(new THREE.CapsuleGeometry(r, largo, 6, 14), m, x, y, z, padre);
-  const esfera = (r, m, x, y, z, padre, seg = 16) => malla(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.75)), m, x, y, z, padre);
-
-  // ---------------------------------------------------------------- piernas (cadera → rodilla → bota)
-  const pierna = (lado) => {
-    const p = new THREE.Group();
-    p.position.set(lado * ancho * 0.5, CADERA, 0);
-    capsula(gordo ? 0.1 : 0.088, 0.22, pantalon, 0, -0.18, 0, p);
-    const rodilla = new THREE.Group();
-    rodilla.position.y = -0.36;
-    p.add(rodilla);
-    capsula(0.074, 0.17, pantalon, 0, -0.13, 0, rodilla);
-    if (!L.smoking && !L.robot) malla(new THREE.TorusGeometry(0.078, 0.02, 8, 18), L.ropa.botamanga ? mat(L.ropa.botamanga) : pantalon, 0, -0.27, 0, rodilla).rotation.x = Math.PI / 2;
-    // bota: caña, pie y suela
-    malla(new THREE.CylinderGeometry(0.075, 0.08, 0.1, 16), bota, 0, -0.34, 0, rodilla);
-    const pie = esfera(0.08, bota, 0, -0.385, -0.05, rodilla);
-    pie.scale.set(1.05, 0.62, 1.6);
-    malla(new THREE.BoxGeometry(0.16, 0.025, 0.27), suela, 0, -0.41, -0.045, rodilla);
-    cuerpo.add(p);
-    return { cadera: p, rodilla };
-  };
-  const pI = pierna(-1);
-  const pD = pierna(1);
-
-  // ---------------------------------------------------------------- torso
-  const torso = new THREE.Group();
-  torso.position.y = CADERA;
-  cuerpo.add(torso);
-  const pelvis = esfera(ancho * 1.02, pantalon, 0, 0.05, 0, torso);
-  pelvis.scale.set(1, 0.7, gordo ? 0.95 : 0.78);
-  // camisa (más ancha en los hombros) metida en el pantalón
-  const pecho = malla(new THREE.CylinderGeometry(ancho * 1.08, ancho * 0.95, 0.34, 22), L.smoking ? saco : camisa, 0, 0.31, 0, torso);
-  pecho.scale.z = gordo ? 0.95 : 0.74;
-  const hombros = esfera(ancho * 1.08, L.smoking ? saco : camisa, 0, 0.48, 0, torso, 22);
-  hombros.scale.set(1, 0.42, gordo ? 0.95 : 0.74);
-  if (gordo) esfera(ancho * 0.92, L.smoking ? saco : camisa, 0, 0.24, -0.05, torso, 20).scale.set(1, 0.95, 1.05);
-  const frente = -(ancho * (gordo ? 0.95 : 0.74)); // z del frente del pecho
-  // cinturón con hebilla
-  if (!L.robot) {
-    const cint = malla(new THREE.CylinderGeometry(ancho * 0.97, ancho * 0.97, 0.05, 22, 1, true), cuero, 0, 0.14, 0, torso);
-    cint.scale.z = gordo ? 0.97 : 0.8;
-    malla(new THREE.BoxGeometry(0.06, 0.045, 0.015), metal, 0, 0.14, frente * (gordo ? 1.02 : 1.08) - 0.005, torso);
-  }
+  const torso = new THREE.Group(); torso.position.y = .69; cuerpo.add(torso);
+  bola(ancho, pantalon, 0, .02, 0, torso, 1, .55, .78);
+  bola(ancho, tela, 0, .235, 0, torso, 1.02, 1.28, gordo ? .96 : .79);
+  // Hombros y cuello suaves, dobladillo, pespuntes y bolsillos de verdad.
+  bola(ancho * .95, tela, 0, .405, 0, torso, 1, .36, .76);
+  const frente = -ancho * (gordo ? .94 : .78);
+  aro(ancho * .96, .015, pantalon, 0, .06, 0, torso).rotation.x = Math.PI / 2;
+  tubo(.073, .10, piel, 0, .52, 0, torso);
+  const cuello = aro(.094, .021, L.smoking ? blanco : tela, 0, .46, -.015, torso); cuello.rotation.x = Math.PI / 2;
   if (L.smoking) {
-    // camisa blanca en V, moño, solapas y botones
-    const v = malla(new THREE.CylinderGeometry(0.001, ancho * 0.55, 0.3, 3), camisa, 0, 0.36, frente - 0.002, torso);
-    v.rotation.x = Math.PI;
-    v.scale.z = 0.18;
-    malla(new THREE.BoxGeometry(0.11, 0.04, 0.03), mat('#0b0b0b'), 0, 0.5, frente - 0.01, torso);
-    for (const x of [-1, 1]) {
-      const sol = malla(new THREE.BoxGeometry(0.035, 0.2, 0.015), mat('#1d1d22', { roughness: 0.3 }), x * ancho * 0.32, 0.38, frente - 0.008, torso);
-      sol.rotation.z = x * 0.3;
+    bola(.12, blanco, 0, .34, frente + .025, torso, .77, 1.15, .2);
+    for (const s of [-1, 1]) {
+      const lap = cubo(.055, .25, .025, mat('#343845'), s * .08, .34, frente - .012, torso); lap.rotation.z = s * -.34;
+      bola(.037, negro, s * .032, .46, frente - .04, torso, 1.25, .7, .4);
     }
-    for (const y of [0.26, 0.19]) esfera(0.011, metal, 0, y, frente - 0.006, torso, 8);
-  } else if (!L.robot) {
-    // cuello de la camisa, botones y bolsillo
-    for (const x of [-1, 1]) {
-      const c = malla(new THREE.BoxGeometry(0.07, 0.012, 0.06), camisa, x * 0.04, 0.53, -0.07, torso);
-      c.rotation.set(0.5, x * 0.5, x * 0.35);
+    bola(.022, negro, 0, .46, frente - .045, torso);
+    for (const y of [.35, .28, .20]) bola(.008, negro, 0, y, frente - .021, torso);
+    cubo(.065, .035, .014, blanco, -.14, .35, frente + .02, torso).rotation.z = -.15;
+  } else if (L.robot) {
+    cubo(.26, .24, .045, mat('#526675', { metalness: .7 }), 0, .26, frente, torso);
+    bola(.06, mat('#67f6df', { emissive: '#38d9e6', emissiveIntensity: 1.5 }), 0, .27, frente - .034, torso, 1, 1, .4);
+    for (const x of [-.1, .1]) for (const y of [.18, .35]) bola(.012, metal, x, y, frente - .026, torso);
+  } else {
+    if (L.ropa.franja) {
+      const franja = pieza(new THREE.CylinderGeometry(ancho * 1.01, ancho * 1.03, .055, 24, 1, true), mat(L.ropa.franja), 0, .30, 0, torso);
+      franja.scale.z = gordo ? .93 : .78;
     }
-    for (const y of [0.42, 0.34, 0.26]) esfera(0.009, mat('#f4f1ea', { roughness: 0.3 }), 0, y, frente - 0.004, torso, 8);
-    malla(new THREE.BoxGeometry(0.07, 0.06, 0.008), mat(L.ropa.franja || L.ropa.remera, { roughness: 0.7 }), -ancho * 0.45, 0.4, frente + 0.002, torso);
-    if (L.ropa.franja) malla(new THREE.CylinderGeometry(ancho * 1.06, ancho * 1.01, 0.035, 22, 1, true), mat(L.ropa.franja), 0, 0.31, 0, torso).scale.z = gordo ? 0.96 : 0.75;
-  }
-  if (L.capa) {
-    const capa = malla(new THREE.PlaneGeometry(ancho * 2.6, 0.95), mat(L.capa, { side: THREE.DoubleSide }), 0, 0.05, -frente + 0.03, torso);
-    capa.rotation.x = 0.12;
-  }
-  if (L.robot) malla(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 16), mat('#38d9e6', { emissive: '#38d9e6', emissiveIntensity: 0.8 }), 0, 0.36, frente, torso).rotation.x = Math.PI / 2;
-  // cuello
-  capsula(0.055, 0.06, piel, 0, 0.58, 0, torso);
-
-  // ---------------------------------------------------------------- brazos (hombro → codo → mano)
-  const brazo = (lado) => {
-    const b = new THREE.Group();
-    b.position.set(lado * (ancho * 1.08 + 0.02), 0.47, 0);
-    capsula(0.062, 0.16, L.smoking ? saco : camisa, 0, -0.12, 0, b);
-    const codo = new THREE.Group();
-    codo.position.y = -0.26;
-    b.add(codo);
-    if (L.smoking) {
-      capsula(0.054, 0.15, saco, 0, -0.1, 0, codo);
-      malla(new THREE.CylinderGeometry(0.052, 0.052, 0.03, 12), camisa, 0, -0.2, 0, codo);
-    } else {
-      // manga arremangada y antebrazo
-      malla(new THREE.TorusGeometry(0.058, 0.022, 8, 16), camisa, 0, 0.0, 0, codo).rotation.x = Math.PI / 2;
-      capsula(0.05, 0.15, piel, 0, -0.1, 0, codo);
+    // Bolsillo con costura y pequeño parche: la vestimenta se lee desde lejos.
+    const bolsillo = cubo(.09, .09, .018, tela, -.10, .34, frente - .006, torso); bolsillo.rotation.z = -.03;
+    cubo(.083, .009, .02, mat(new THREE.Color(L.ropa.remera).multiplyScalar(.72)), -.10, .38, frente - .02, torso);
+    cubo(.018, .025, .022, blanco, -.073, .35, frente - .02, torso);
+    // Correa y bolso diferenciados. El look permite desactivarlos y ajustar el color.
+    if (!L.capa && !L.liso && !L.barba && L.ropa.bolso !== false) {
+      const correa = cubo(.04, .51, .026, cuero, .015, .27, frente - .035, torso); correa.rotation.z = -.65;
+      bola(.095, cuero, .19, .03, frente - .05, torso, 1.1, 1.15, .4);
+      bola(.09, mat(new THREE.Color(L.ropa.bolso || '#b8783f').multiplyScalar(.82)), .19, .067, frente - .074, torso, 1.12, .5, .25);
+      cubo(.023, .026, .014, metal, .19, .037, frente - .103, torso);
     }
-    // mano con pulgar
-    const mano = new THREE.Group();
-    mano.position.y = -0.25;
-    codo.add(mano);
-    const m = L.guantes ? mat(L.guantes) : piel;
-    esfera(0.052, m, 0, -0.02, 0, mano).scale.set(0.8, 1.15, 0.6);
-    const pulgar = capsula(0.016, 0.03, m, -lado * 0.035, 0, -0.02, mano);
-    pulgar.rotation.z = lado * 0.6;
-    b.userData = { codo };
-    torso.add(b);
-    return b;
-  };
-  const bI = brazo(-1);
-  const bD = brazo(1);
-  const codoI = bI.userData.codo;
-  const codoD = bD.userData.codo;
-
-  // ---------------------------------------------------------------- cabeza
-  const cabeza = new THREE.Group();
-  cabeza.position.y = CABEZA_Y;
-  torso.add(cabeza);
-  const craneo = esfera(0.2, piel, 0, 0, 0, cabeza, 32);
-  craneo.scale.set(gordo ? 1.02 : 0.95, 1.08, 0.97);
-  // orejas
-  if (!L.robot) for (const x of [-0.19, 0.19]) {
-    const o = esfera(0.04, piel, x, -0.01, 0.01, cabeza, 12);
-    o.scale.set(0.45, 1.05, 0.75);
   }
-  // ojos grandes y expresivos
-  const esclera = mat('#fbf8f3', { roughness: 0.2 });
-  const iris = mat(L.robot ? '#38d9e6' : L.ojos, { roughness: 0.15, emissive: L.robot ? '#38d9e6' : '#000000', emissiveIntensity: L.robot ? 0.8 : 0 });
-  const negro = mat('#0b0b0b', { roughness: 0.1 });
-  const brillo = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const parpadoM = mat(L.piel, { roughness: 0.55 });
-  const pestanaM = mat('#1e140f');
-  const parpados = [];
-  for (const x of [-0.075, 0.075]) {
-    esfera(0.045, esclera, x, 0.005, -0.15, cabeza, 18).scale.set(1.05, 1.05, 0.55);
-    esfera(0.03, iris, x * 0.97, 0.002, -0.168, cabeza, 16).scale.set(1, 1.05, 0.42);
-    esfera(0.015, negro, x * 0.97, 0.002, -0.176, cabeza, 12).scale.set(1, 1, 0.35);
-    esfera(0.008, brillo, x * 0.97 + 0.012, 0.016, -0.181, cabeza, 8);
-    esfera(0.004, brillo, x * 0.97 - 0.01, -0.012, -0.18, cabeza, 6);
-    // párpado (para parpadear) y pestañas
-    const p = esfera(0.047, parpadoM, x, 0.008, -0.149, cabeza, 16);
-    p.scale.set(1.08, 0.12, 0.58);
-    p.position.y = 0.05;
-    parpados.push(p);
-    const pest = malla(new THREE.TorusGeometry(0.046, 0.005, 6, 16, Math.PI * 0.8), pestanaM, x, 0.008, -0.16, cabeza);
-    pest.rotation.z = Math.PI * 0.1;
-    // ceja arqueada
-    const cejaColor = L.barba || (L.pelo.estilo === 'calvo' ? '#7a6656' : L.pelo.color);
-    const ceja = malla(new THREE.TorusGeometry(0.05, 0.009, 6, 14, Math.PI * 0.6), mat(cejaColor, { roughness: 0.9 }), x * 1.04, 0.035, -0.16, cabeza);
-    ceja.rotation.z = Math.PI * 0.2;
-  }
-  // nariz chica
-  esfera(0.026, piel, 0, -0.045, -0.188, cabeza, 14).scale.set(0.9, 1.05, 1.1);
-  // boca: sonrisa y labio de abajo
-  const boca = new THREE.Group();
-  boca.position.set(0, -0.1, -0.175);
-  cabeza.add(boca);
-  const sonrisa = malla(new THREE.TorusGeometry(0.032, 0.007, 6, 14, Math.PI * 0.75), mat(L.robot ? '#5d6773' : '#8a3b35'), 0, 0.012, 0, boca);
-  sonrisa.rotation.z = Math.PI * 1.125;
-  capsula(0.009, 0.028, mat(L.robot ? '#5d6773' : '#c46e66', { roughness: 0.4 }), 0, -0.016, 0.004, boca).rotation.z = Math.PI / 2;
-  // mejillas
-  const mejilla = new THREE.MeshBasicMaterial({ color: 0xff8a7a, transparent: true, opacity: 0.22 });
-  if (!L.robot) for (const x of [-0.115, 0.115]) malla(new THREE.CircleGeometry(0.032, 14), mejilla, x, -0.055, -0.158, cabeza).rotation.y = Math.PI + (x > 0 ? 0.65 : -0.65);
 
-  // ---------------------------------------------------------------- pelo con volumen
-  const est = L.pelo.estilo;
-  const flequillo = (n, ancho, y, largo) => {
+  const piernas = [-1, 1].map(s => {
+    const cadera = new THREE.Group(); cadera.position.set(s * ancho * .53, .69, 0); cuerpo.add(cadera);
+    tubo(gordo ? .105 : .09, .17, pantalon, 0, -.16, 0, cadera);
+    const rodilla = new THREE.Group(); rodilla.position.y = -.32; cadera.add(rodilla);
+    tubo(.075, .15, pantalon, 0, -.10, 0, rodilla);
+    const botamanga = aro(.077, .012, pantalon, 0, -.20, 0, rodilla); botamanga.rotation.x = Math.PI / 2;
+    // Zapatillas con puntera, suela clara y cordones; Dobro lleva zapatos.
+    const calzado = L.smoking ? negro : mat(L.ropa.zapatillas || '#e9e1d1');
+    bola(.11, calzado, 0, -.285, -.053, rodilla, 1, .70, 1.54);
+    bola(.112, L.smoking ? negro : blanco, 0, -.325, -.053, rodilla, 1.04, .22, 1.57);
+    if (!L.smoking) {
+      bola(.08, blanco, 0, -.285, -.142, rodilla, 1.12, .55, .65);
+      for (const z of [-.065, -.09, -.115]) cubo(.085, .009, .012, blanco, 0, -.219, z, rodilla);
+    }
+    return { cadera, rodilla };
+  });
+  const brazos = [-1, 1].map(s => {
+    const hombro = new THREE.Group(); hombro.position.set(s * (ancho * .91 + .035), .40, 0); torso.add(hombro);
+    tubo(.08, .13, tela, 0, -.11, 0, hombro);
+    const codo = new THREE.Group(); codo.position.y = -.23; hombro.add(codo);
+    tubo(.061, .13, L.smoking ? tela : piel, 0, -.095, 0, codo);
+    aro(.067, .012, L.smoking ? blanco : tela, 0, -.003, 0, codo).rotation.x = Math.PI / 2;
+    const mano = new THREE.Group(); mano.position.y = -.23; codo.add(mano);
+    bola(.063, L.guantes ? mat(L.guantes) : piel, 0, -.008, 0, mano, .9, 1.13, .62);
+    tubo(.023, .035, piel, -s * .043, .002, -.025, mano).rotation.z = s * .35;
+    // Reloj: detalle recurrente que hace que la ropa se sienta real.
+    if (s === 1 && !L.robot) {
+      aro(.062, .014, negro, 0, -.18, 0, codo).rotation.x = Math.PI / 2;
+      cubo(.067, .05, .018, metal, 0, -.18, -.058, codo);
+      cubo(.052, .037, .021, negro, 0, -.18, -.062, codo);
+    }
+    return { hombro, codo, mano };
+  });
+
+  const cabeza = new THREE.Group(); cabeza.position.y = .82; torso.add(cabeza);
+  // Cráneo y mandíbula separados: mejillas anchas y mentón blando, sin forma de bola lisa.
+  bola(.305, piel, 0, .015, 0, cabeza, gordo ? 1.09 : 1, 1.06, .90);
+  bola(.25, piel, 0, -.12, -.035, cabeza, gordo ? 1.18 : 1.04, .72, .96);
+  const orejas = [-1, 1].map(s => {
+    bola(.075, piel, s * (gordo ? .326 : .30), -.055, .008, cabeza, .65, 1, .65);
+    bola(.041, rosado, s * (gordo ? .345 : .32), -.055, -.023, cabeza, .45, .85, .50);
+  });
+  const ojos = [], cejas = [];
+  const pupila = mat('#17120f', { roughness: .18 });
+  const iris = mat(L.robot ? '#38d9e6' : L.ojos, { roughness: .24, ...(L.robot ? { emissive: '#38d9e6', emissiveIntensity: .7 } : {}) });
+  const resplandor = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  for (const s of [-1, 1]) {
+    const ojo = new THREE.Group(); ojo.position.set(s * .115, -.015, -.253); cabeza.add(ojo);
+    bola(.061, mat('#fffaf0', { roughness: .25 }), 0, 0, 0, ojo, .88, 1.12, .45);
+    bola(.042, iris, 0, -.001, -.023, ojo, .88, 1.07, .42);
+    bola(.026, pupila, 0, -.001, -.036, ojo, .85, 1.10, .40);
+    bola(.012, resplandor, -.011, .017, -.045, ojo, .8, 1, .4);
+    bola(.005, resplandor, .012, -.018, -.047, ojo);
+    ojos.push(ojo);
+    const ceja = tubo(.015, .064, mat(L.barba || (L.pelo.estilo === 'calvo' ? '#755341' : L.pelo.color)), s * .113, .095, -.255, cabeza);
+    ceja.rotation.z = Math.PI / 2 + s * .12; cejas.push(ceja);
+    // Sutil volumen en pómulos y nariz, la cara mantiene los colores de cada NPC.
+    bola(.068, piel, s * .166, -.104, -.203, cabeza, 1, .85, .55);
+    bola(.042, rosado, s * .178, -.102, -.230, cabeza, 1, .65, .16);
+  }
+  bola(.053, rosado, 0, -.073, -.286, cabeza, .89, 1, .91);
+  bola(.029, piel, 0, -.027, -.261, cabeza, .70, 1.4, .65);
+  const boca = new THREE.Group(); boca.position.set(0, -.173, -.245); cabeza.add(boca);
+  const sonrisa = aro(.043, .008, mat('#865044'), 0, .017, 0, boca, Math.PI * .76); sonrisa.rotation.z = Math.PI * 1.12;
+  bola(.029, rosado, 0, -.016, -.001, boca, 1.1, .19, .25);
+
+  // Pelo esculpido en mechones con siluetas diferentes, conservando el peinado del elenco.
+  const estilo = L.pelo.estilo;
+  if (['corto', 'largo', 'rulos'].includes(estilo)) {
+    const casco = pieza(new THREE.SphereGeometry(.318, 28, 16, 0, Math.PI * 2, 0, Math.PI * .54), pelo, 0, .045, .012, cabeza);
+    casco.scale.set(gordo ? 1.08 : 1, 1.04, .92);
+    if (estilo !== 'rulos') for (let i = 0; i < 6; i++) {
+      const x = (i - 2.5) * .074;
+      const m = bola(.077, pelo, x, .235 + Math.sin(i * .7) * .025, -.207 + Math.abs(x) * .2, cabeza, 1, 1.1 + i * .04, .60);
+      m.rotation.z = -.3 + i * .06;
+    }
+  }
+  if (estilo === 'largo') {
+    bola(.28, pelo, 0, -.10, .16, cabeza, 1.16, 1.36, .65);
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
+      const m = tubo(.055, .33 + i * .02, pelo, s * (.265 + i * .012), -.135, .02 + i * .08, cabeza);
+      m.rotation.z = s * (.08 + i * .08);
+    }
+  }
+  if (estilo === 'rulos' || estilo === 'rulosPoco') {
+    const n = estilo === 'rulos' ? 18 : 9;
     for (let i = 0; i < n; i++) {
-      const t = n === 1 ? 0 : i / (n - 1) - 0.5;
-      const m = esfera(0.05, pelo, t * ancho, y, -0.165 + Math.abs(t) * 0.05, cabeza, 12);
-      m.scale.set(0.9, largo, 0.6);
-      m.rotation.z = -t * 0.9;
+      const a = i * 2.39996, elev = estilo === 'rulos' ? .45 + (i % 5) * .22 : .22 + (i % 2) * .15;
+      const x = Math.cos(a) * Math.cos(elev) * .30, y = Math.sin(elev) * .30 + .05, z = Math.sin(a) * Math.cos(elev) * .27;
+      if (z < -.13 && y < .15) continue;
+      bola(.078, pelo, x, y, z, cabeza, 1, 1.12, .95);
     }
-  };
-  if (est === 'corto') {
-    const c = esfera(0.212, pelo, 0, 0.035, 0.012, cabeza, 26);
-    c.geometry = new THREE.SphereGeometry(0.212, 26, 16, 0, Math.PI * 2, 0, Math.PI * 0.52);
-    c.scale.set(0.97, 1.02, 1.02);
-    flequillo(5, 0.2, 0.135, 0.9);
-    for (const x of [-0.19, 0.19]) esfera(0.04, pelo, x, 0.05, 0.03, cabeza, 10).scale.set(0.5, 1.2, 1.2);
-  } else if (est === 'largo') {
-    const c = esfera(0.214, pelo, 0, 0.035, 0.012, cabeza, 26);
-    c.geometry = new THREE.SphereGeometry(0.214, 26, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
-    c.scale.set(0.99, 1.04, 1.03);
-    flequillo(5, 0.22, 0.13, 1.0);
-    // mechones a los costados y volumen atrás
-    for (const x of [-1, 1]) {
-      const m = capsula(0.055, 0.3, pelo, x * 0.17, -0.16, 0.0, cabeza);
-      m.rotation.z = x * 0.1;
-      m.scale.z = 0.8;
-    }
-    esfera(0.2, pelo, 0, -0.12, 0.09, cabeza, 20).scale.set(1.05, 1.45, 0.62);
-  } else if (est === 'rulos' || est === 'rulosPoco') {
-    const n = est === 'rulos' ? 26 : 12;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 * (est === 'rulos' ? 2.3 : 1.6);
-      const elev = est === 'rulos' ? 0.25 + (i / n) * 1.0 : 0.15 + (i % 3) * 0.12;
-      const r = 0.2;
-      const x = Math.cos(a) * Math.cos(elev) * r;
-      const y = Math.sin(elev) * r + 0.03;
-      const z = Math.sin(a) * Math.cos(elev) * r + 0.025;
-      if (z < -0.12 && y < 0.12) continue; // no tapar la cara
-      esfera(est === 'rulos' ? 0.062 : 0.05, pelo, x, y, z, cabeza, 10);
-    }
-  } else if (est === 'poco') {
-    // solo a los costados y atrás (pelado arriba)
-    for (let i = 0; i < 9; i++) {
-      const a = Math.PI * (0.05 + (i / 8) * 0.9);
-      esfera(0.048, pelo, Math.cos(a) * 0.19, -0.02 + Math.sin(i) * 0.008, Math.sin(a) * 0.17 + 0.01, cabeza, 10).scale.set(1, 1.15, 0.8);
-    }
+  }
+  if (estilo === 'poco') for (let i = 0; i < 10; i++) {
+    const a = Math.PI * i / 9;
+    bola(.052, pelo, Math.cos(a) * .295, .00, Math.sin(a) * .25, cabeza, .7, 1.3, 1);
   }
   if (L.barba) {
-    const mb = mat(L.barba, { roughness: 0.95 });
-    const b = esfera(0.205, mb, 0, 0.0, -0.01, cabeza, 26);
-    b.geometry = new THREE.SphereGeometry(0.205, 26, 14, 0, Math.PI * 2, Math.PI * 0.64, Math.PI * 0.36);
-    b.scale.set(0.98, 1.15, 1.03);
-    const bigote = capsula(0.013, 0.06, mb, 0, -0.077, -0.183, cabeza);
-    bigote.rotation.z = Math.PI / 2;
-  }
-  if (L.kipa) {
-    const k = esfera(0.11, mat(L.kipa), 0, 0.15, 0.07, cabeza, 16);
-    k.geometry = new THREE.SphereGeometry(0.11, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.3);
-    k.rotation.x = 0.4;
+    const barba = mat(L.barba);
+    const b = pieza(new THREE.SphereGeometry(.282, 24, 12, 0, Math.PI * 2, Math.PI * .62, Math.PI * .38), barba, 0, -.025, -.035, cabeza);
+    b.scale.set(gordo ? 1.08 : 1, 1.2, .91);
+    for (const s of [-1, 1]) {
+      const bigote = tubo(.020, .055, barba, s * .037, -.135, -.262, cabeza); bigote.rotation.z = Math.PI / 2 + s * -.2;
+    }
   }
   if (L.lentes) {
-    const m = mat(L.lentes, { metalness: 0.3, roughness: 0.3 });
-    for (const x of [-0.075, 0.075]) malla(new THREE.TorusGeometry(0.055, 0.008, 8, 20), m, x, 0.004, -0.19, cabeza);
-    malla(new THREE.BoxGeometry(0.04, 0.008, 0.008), m, 0, 0.012, -0.192, cabeza);
-    for (const x of [-1, 1]) malla(new THREE.BoxGeometry(0.008, 0.008, 0.17), m, x * 0.13, 0.008, -0.11, cabeza);
-  }
-  if (L.antifaz) malla(new THREE.BoxGeometry(0.3, 0.08, 0.03), mat(L.antifaz), 0, 0.01, -0.175, cabeza).renderOrder = 1;
-  if (L.sombrero) {
-    malla(new THREE.CylinderGeometry(0.33, 0.33, 0.03, 24), mat(L.sombrero), 0, 0.19, 0, cabeza);
-    malla(new THREE.CylinderGeometry(0.17, 0.2, 0.17, 20), mat(L.sombrero), 0, 0.28, 0, cabeza);
+    const marco = mat(L.lentes, { metalness: .2, roughness: .35 });
+    for (const s of [-1, 1]) {
+      aro(.084, .009, marco, s * .115, -.015, -.301, cabeza);
+      cubo(.012, .012, .23, marco, s * .197, -.010, -.18, cabeza);
+    }
+    const puente = aro(.034, .008, marco, 0, -.025, -.304, cabeza, Math.PI); puente.rotation.z = 0;
   }
   if (L.auriculares) {
-    const m = mat(L.auriculares, { roughness: 0.35 });
-    const arco = malla(new THREE.TorusGeometry(0.22, 0.015, 8, 28, Math.PI), m, 0, 0.03, 0, cabeza);
-    arco.rotation.y = Math.PI / 2;
-    for (const x of [-0.205, 0.205]) malla(new THREE.CylinderGeometry(0.06, 0.06, 0.045, 18), m, x, -0.01, 0, cabeza).rotation.z = Math.PI / 2;
+    const m = mat(L.auriculares);
+    const arco = aro(.337, .026, m, 0, .00, .014, cabeza, Math.PI);
+    arco.rotation.z = 0;
+    for (const s of [-1, 1]) {
+      bola(.098, negro, s * .326, -.045, .013, cabeza, .43, 1.05, .8);
+      bola(.082, m, s * .357, -.045, .013, cabeza, .36, 1, .83);
+      bola(.045, metal, s * .38, -.045, .013, cabeza, .18, 1, .83);
+    }
+  }
+  if (L.kipa) {
+    const k = pieza(new THREE.SphereGeometry(.16, 22, 10, 0, Math.PI * 2, 0, Math.PI * .36), mat(L.kipa), 0, .24, .07, cabeza);
+    k.rotation.x = .30;
+  }
+  if (L.sombrero) {
+    bola(.38, mat(L.sombrero), 0, .29, 0, cabeza, 1, .08, .87);
+    pieza(new THREE.CylinderGeometry(.20, .24, .21, 24), mat(L.sombrero), 0, .40, 0, cabeza);
+    pieza(new THREE.CylinderGeometry(.235, .24, .045, 24), cuero, 0, .32, 0, cabeza);
+  }
+  if (L.antifaz) {
+    const m = mat(L.antifaz);
+    for (const s of [-1, 1]) aro(.077, .019, m, s * .115, -.015, -.290, cabeza);
+    cubo(.07, .035, .02, m, 0, -.015, -.290, cabeza);
+  }
+  let capa = null;
+  if (L.capa) {
+    capa = new THREE.Group(); capa.position.set(0, .44, .12); torso.add(capa);
+    const geo = new THREE.PlaneGeometry(ancho * 2.8, .91, 10, 12);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i);
+      pos.setZ(i, .04 * Math.cos(x * 28) + (.46 - y) * .17);
+      pos.setX(i, x * (1 - y * .35));
+    }
+    geo.computeVertexNormals(); pieza(geo, mat(L.capa, { side: THREE.DoubleSide }), 0, -.43, 0, capa);
   }
   if (L.robot) {
-    malla(new THREE.CylinderGeometry(0.01, 0.01, 0.16, 6), mat('#8a96a3'), 0, 0.28, 0, cabeza);
-    esfera(0.03, mat('#ff6b5b', { emissive: '#ff6b5b', emissiveIntensity: 0.9 }), 0, 0.37, 0, cabeza, 10);
+    tubo(.017, .14, metal, 0, .40, .015, cabeza);
+    bola(.040, mat('#ff9b73', { emissive: '#ff704e', emissiveIntensity: .8 }), 0, .49, .015, cabeza);
+    for (const s of [-1, 1]) bola(.022, metal, s * .215, .09, -.205, cabeza);
   }
-
-  // brillo dorado (easter egg)
+  const sombra = pieza(new THREE.CircleGeometry(.40, 24), new THREE.MeshBasicMaterial({ color: '#17191e', transparent: true, opacity: .17, depthWrite: false }), 0, .008, 0, grupo);
+  sombra.rotation.x = -Math.PI / 2; sombra.castShadow = false; sombra.receiveShadow = false;
   let aura = null;
   if (L.dorado) {
-    aura = new THREE.Group();
-    const m = new THREE.MeshBasicMaterial({ color: 0xffd34d, transparent: true, opacity: 0.85 });
-    for (let i = 0; i < 18; i++) {
-      const s = new THREE.Mesh(new THREE.OctahedronGeometry(0.05), m);
-      s.userData.a = (i / 18) * Math.PI * 2;
-      s.userData.h = 0.2 + (i % 6) * 0.3;
-      aura.add(s);
+    aura = new THREE.Group(); grupo.add(aura);
+    for (let i = 0; i < 12; i++) {
+      const o = pieza(new THREE.OctahedronGeometry(.035), mat('#ffda5b', { emissive: '#c38b20', emissiveIntensity: .7 }), 0, 0, 0, aura);
+      o.userData.a = i * Math.PI / 6;
     }
-    const anillo = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.03, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffd34d, transparent: true, opacity: 0.6 }));
-    anillo.rotation.x = Math.PI / 2;
-    anillo.position.y = 0.05;
-    aura.add(anillo);
-    g.add(aura);
-    const luz = new THREE.PointLight(0xffd34d, 1.6, 4);
-    luz.position.y = 1.4;
-    g.add(luz);
   }
 
-  // sombra en el piso
-  const sombra = new THREE.Mesh(new THREE.CircleGeometry(0.38, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }));
-  sombra.rotation.x = -Math.PI / 2;
-  sombra.position.y = 0.02;
-  g.add(sombra);
-
-  // cartel con el nombre y globito de diálogo
-  const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.72)', tamCartel) : null;
-  if (cartel) {
-    cartel.position.y = 2.2;
-    g.add(cartel);
-  }
-  let globo = null;
-  let globoHasta = 0;
-  let fase = Math.random() * 6;
-  let reloj = 0;
-  let parpadeo = 2 + Math.random() * 3;
-
-  const piezas = [pI.cadera, pI.rodilla, pD.cadera, pD.rodilla, bI, bD, codoI, codoD];
-  return {
-    grupo: g,
-    cabeza,
-    altura: 2,
-    decir(texto, seg = 4.5) {
-      if (globo) g.remove(globo);
-      globo = sprite(THREE, texto, '#141413', '#ffffff', tamGlobo, true);
-      globo.position.y = 2.2 + tamCartel + 0.05 + globo.scale.y / 2;
-      g.add(globo);
-      globoHasta = reloj + seg;
+  // Compactar las piezas inmóviles de cada articulación en una malla por material.
+  // La cara sigue teniendo volumen real, pero 24 bots no multiplican cientos de draw calls.
+  compactar(THREE, cuerpo);
+  // Piezas faciales móviles para las señas del truco. Se agregan después del batching.
+  const lengua = bola(.024, mat('#d67d83'), 0, -.199, -.270, cabeza, .74, .85, .35);
+  const dientes = bola(.030, blanco, 0, -.164, -.263, cabeza, 1, .26, .20);
+  const cachetes = [-1, 1].map(s => bola(.073, piel, s * .183, -.100, -.224, cabeza, 1, .95, .70));
+  const arruga = aro(.033, .004, mat('#aa7860'), 0, -.047, -.309, cabeza, Math.PI);
+  lengua.visible = dientes.visible = arruga.visible = false; cachetes.forEach(c => c.visible = false);
+  const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.76)', tamCartel) : null;
+  if (cartel) { cartel.position.y = 2.13; grupo.add(cartel); }
+  let globo = null, globoHasta = 0, reloj = 0, fase = 0, transcurrido = 0, anterior = '', parpadeo = 3;
+  const alias = { idle: 'quieto', caminar: 'camina', correr: 'corre', morir: 'muerto', muerte: 'muerto', celebrar: 'festeja', disparar: 'dispara', recargar: 'recarga', curar: 'cura' };
+  const api = {
+    grupo, cabeza, altura: 2,
+    manos: { izquierda: brazos[0].mano, derecha: brazos[1].mano },
+    // Se llama después de animar: modifica sólo la cara, sin interferir con mirada/postura.
+    expresar(expr = 'neutral', hablando = false) {
+      if (hablando && expr === 'neutral') boca.scale.set(.9, 1.4 + Math.sin(reloj * 24) * .5, 1);
+      if (expr === 'brows') cejas.forEach(c => c.position.y = .145);
+      else if (expr === 'wink') ojos[0].scale.y = .055;
+      else if (expr === 'eyesClosed') ojos.forEach(o => o.scale.y = .055);
+      else if (expr === 'mouthRight' || expr === 'mouthLeft') {
+        const s = expr === 'mouthRight' ? 1 : -1;
+        boca.position.x = s * .035; boca.rotation.z = s * .22;
+      } else if (expr === 'bite') { boca.scale.set(.85, .6, 1); dientes.visible = true; }
+      else if (expr === 'kiss') { boca.scale.set(.55, 1.5, 1); boca.position.z = -.273; }
+      else if (expr === 'tongue') { lengua.visible = true; boca.scale.y = 1.3; }
+      else if (expr === 'puff') { cachetes.forEach(c => c.visible = true); boca.scale.x = .7; }
+      else if (expr === 'nose') { arruga.visible = true; cabeza.rotation.x -= .025; cejas.forEach((c, i) => c.rotation.z += i ? .22 : -.22); }
+      else if (expr === 'frown') { sonrisa.rotation.z += Math.PI; boca.position.y -= .022; }
     },
-    // estado: 'quieto' | 'corre' | 'salto' | 'buceo' | 'golpe' | 'tirado' | 'pina' | 'patada' | 'festeja' | 'sentado' | 'cae'
-    animar(estado, dt) {
-      reloj += dt;
-      fase += dt * (estado === 'corre' ? 10 : 3);
-      const s = Math.sin(fase);
-      cuerpo.rotation.set(0, 0, 0);
-      cuerpo.position.set(0, 0, 0);
-      torso.rotation.set(0, 0, 0);
-      torso.scale.setScalar(1);
-      cabeza.rotation.set(0, 0, 0);
-      for (const p of piezas) p.rotation.set(0, 0, 0);
+    decir(texto, seg = 4.5) {
+      if (globo) { grupo.remove(globo); liberarSprite(globo); }
+      globo = sprite(THREE, texto, '#141413', '#ffffff', tamGlobo, true);
+      globo.position.y = 2.2 + tamCartel + globo.scale.y / 2; grupo.add(globo); globoHasta = reloj + seg;
+    },
+    animar(estado = 'quieto', dt = 0) {
+      // Los juegos originales envían strings; el royale también puede enviar banderas.
+      if (estado && typeof estado === 'object') {
+        const e = estado;
+        estado = e.muerto || e.vivo === false ? 'muerto' : e.caido ? 'tirado' : e.golpe ? 'golpe'
+          : e.festeja ? 'festeja' : e.recargando ? 'recarga' : e.curando ? 'cura' : e.dispara ? 'dispara'
+          : e.corre ? 'corre' : e.mueve || e.velocidad > .05 ? 'camina' : e.apunta ? 'apunta' : 'quieto';
+      }
+      estado = alias[estado] || estado; dt = Math.max(0, Math.min(dt, .1));
+      reloj += dt; transcurrido = estado === anterior ? transcurrido + dt : 0; anterior = estado;
+      fase += dt * (estado === 'corre' ? 12 : estado === 'camina' ? 7 : 3);
+      const s = Math.sin(fase), paso = estado === 'corre' ? .72 : .42;
+      cuerpo.position.set(0, 0, 0); cuerpo.rotation.set(0, 0, 0);
+      torso.rotation.set(0, 0, 0); torso.scale.set(1, 1, 1); cabeza.rotation.set(0, 0, 0);
       boca.scale.set(1, 1, 1);
-      if (estado === 'corre') {
-        pI.cadera.rotation.x = s * 0.75;
-        pD.cadera.rotation.x = -s * 0.75;
-        pI.rodilla.rotation.x = Math.max(0, -s) * 1.1 + 0.15;
-        pD.rodilla.rotation.x = Math.max(0, s) * 1.1 + 0.15;
-        bI.rotation.x = -s * 0.65;
-        bD.rotation.x = s * 0.65;
-        codoI.rotation.x = codoD.rotation.x = -0.7;
-        cuerpo.position.y = Math.abs(Math.cos(fase)) * 0.05;
-        torso.rotation.x = -0.1;
+      boca.position.set(0, -.173, -.245); boca.rotation.set(0, 0, 0); sonrisa.rotation.z = Math.PI * 1.12;
+      lengua.visible = dientes.visible = arruga.visible = false; cachetes.forEach(c => c.visible = false);
+      cejas.forEach(c => c.position.y = .095);
+      for (const p of piernas) { p.cadera.rotation.set(0, 0, 0); p.rodilla.rotation.set(0, 0, 0); }
+      for (let i = 0; i < 2; i++) { brazos[i].hombro.rotation.set(0, 0, i ? .08 : -.08); brazos[i].codo.rotation.set(.12, 0, 0); }
+      if (estado === 'camina' || estado === 'corre') {
+        piernas.forEach((p, i) => { const t = i ? -s : s; p.cadera.rotation.x = t * paso; p.rodilla.rotation.x = -Math.max(0, -t) * .9; });
+        brazos.forEach((b, i) => { b.hombro.rotation.x = (i ? s : -s) * paso * .8; b.codo.rotation.x = estado === 'corre' ? .7 : .25; });
+        cuerpo.position.y = Math.abs(Math.cos(fase)) * (estado === 'corre' ? .045 : .018);
+        torso.rotation.z = s * .035; torso.rotation.x = estado === 'corre' ? -.09 : -.025;
+        cabeza.rotation.z = -s * .025;
+      } else if (estado === 'muerto') {
+        const t = Math.min(1, transcurrido / .85), curva = 1 - Math.pow(1 - t, 3);
+        cuerpo.rotation.x = curva * 1.49; cuerpo.rotation.z = Math.sin(t * Math.PI) * .24;
+        cuerpo.position.y = Math.sin(t * Math.PI) * .14 + curva * .14;
+        cuerpo.position.z = curva * .32;
+        brazos[0].hombro.rotation.z = -curva * 1.1; brazos[1].hombro.rotation.z = curva * .75;
+        piernas[0].rodilla.rotation.x = curva * .5; piernas[1].cadera.rotation.z = curva * .18;
+        cabeza.rotation.y = curva * -.28;
       } else if (estado === 'salto') {
-        pI.cadera.rotation.x = -0.7;
-        pI.rodilla.rotation.x = 1.0;
-        pD.cadera.rotation.x = 0.2;
-        pD.rodilla.rotation.x = 0.4;
-        bI.rotation.z = -2.3;
-        bD.rotation.z = 2.3;
+        piernas[0].cadera.rotation.x = .65; piernas[0].rodilla.rotation.x = -.9;
+        piernas[1].cadera.rotation.x = -.25; piernas[1].rodilla.rotation.x = -.4;
+        brazos[0].hombro.rotation.z = -2.3; brazos[1].hombro.rotation.z = 2.3;
       } else if (estado === 'buceo') {
-        cuerpo.rotation.x = -1.35;
-        cuerpo.position.y = 0.4;
-        bI.rotation.x = bD.rotation.x = -2.9;
+        cuerpo.rotation.x = -1.35; cuerpo.position.y = .4;
+        brazos.forEach(b => b.hombro.rotation.x = 2.9);
       } else if (estado === 'golpe' || estado === 'cae') {
-        cuerpo.rotation.z = Math.sin(fase * 3) * 0.45;
-        cuerpo.rotation.x = 0.3;
-        bI.rotation.z = -1.9;
-        bD.rotation.z = 1.9;
-        pI.rodilla.rotation.x = pD.rodilla.rotation.x = 0.5;
-        boca.scale.set(0.8, 2.2, 1);
+        cuerpo.rotation.z = Math.sin(transcurrido * 24) * .35; cuerpo.rotation.x = .25;
+        brazos[0].hombro.rotation.z = -1.8; brazos[1].hombro.rotation.z = 1.8;
+        boca.scale.y = 2;
       } else if (estado === 'tirado') {
-        // en el piso panza arriba
-        cuerpo.rotation.x = 1.5;
-        cuerpo.position.set(0, 0.2, 0.4);
-        bI.rotation.z = -1.2 + Math.sin(fase * 2) * 0.15;
-        bD.rotation.z = 1.2 - Math.sin(fase * 2) * 0.15;
-        pI.rodilla.rotation.x = 0.4;
-        boca.scale.set(0.8, 2.2, 1);
+        cuerpo.rotation.x = 1.5; cuerpo.position.set(0, .17, .35);
+        brazos[0].hombro.rotation.z = -1.1; brazos[1].hombro.rotation.z = 1.1;
+        piernas[0].rodilla.rotation.x = .5;
       } else if (estado === 'pina') {
-        bD.rotation.x = -1.6;
-        codoI.rotation.x = -1.6;
-        bI.rotation.x = -0.4;
-        torso.rotation.y = 0.5;
+        brazos[1].hombro.rotation.x = 1.6; brazos[0].codo.rotation.x = 1.5; torso.rotation.y = .4;
       } else if (estado === 'patada') {
-        pD.cadera.rotation.x = -1.4;
-        torso.rotation.x = 0.25;
-        pI.rodilla.rotation.x = 0.3;
-        bI.rotation.z = -0.9;
-        bD.rotation.z = 0.9;
+        piernas[1].cadera.rotation.x = 1.5; torso.rotation.x = .22;
+        brazos[0].hombro.rotation.z = -.8; brazos[1].hombro.rotation.z = .8;
       } else if (estado === 'festeja') {
-        cuerpo.position.y = Math.abs(Math.sin(fase * 1.4)) * 0.4;
-        pI.rodilla.rotation.x = pD.rodilla.rotation.x = Math.abs(Math.sin(fase * 1.4)) * 0.6;
-        bI.rotation.z = -2.6 + s * 0.2;
-        bD.rotation.z = 2.6 - s * 0.2;
-        boca.scale.set(1.15, 1.6, 1);
+        cuerpo.position.y = Math.abs(Math.sin(fase * 1.4)) * .24;
+        brazos[0].hombro.rotation.z = -2.6 + s * .18; brazos[1].hombro.rotation.z = 2.6 - s * .18;
+        cabeza.rotation.z = s * .12; boca.scale.y = 1.5;
       } else if (estado === 'sentado') {
-        // muslos para adelante, piernas colgando desde la rodilla, manos sobre la mesa
-        cuerpo.position.y = -0.26;
-        pI.cadera.rotation.x = pD.cadera.rotation.x = -1.5;
-        pI.rodilla.rotation.x = pD.rodilla.rotation.x = 1.45;
-        bI.rotation.x = bD.rotation.x = -0.75;
-        codoI.rotation.x = codoD.rotation.x = -0.75;
-        bI.rotation.z = 0.12;
-        bD.rotation.z = -0.12;
-        cabeza.rotation.y = Math.sin(fase * 0.3) * 0.25;
+        cuerpo.position.y = -.26;
+        piernas.forEach(p => { p.cadera.rotation.x = 1.5; p.rodilla.rotation.x = -1.45; });
+        brazos.forEach(b => { b.hombro.rotation.x = .95; b.codo.rotation.x = .70; });
+        cabeza.rotation.y = Math.sin(fase * .3) * .16;
+      } else if (estado === 'dispara' || estado === 'apunta') {
+        brazos[1].hombro.rotation.x = 1.45; brazos[1].codo.rotation.x = .3;
+        brazos[0].hombro.rotation.x = .95; brazos[0].codo.rotation.x = .8;
+        torso.rotation.x = estado === 'dispara' ? Math.exp(-transcurrido * 15) * .12 : -.02;
+      } else if (estado === 'recarga' || estado === 'cura') {
+        brazos[0].hombro.rotation.x = .6; brazos[0].codo.rotation.x = 1.4;
+        brazos[1].hombro.rotation.x = .5; brazos[1].codo.rotation.x = 1.2 + Math.sin(fase * 3) * .18;
+        cabeza.rotation.x = -.16;
       } else {
-        // quieto: respira y mira un poco a los costados
-        torso.scale.set(1, 1 + Math.sin(fase) * 0.008, 1);
-        cabeza.rotation.y = Math.sin(fase * 0.4) * 0.2;
-        bI.rotation.z = -0.1;
-        bD.rotation.z = 0.1;
-        codoI.rotation.x = codoD.rotation.x = -0.15;
+        torso.scale.y = 1 + Math.sin(fase) * .007;
+        cabeza.rotation.y = Math.sin(fase * .38) * .11; cabeza.rotation.z = Math.sin(fase * .25) * .025;
       }
-      // parpadea cada tanto
       parpadeo -= dt;
-      const cerrado = parpadeo < 0.12;
-      for (const p of parpados) {
-        p.scale.y = cerrado ? 1.05 : 0.12;
-        p.position.y = cerrado ? 0.005 : 0.05;
-      }
-      if (parpadeo < 0) parpadeo = 2.5 + Math.random() * 3.5;
-      if (aura) {
-        aura.rotation.y += dt * 1.8;
-        aura.children.forEach((c, i) => {
-          if (c.userData.a === undefined) return;
-          c.position.set(Math.cos(c.userData.a) * 0.55, c.userData.h + Math.sin(reloj * 3 + i) * 0.08, Math.sin(c.userData.a) * 0.55);
-          c.rotation.y += dt * 4;
-        });
-      }
-      if (globo && reloj > globoHasta) {
-        g.remove(globo);
-        globo = null;
-      }
+      const cerrado = estado === 'muerto' ? Math.min(1, transcurrido * 3) : parpadeo < .12 ? Math.sin(Math.max(0, parpadeo) / .12 * Math.PI) : 0;
+      ojos.forEach(o => { o.scale.y = Math.max(.07, 1 - cerrado); });
+      if (parpadeo <= 0) parpadeo = 3.2 + Math.sin(reloj * 1.7) * 1.2;
+      cejas.forEach((c, i) => c.rotation.z = Math.PI / 2 + (i ? 1 : -1) * (estado === 'golpe' ? -.18 : .12));
+      if (capa) capa.rotation.x = .1 + Math.sin(fase) * (estado === 'corre' ? .18 : .045);
+      if (aura) aura.children.forEach((c, i) => { const a = c.userData.a + reloj; c.position.set(Math.cos(a) * .48, .3 + (i % 4) * .4 + Math.sin(reloj * 2 + i) * .09, Math.sin(a) * .48); c.rotation.y += dt; });
+      if (globo && reloj > globoHasta) { grupo.remove(globo); liberarSprite(globo); globo = null; }
+    },
+    dispose() {
+      const geometries = new Set(), mats = new Set();
+      grupo.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => mats.add(m)); });
+      geometries.forEach(g => g.dispose()); mats.forEach(m => { m.map?.dispose(); m.dispose(); }); grupo.removeFromParent();
     },
   };
+  api.animar('quieto', 0);
+  return api;
 }
 
+function compactar(THREE, raiz) {
+  // Sólo se fusionan hijos directos. Las articulaciones, ojos, cejas y labios siguen animables.
+  const grupos = []; raiz.traverse(o => { if (o.isGroup) grupos.push(o); });
+  for (const grupo of grupos) {
+    const porMaterial = new Map();
+    for (const m of grupo.children) {
+      if (!m.isMesh || m.geometry.type === 'CapsuleGeometry' && grupo === raiz) continue;
+      // Las cejas se animan individualmente.
+      if (m.geometry.type === 'CapsuleGeometry' && m.position.y > .08 && m.position.z < -.24) continue;
+      if (!porMaterial.has(m.material)) porMaterial.set(m.material, []);
+      porMaterial.get(m.material).push(m);
+    }
+    for (const [material, partes] of porMaterial) {
+      if (partes.length < 2) continue;
+      const posiciones = [], normales = [], uvs = [];
+      for (const p of partes) {
+        p.updateMatrix(); const g = p.geometry.index ? p.geometry.toNonIndexed() : p.geometry.clone(); g.applyMatrix4(p.matrix);
+        posiciones.push(...g.attributes.position.array); normales.push(...g.attributes.normal.array);
+        if (g.attributes.uv) uvs.push(...g.attributes.uv.array); else uvs.push(...Array(g.attributes.position.count * 2).fill(0));
+        g.dispose(); p.geometry.dispose(); grupo.remove(p);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(posiciones, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(normales, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      const m = new THREE.Mesh(g, material); m.castShadow = partes[0].castShadow; m.receiveShadow = partes[0].receiveShadow; grupo.add(m);
+    }
+  }
+}
+
+function liberarSprite(s) { s.material.map?.dispose(); s.material.dispose(); }
 function sprite(THREE, texto, color, fondo, alto, conPico = false) {
-  const cv = document.createElement('canvas');
-  const g = cv.getContext('2d');
-  const fuente = '700 30px Barlow, Arial, sans-serif';
-  g.font = fuente;
-  // corta en líneas de hasta ~26 caracteres
-  const palabras = String(texto).split(' ');
-  const lineas = [];
-  let l = '';
-  for (const p of palabras) {
-    if ((l + ' ' + p).trim().length > 26 && l) {
-      lineas.push(l);
-      l = p;
-    } else l = (l + ' ' + p).trim();
-  }
+  const cv = document.createElement('canvas'), g = cv.getContext('2d');
+  g.font = '700 30px Barlow, Arial, sans-serif';
+  const lineas = []; let l = '';
+  for (const p of String(texto).split(' ')) { if ((l + ' ' + p).trim().length > 26 && l) { lineas.push(l); l = p; } else l = (l + ' ' + p).trim(); }
   if (l) lineas.push(l);
-  const w = Math.min(560, Math.max(...lineas.map((x) => g.measureText(x).width)) + 40);
-  const h = lineas.length * 36 + 24 + (conPico ? 16 : 0);
-  cv.width = 600;
-  cv.height = h;
-  g.font = fuente;
-  g.fillStyle = fondo;
-  g.beginPath();
-  g.roundRect((600 - w) / 2, 4, w, h - 8 - (conPico ? 16 : 0), 22);
-  g.fill();
-  if (conPico) {
-    g.beginPath();
-    g.moveTo(290, h - 24);
-    g.lineTo(300, h - 4);
-    g.lineTo(312, h - 24);
-    g.fill();
-  }
-  g.fillStyle = color;
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  lineas.forEach((x, i) => g.fillText(x, 300, 22 + 18 + i * 36 - 4, 540));
-  const t = new THREE.CanvasTexture(cv);
-  t.colorSpace = THREE.SRGBColorSpace;
+  const w = Math.min(560, Math.max(0, ...lineas.map(x => g.measureText(x).width)) + 40), h = lineas.length * 36 + 24 + (conPico ? 16 : 0);
+  cv.width = 600; cv.height = h; g.font = '700 30px Barlow, Arial, sans-serif';
+  g.fillStyle = fondo; g.beginPath(); g.roundRect((600 - w) / 2, 4, w, h - 8 - (conPico ? 16 : 0), 18); g.fill();
+  if (conPico) { g.beginPath(); g.moveTo(290, h - 24); g.lineTo(300, h - 4); g.lineTo(312, h - 24); g.fill(); }
+  g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
+  lineas.forEach((x, i) => g.fillText(x, 300, 36 + i * 36, 540));
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
-  // alto = metros por línea de texto
-  const altoMundo = (alto * h) / 60;
-  s.scale.set((altoMundo * 600) / h, altoMundo, 1);
-  s.renderOrder = 10;
-  return s;
+  const altoMundo = alto * h / 60; s.scale.set(altoMundo * 600 / h, altoMundo, 1); s.renderOrder = 10; return s;
 }

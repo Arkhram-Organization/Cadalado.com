@@ -1,4 +1,6 @@
-// Escena 3D del truco: salón, mesa con paño, personajes 2D (recortes), cartas y cámara en primera persona.
+import { crearPersona } from '/comun/persona3d.js';
+import { lookDeNombre } from '/comun/avatar.js';
+// Escena 3D del truco: salón, mesa con paño, personajes 3D del elenco compartido, cartas y cámara en primera persona.
 import * as THREE from 'three';
 import { drawCharacter, lookFor, SENAS, W as CW, H as CH } from './characters.js';
 import { drawHoldBack, drawHoldThumb, drawReach } from './hands.js';
@@ -155,7 +157,7 @@ export class TableScene {
   // ------------------------------------------------------------ salón
   buildRoom() {
     const s = this.scene;
-    s.add(new THREE.HemisphereLight('#ffe2b8', '#3a2a1c', 0.55));
+    s.add(new THREE.HemisphereLight('#ffe9cb', '#75634f', 1.3));
     const lamp = new THREE.SpotLight('#ffd9a0', 38, 7, Math.PI / 3.2, 0.55, 1.6);
     lamp.position.set(0, 2.55, 0);
     lamp.target.position.set(0, 0, 0);
@@ -254,7 +256,7 @@ export class TableScene {
     this.tableBuilt = true;
     const g = this.tableGroup;
     while (g.children.length) g.remove(g.children[0]);
-    for (const c of this.chars.values()) this.scene.remove(c.mesh, c.chair);
+    for (const c of this.chars.values()) { c.persona?.dispose(); this.scene.remove(c.mesh,c.chair); }
     this.chars.clear();
     for (const c of this.tableCards.values()) this.scene.remove(c);
     this.tableCards.clear();
@@ -435,20 +437,13 @@ export class TableScene {
   }
 
   addCharacter(seat) {
-    const canvas = document.createElement('canvas');
-    canvas.width = CW;
-    canvas.height = CH;
-    const ctx = canvas.getContext('2d');
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = maxAniso;
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(CHAR_W, CHAR_H),
-      new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide })
-    );
+    const persona = crearPersona(THREE,lookDeNombre('?'),{sombras:true});
+    const mesh = persona.grupo;
+    mesh.scale.setScalar(.9);
     const d = this.seatDir(seat);
-    const r = this.R + 0.3;
-    mesh.position.set(d.x * r, CHAR_H / 2, d.z * r);
+    const r = this.R + .42;
+    mesh.position.set(d.x*r,0,d.z*r);
+    mesh.rotation.y = this.seatAngle(seat);
     this.scene.add(mesh);
     // silla
     const wood = new THREE.MeshStandardMaterial({ color: '#4a2a14', roughness: 0.6 });
@@ -468,7 +463,7 @@ export class TableScene {
     chair.position.set(d.x * cr, 0, d.z * cr);
     chair.rotation.y = this.seatAngle(seat);
     this.scene.add(chair);
-    const c = { seat, mesh, chair, canvas, ctx, tex, look: lookFor('?', seat), name: '?', state: { expr: 'neutral', talking: false, cards: 0 }, gaze: 'table', exprUntil: 0, talkUntil: 0, dirty: true };
+    const c = { seat, mesh, chair, persona, look: lookFor('?', seat), name: '?', state: { expr: 'neutral', talking: false, cards: 0 }, gaze: 'table', exprUntil: 0, talkUntil: 0, dirty: true };
     this.chars.set(seat, c);
   }
 
@@ -479,12 +474,19 @@ export class TableScene {
       if (name !== c.name) {
         c.name = name;
         c.look = lookFor(name, seat);
+        const pos=c.mesh.position.clone(),rot=c.mesh.rotation.y;
+        c.persona.dispose();
+        c.persona=crearPersona(THREE,lookDeNombre(name.replace(/\s*\(bot\)$/i,'')),{sombras:true});
+        c.mesh=c.persona.grupo;c.mesh.scale.setScalar(.9);c.mesh.position.copy(pos);c.mesh.rotation.y=rot;this.scene.add(c.mesh);
+        c.cards3d=[];
+        for(let i=0;i<3;i++){const card=new THREE.Mesh(new THREE.PlaneGeometry(.1,.155),new THREE.MeshLambertMaterial({map:cardTex('back'),side:THREE.DoubleSide}));card.position.set((i-1)*.05,-.06,-.03);card.rotation.set(.2,0,(i-1)*.18);c.persona.manos.izquierda.add(card);c.cards3d.push(card);}
         c.dirty = true;
       }
       c.mesh.visible = !!p;
       const cards = handCounts ? handCounts[seat] ?? 0 : 0;
       if (cards !== c.state.cards) {
         c.state.cards = cards;
+        c.cards3d?.forEach((card,i)=>card.visible=i<cards);
         c.dirty = true;
       }
     }
@@ -548,29 +550,14 @@ export class TableScene {
     return { bodyYaw, headYaw, down };
   }
 
-  updateCharacter(c, now) {
-    const expr = now < c.exprUntil ? c.state.expr : 'neutral';
-    const talking = now < c.talkUntil && Math.floor(now / 130) % 2 === 0;
-    if (!c.nextBlink || now > c.nextBlink + 140) c.nextBlink = now + 2500 + Math.random() * 4000;
-    const blink = expr === 'neutral' && now > c.nextBlink && now < c.nextBlink + 130;
-    const pose = this.poseFor(c);
-    const st = c.state;
-    st.bodyYaw = pose.bodyYaw;
-    const near = (a, b) => Math.abs(a - b) < 0.015;
-    const settled = near(st.headYaw ?? 99, pose.headYaw) && near(st.down ?? 99, pose.down);
-    if (!c.dirty && settled && expr === c.drawnExpr && talking === c.drawnTalk && blink === c.drawnBlink && near(c.drawnBody ?? 99, pose.bodyYaw)) return;
-    // la cabeza gira suave
-    st.headYaw = st.headYaw === undefined ? pose.headYaw : st.headYaw + (pose.headYaw - st.headYaw) * 0.25;
-    st.down = st.down === undefined ? pose.down : st.down + (pose.down - st.down) * 0.25;
-    if (near(st.headYaw, pose.headYaw)) st.headYaw = pose.headYaw;
-    if (near(st.down, pose.down)) st.down = pose.down;
-    drawCharacter(c.ctx, c.look, { ...st, expr, talking, blink });
-    c.tex.needsUpdate = true;
-    c.drawnExpr = expr;
-    c.drawnTalk = talking;
-    c.drawnBlink = blink;
-    c.drawnBody = pose.bodyYaw;
-    c.dirty = false;
+  updateCharacter(c, now, dt) {
+    c.persona.animar('sentado',dt);
+    const target=c.gaze==='table'||c.gaze==null?null:(!this.spectator&&c.gaze===this.me?this.camera.position:this.chars.get(c.gaze)?.mesh.position);
+    let wanted=0;
+    if(target){const dx=target.x-c.mesh.position.x,dz=target.z-c.mesh.position.z;wanted=Math.atan2(-dx,-dz)-c.mesh.rotation.y;wanted=Math.atan2(Math.sin(wanted),Math.cos(wanted));}
+    c.headAngle=(c.headAngle||0)+(THREE.MathUtils.clamp(wanted,-1.1,1.1)-(c.headAngle||0))*Math.min(1,dt*7);
+    c.persona.cabeza.rotation.y=c.headAngle;c.persona.cabeza.rotation.x=target?0:-.12;
+    c.persona.expresar(now<c.exprUntil?c.state.expr:'neutral',now<c.talkUntil);
   }
 
   // ------------------------------------------------------------ cámara
@@ -1121,11 +1108,7 @@ export class TableScene {
     this.handGroup.visible = this.camera.fov > baseFov * 0.7;
     this.layoutHand(dt);
     for (const c of this.chars.values()) {
-      // billboard: el recorte siempre mira a la cámara (solo gira en Y)
-      c.mesh.rotation.y = Math.atan2(this.camera.position.x - c.mesh.position.x, this.camera.position.z - c.mesh.position.z);
-      // respira un poquito
-      c.mesh.position.y = CHAR_H / 2 + Math.sin(now / 900 + c.seat) * 0.003;
-      this.updateCharacter(c, now);
+      this.updateCharacter(c, now, dt);
     }
     const target = this.computeLookTarget();
     if (target !== this.lookTarget) {

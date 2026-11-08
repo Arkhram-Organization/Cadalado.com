@@ -6,14 +6,21 @@
   "description": "cadalado.com: juegos online entre amigos",
   "scripts": {
     "dev": "node dev-server.js",
-    "build": "node scripts/build.mjs",
-    "test": "node --test --test-force-exit games/*/test/*.test.js shared/test/*.test.js"
+    "build": "node scripts/build-sites.mjs",
+    "test": "node --test --test-force-exit games/*/test/*.test.js shared/test/*.test.js",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "chess.js": "1.4.0",
+    "drizzle-orm": "^0.45.4",
     "redis": "6.3.1"
   },
   "engines": {
     "node": "22.x"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.28.2",
+    "wrangler": "^4.158.0"
   }
 }

@@ -57,6 +57,8 @@ export const royale = crearJuego({
       participantes: [],
       vivos: [],
       tomados: [],
+      sueltos: [],
+      propietarios: {},
       bajas: [],
       kills: {},
       ganador: null,
@@ -91,6 +93,8 @@ export const royale = crearJuego({
         r.inicio = ctx.now + CUENTA_MS;
         r.vivos = [...r.participantes.map(idPublico), ...r.botNpc.map((_, i) => 'bot' + i)];
         r.tomados = [];
+        r.sueltos = [];
+        r.propietarios = {};
         r.bajas = [];
         r.kills = {};
         r.ganador = null;
@@ -102,9 +106,18 @@ export const royale = crearJuego({
       }
       case 'agarrar': {
         // botín: el primero que lo pide se lo queda
-        const id = Number(msg.id);
-        if (r.fase !== 'partida' || !Number.isInteger(id) || r.tomados.includes(id)) return {};
+        const id = typeof msg.id === 'string' && msg.id.startsWith('drop-') ? msg.id : Number(msg.id);
+        if (r.fase !== 'partida' || (!Number.isInteger(id) && !r.sueltos?.some(b=>b.id===id)) || r.tomados.includes(id)) return {error:'Ese objeto ya no está disponible'};
         r.tomados.push(id);
+        (r.propietarios??={})[id]=msg.bot && ctx.esHost ? msg.bot : yo;
+        return {};
+      }
+      case 'soltar': {
+        const b=msg.b;
+        if(r.fase!=='partida'||!r.vivos.includes(yo)||!b||typeof b.id!=='string'||!b.id.startsWith('drop-'+yo+'-')||b.id.length>70)return {};
+        const tipos=['pistola','subfusil','escopeta','rifle','mini','escudo','venda','botiquin','granada'];
+        if(!tipos.includes(b.tipo)||![b.x,b.y].every(n=>Number.isFinite(n)&&n>=0&&n<=1536)||(r.sueltos?.length||0)>300)return {};
+        r.sueltos??=[];if(!r.sueltos.some(s=>s.id===b.id))r.sueltos.push({id:b.id,tipo:b.tipo,x:b.x,y:b.y,item:{tipo:b.tipo,cantidad:Math.max(1,Math.min(10,Number(b.item?.cantidad)||1)),bala:Math.max(0,Math.min(30,Number(b.item?.bala)||0))}});
         return {};
       }
       case 'muerte': {
@@ -178,6 +191,8 @@ export const royale = crearJuego({
       participantes: r.participantes.map(id),
       vivos: r.vivos,
       tomados: r.tomados,
+      sueltos: r.sueltos || [],
+      propietarios: r.propietarios || {},
       bajas: r.bajas,
       kills: r.kills,
       ganador: r.ganador,

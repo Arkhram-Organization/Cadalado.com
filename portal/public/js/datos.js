@@ -12,10 +12,10 @@ export const JUEGOS = [
     estado: 'disponible',
     nuevo: true,
     url: '/royale/',
-    linea: 'Battle royale 2D en pixel art: armas, botín, una zona que se achica y el último que queda gana.',
-    datos: [['Jugadores', 'Hasta 24 + bots'], ['Modalidad', 'Online, tiempo real'], ['Partida', '3 a 6 min']],
+    linea: 'Battle royale 3D con inventario y personajes animados: armas, botín, una zona que se achica y el último que queda gana.',
+    datos: [['Jugadores', 'Hasta 24, con bots'], ['Modalidad', 'Online, tiempo real'], ['Partida', '3 a 6 min']],
     color: '#ff6b5b',
-    captura: '/img/royale.webp',
+    captura: '/img/royale-nuevo.jpg',
     lobby: '/api/royale/lobby',
     formato: 'salas',
   },
@@ -66,7 +66,7 @@ export const JUEGOS = [
     linea: 'Mesa de bar en 3D, con señas, envido y bots si falta gente.',
     datos: [['Jugadores', '1 vs 1, 2 vs 2 o 3 vs 3'], ['Modalidad', 'Online, con bots'], ['Partida', 'A 15 o a 30']],
     color: '#ff7a45',
-    captura: '/img/truco.webp',
+    captura: '/img/truco-nuevo.jpg',
     lobby: '/api/truco/lobby',
     formato: 'truco',
   },
@@ -99,7 +99,7 @@ export const EQUIPO = [
 ];
 
 export const NOVEDADES = [
-  { etiqueta: 'Nuevo', titulo: 'Último en pie', texto: 'Battle royale 2D en pixel art con los personajes de cadalado.', juego: 'royale' },
+  { etiqueta: 'Nuevo', titulo: 'Último en pie', texto: 'Battle royale 3D con inventario y personajes animados con los personajes de cadalado.', juego: 'royale' },
   { etiqueta: 'Nuevo', titulo: 'Ángeles Peña', texto: 'Obstáculos en 3D, en tiempo real y con bots para llenar la largada.', juego: 'carrera' },
   { etiqueta: 'Nuevo', titulo: 'El casino de Dobro', texto: 'Ruleta, blackjack y tragamonedas con pozo compartido. Fichas de mentira.', juego: 'casino' },
   { etiqueta: 'Nuevo', titulo: 'Make it Meme', texto: '100 plantillas, textos donde quieras y votación anónima.', juego: 'memes' },

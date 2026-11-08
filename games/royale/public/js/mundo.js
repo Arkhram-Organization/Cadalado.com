@@ -41,7 +41,7 @@ export const ARMAS = {
   rifle: { nombre: 'Rifle', dano: 42, cadencia: 1.05, cargador: 5, recarga: 2.2, vel: 820, dispersion: 0.012, alcance: 620, perdigones: 1, color: '#c084fc' },
 };
 export const VIDA = 100;
-export const ESCUDO_MAX = 50;
+export const ESCUDO_MAX = 100;
 
 // Arma el mapa: baldosas, árboles, rocas, casas y botín. Siempre igual para la misma semilla.
 const cache = new Map();
@@ -125,7 +125,7 @@ export function generarMapa(semilla) {
   }
   // botín: en cada casa varias cosas, y algunas sueltas
   const botin = [];
-  const tipos = ['pistola', 'subfusil', 'escopeta', 'rifle', 'botiquin', 'botiquin', 'escudo', 'escudo'];
+  const tipos = ['pistola', 'subfusil', 'escopeta', 'rifle', 'botiquin', 'venda', 'mini', 'escudo', 'granada'];
   for (const c of casas) {
     const nItems = 2 + Math.floor(r() * 3);
     for (let k = 0; k < nItems; k++) {
@@ -152,6 +152,13 @@ export function generarMapa(semilla) {
     if (obstaculos.some((o) => Math.hypot(o.x - px, o.y - py) < o.r + 10)) continue;
     if (salidas.some((s) => Math.hypot(s.x - px, s.y - py) < 180)) continue;
     salidas.push({ x: px, y: py });
+  }
+  // Un pequeño botín cerca de cada llegada permite elegir el equipo antes de explorar.
+  for(const s of salidas) for(let i=0;i<3;i++) {
+    const x=s.x+Math.cos(i*2.1)*22,y=s.y+Math.sin(i*2.1)*22;
+    if(t[idx(Math.floor(x/BALDOSA),Math.floor(y/BALDOSA))]!==T.PASTO)continue;
+    if(obstaculos.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+6))continue;
+    botin.push({id:botin.length,x,y,tipo:['mini','venda','granada'][i]});
   }
   const m = { semilla, t, casas, obstaculos, botin, salidas };
   cache.set(semilla, m);
