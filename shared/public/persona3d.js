@@ -24,7 +24,21 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   const aro = (r, grosor, m, x, y, z, parent, arco = Math.PI * 2) => pieza(new THREE.TorusGeometry(r, grosor, 6, 24, arco), m, x, y, z, parent);
   const piel = mat(L.piel, L.robot ? { metalness: .65, roughness: .34 } : { roughness: .57 });
   const rosado = mat(new THREE.Color(L.piel).lerp(new THREE.Color('#d17c66'), .25));
-  const tela = mat(L.smoking ? '#20232c' : L.ropa.remera);
+  // Tela de la remera: lisa, o a cuadros (camisa tipo vichy) si el look lo pide.
+  let tela;
+  if (!L.smoking && L.ropa.estampado === 'cuadros') {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const gc = cv.getContext('2d');
+    gc.fillStyle = '#f3f1ec'; gc.fillRect(0, 0, 64, 64);
+    gc.fillStyle = L.ropa.remera; gc.globalAlpha = .55;
+    for (let i = 0; i < 64; i += 16) { gc.fillRect(i, 0, 8, 64); gc.fillRect(0, i, 64, 8); }
+    gc.globalAlpha = 1;
+    const tx = new THREE.CanvasTexture(cv); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(3, 3); tx.colorSpace = THREE.SRGBColorSpace;
+    tela = new THREE.MeshStandardMaterial({ map: tx, roughness: .82 });
+  } else tela = mat(L.smoking ? '#20232c' : L.ropa.remera);
+  const capucha = !L.smoking && L.capucha;
+  const campera = !L.smoking && L.campera ? mat(L.campera) : null;
+  const mangaLarga = L.smoking || capucha || L.mangasLargas || campera;
   const pantalon = mat(L.smoking ? '#20232c' : L.ropa.pantalon);
   const blanco = mat('#eee9de'), negro = mat('#17191e'), pelo = mat(L.pelo.color);
   const cuero = mat(L.ropa.bolso || '#b8783f'), metal = mat('#a8a9a4', { metalness: .65, roughness: .35 });
@@ -61,6 +75,41 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     const bolsillo = cubo(.09, .09, .018, tela, -.10, .34, frente - .006, torso); bolsillo.rotation.z = -.03;
     cubo(.083, .009, .02, mat(new THREE.Color(L.ropa.remera).multiplyScalar(.72)), -.10, .38, frente - .02, torso);
     cubo(.018, .025, .022, blanco, -.073, .35, frente - .02, torso);
+    // Chomba: cuello con solapas y tres botones. Camisa: cuello y botonera hasta abajo.
+    if (L.polo || L.camisa) {
+      for (const sd of [-1, 1]) {
+        const sol = cubo(.10, .016, .085, tela, sd * .055, .47, -.075, torso); sol.rotation.set(.55, sd * .45, sd * .42);
+      }
+      const n = L.camisa ? 5 : 3;
+      for (let i = 0; i < n; i++) bola(.009, L.camisa ? blanco : negro, 0, .43 - i * .065, frente - .012, torso);
+      if (L.camisa) cubo(.022, .34, .012, tela, 0, .28, frente - .008, torso);
+    }
+    // Buzo con capucha: bolsillo canguro, cordones y la capucha caída atrás del cuello (si no está puesta).
+    if (capucha) {
+      cubo(.22, .1, .02, tela, 0, .14, frente - .012, torso);
+      for (const sd of [-1, 1]) tubo(.006, .1, blanco, sd * .035, .38, frente - .02, torso);
+    }
+    // Campera abierta arriba de la camisa
+    if (campera) {
+      for (const sd of [-1, 1]) {
+        const panel = bola(ancho * .62, campera, sd * ancho * .62, .24, -ancho * .12, torso, .62, 1.32, gordo ? .98 : .86);
+        panel.rotation.z = sd * .05;
+      }
+      bola(ancho, campera, 0, .24, ancho * .25, torso, 1.04, 1.3, .62);
+      for (const sd of [-1, 1]) { const c = cubo(.05, .2, .02, campera, sd * .1, .4, frente - .006, torso); c.rotation.z = sd * -.4; }
+    }
+    // Cámara de fotos colgada y tiradores de mochila
+    if (L.mochila) for (const sd of [-1, 1]) {
+      const t = cubo(.05, .44, .03, mat(L.mochila), sd * ancho * .55, .24, frente - .01, torso); t.rotation.z = sd * .05;
+      cubo(.06, .03, .035, metal, sd * ancho * .55, .1, frente - .02, torso);
+    }
+    if (L.camara) {
+      const correa = cubo(.022, .5, .02, negro, -.06, .3, frente - .03, torso); correa.rotation.z = .55;
+      cubo(.13, .085, .06, negro, .02, .1, frente - .055, torso);
+      const lente = pieza(new THREE.CylinderGeometry(.034, .038, .055, 18), mat('#2b2d33', { metalness: .4, roughness: .3 }), .02, .1, frente - .1, torso); lente.rotation.x = Math.PI / 2;
+      bola(.022, mat('#7aa0c8', { metalness: .5, roughness: .1 }), .02, .1, frente - .128, torso, 1, 1, .3);
+      cubo(.03, .018, .012, mat('#f2c94c'), -.03, .135, frente - .087, torso);
+    }
     // Correa y bolso diferenciados. El look permite desactivarlos y ajustar el color.
     if (!L.capa && !L.liso && !L.barba && L.ropa.bolso !== false) {
       const correa = cubo(.04, .51, .026, cuero, .015, .27, frente - .035, torso); correa.rotation.z = -.65;
@@ -88,10 +137,10 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   });
   const brazos = [-1, 1].map(s => {
     const hombro = new THREE.Group(); hombro.position.set(s * (ancho * .91 + .035), .40, 0); torso.add(hombro);
-    tubo(.08, .13, tela, 0, -.11, 0, hombro);
+    tubo(.08, .13, campera || tela, 0, -.11, 0, hombro);
     const codo = new THREE.Group(); codo.position.y = -.23; hombro.add(codo);
-    tubo(.061, .13, L.smoking ? tela : piel, 0, -.095, 0, codo);
-    aro(.067, .012, L.smoking ? blanco : tela, 0, -.003, 0, codo).rotation.x = Math.PI / 2;
+    tubo(.061, .13, mangaLarga ? (campera || tela) : piel, 0, -.095, 0, codo);
+    aro(.067, .012, L.smoking ? blanco : campera || tela, 0, mangaLarga ? -.19 : -.003, 0, codo).rotation.x = Math.PI / 2;
     const mano = new THREE.Group(); mano.position.y = -.23; codo.add(mano);
     bola(.063, L.guantes ? mat(L.guantes) : piel, 0, -.008, 0, mano, .9, 1.13, .62);
     tubo(.023, .035, piel, -s * .043, .002, -.025, mano).rotation.z = s * .35;
@@ -163,6 +212,23 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
       bola(.078, pelo, x, y, z, cabeza, 1, 1.12, .95);
     }
   }
+  // Rapado: una capa finita del color del pelo pegada al cráneo.
+  if (estilo === 'rapado' || estilo === 'rulosCorto') {
+    const r = pieza(new THREE.SphereGeometry(.309, 28, 16, 0, Math.PI * 2, 0, Math.PI * (estilo === 'rapado' ? .5 : .47)), mat(L.pelo.color, { transparent: true, opacity: estilo === 'rapado' ? .55 : .92, roughness: 1 }), 0, .04, .006, cabeza);
+    r.scale.set(gordo ? 1.09 : 1.005, 1.065, .905);
+    r.rotation.x = estilo === 'rulosCorto' ? .3 : .3; // la línea del pelo más arriba en la frente
+  }
+  // Rulos cortos arriba, costados rebajados
+  if (estilo === 'rulosCorto') for (let i = 0; i < 16; i++) {
+    const a = i * 2.39996, rr = .06 + (i % 4) * .045;
+    bola(.062, pelo, Math.cos(a) * rr * 1.5, .27 + (i % 3) * .025 - rr * .25, Math.sin(a) * rr - .03, cabeza, 1, .9, 1);
+  }
+  // Pelo corto con entradas (canoso de Glinsky): sin flequillo y la frente despejada
+  if (estilo === 'entradas') {
+    const c = pieza(new THREE.SphereGeometry(.316, 28, 16, 0, Math.PI * 2, 0, Math.PI * .5), pelo, 0, .05, .03, cabeza);
+    c.scale.set(gordo ? 1.08 : 1, 1.04, .93); c.rotation.x = .38;
+    for (const sd of [-1, 1]) bola(.07, pelo, sd * .275, .02, .07, cabeza, .5, 1.2, 1.3);
+  }
   if (estilo === 'poco') for (let i = 0; i < 10; i++) {
     const a = Math.PI * i / 9;
     bola(.052, pelo, Math.cos(a) * .295, .00, Math.sin(a) * .25, cabeza, .7, 1.3, 1);
@@ -171,15 +237,26 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     const barba = mat(L.barba);
     const b = pieza(new THREE.SphereGeometry(.282, 24, 12, 0, Math.PI * 2, Math.PI * .62, Math.PI * .38), barba, 0, -.025, -.035, cabeza);
     b.scale.set(gordo ? 1.08 : 1, 1.2, .91);
-    for (const s of [-1, 1]) {
+    if (L.barbaCorta) {
+      // barba corta: empieza más abajo (no tapa los cachetes) y deja ver un poco la piel
+      b.geometry.dispose();
+      b.geometry = new THREE.SphereGeometry(.282, 24, 12, 0, Math.PI * 2, Math.PI * .7, Math.PI * .3);
+      b.scale.set(gordo ? 1.06 : .99, 1.17, .9); b.material = mat(L.barba, { transparent: true, opacity: .82, roughness: 1 });
+    }
+    if (!L.barbaCorta) for (const s of [-1, 1]) {
       const bigote = tubo(.020, .055, barba, s * .037, -.135, -.262, cabeza); bigote.rotation.z = Math.PI / 2 + s * -.2;
     }
   }
   if (L.lentes) {
     const marco = mat(L.lentes, { metalness: .2, roughness: .35 });
     for (const s of [-1, 1]) {
-      aro(.084, .009, marco, s * .115, -.015, -.301, cabeza);
+      const a = aro(.084, L.lentesForma === 'cuadrada' ? .012 : .009, marco, s * .115, -.015, -.301, cabeza);
+      if (L.lentesForma === 'cuadrada') a.scale.set(1.12, .82, 1);
       cubo(.012, .012, .23, marco, s * .197, -.010, -.18, cabeza);
+      if (L.lentesClaros) {
+        const v = pieza(new THREE.CircleGeometry(.08, 20), new THREE.MeshStandardMaterial({ color: '#d8ecf2', transparent: true, opacity: .22, roughness: .05, metalness: .1 }), s * .115, -.015, -.303, cabeza);
+        v.rotation.y = Math.PI;
+      }
     }
     const puente = aro(.034, .008, marco, 0, -.025, -.304, cabeza, Math.PI); puente.rotation.z = 0;
   }
@@ -206,6 +283,16 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     const m = mat(L.antifaz);
     for (const s of [-1, 1]) aro(.077, .019, m, s * .115, -.015, -.290, cabeza);
     cubo(.07, .035, .02, m, 0, -.015, -.290, cabeza);
+  }
+  // Capucha puesta: cubre arriba, los costados y atrás de la cabeza; deja la cara libre.
+  if (capucha) {
+    const m = mat(L.capucha, { roughness: .9 });
+    const hueco = .82;
+    const h = pieza(new THREE.SphereGeometry(.36, 30, 20, Math.PI * 1.5 + hueco, Math.PI * 2 - hueco * 2, 0, Math.PI * .68), m, 0, .02, .02, cabeza);
+    h.scale.set(gordo ? 1.1 : 1.02, 1.12, 1);
+    const borde = aro(.255, .045, m, 0, -.02, -.22, cabeza, Math.PI * 1.25);
+    borde.rotation.set(0, 0, -Math.PI * .125); borde.scale.set(1.05, 1.3, 1);
+    bola(.24, m, 0, -.22, .17, cabeza, 1.2, .75, .7);
   }
   let capa = null;
   if (L.capa) {
@@ -247,6 +334,21 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.76)', tamCartel) : null;
   if (cartel) { cartel.position.y = 2.13; grupo.add(cartel); }
   let globo = null, globoHasta = 0, reloj = 0, fase = 0, transcurrido = 0, anterior = '', parpadeo = 3;
+  // Polvito al correr: se suelta en la escena (no en el personaje) para que quede atrás.
+  const polvo = [];
+  let ultimoPaso = 0;
+  const geoPolvo = new THREE.SphereGeometry(.07, 8, 6);
+  const soltarPolvo = (lado) => {
+    const escena = grupo.parent;
+    if (!escena || polvo.length > 10) return;
+    const m = new THREE.MeshBasicMaterial({ color: '#d9cbb0', transparent: true, opacity: .45, depthWrite: false });
+    const p = new THREE.Mesh(geoPolvo, m);
+    const v = new THREE.Vector3(lado * .1, .04, .12);
+    grupo.localToWorld(v);
+    escena.worldToLocal(v);
+    p.position.copy(v); p.userData.vida = .55; p.userData.base = grupo.scale.x; // en el royale los personajes están agrandados
+    escena.add(p); polvo.push(p);
+  };
   const alias = { idle: 'quieto', caminar: 'camina', correr: 'corre', morir: 'muerto', muerte: 'muerto', celebrar: 'festeja', disparar: 'dispara', recargar: 'recarga', curar: 'cura' };
   const api = {
     grupo, cabeza, altura: 2,
@@ -292,11 +394,26 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
       cejas.forEach(c => c.position.y = .095);
       for (const p of piernas) { p.cadera.rotation.set(0, 0, 0); p.rodilla.rotation.set(0, 0, 0); }
       for (let i = 0; i < 2; i++) { brazos[i].hombro.rotation.set(0, 0, i ? .08 : -.08); brazos[i].codo.rotation.set(.12, 0, 0); }
-      if (estado === 'camina' || estado === 'corre') {
+      if (estado === 'corre') {
+        // Carrera: rodilla bien arriba adelante, talón al glúteo atrás, brazos que bombean,
+        // cuerpo inclinado que rebota y gira un poco contra los brazos.
+        piernas.forEach((p, i) => {
+          const t = i ? -s : s;
+          p.cadera.rotation.x = t * .95 + .12;
+          p.rodilla.rotation.x = -(t < 0 ? -t * 1.55 : .25 + t * .35);
+        });
+        brazos.forEach((b, i) => { const t = i ? s : -s; b.hombro.rotation.x = t * .9 + .1; b.codo.rotation.x = 1.35 + t * .2; b.hombro.rotation.z = (i ? 1 : -1) * .12; });
+        cuerpo.position.y = Math.abs(Math.sin(fase)) * .075;
+        torso.rotation.x = -.2; torso.rotation.y = -s * .14; torso.rotation.z = s * .03;
+        cabeza.rotation.x = .12 - Math.abs(Math.sin(fase)) * .05; cabeza.rotation.y = s * .08;
+        // polvito en los pies cada vez que apoya
+        const pasoN = Math.floor(fase / Math.PI);
+        if (pasoN !== ultimoPaso) { ultimoPaso = pasoN; soltarPolvo(pasoN % 2 ? 1 : -1); }
+      } else if (estado === 'camina') {
         piernas.forEach((p, i) => { const t = i ? -s : s; p.cadera.rotation.x = t * paso; p.rodilla.rotation.x = -Math.max(0, -t) * .9; });
-        brazos.forEach((b, i) => { b.hombro.rotation.x = (i ? s : -s) * paso * .8; b.codo.rotation.x = estado === 'corre' ? .7 : .25; });
-        cuerpo.position.y = Math.abs(Math.cos(fase)) * (estado === 'corre' ? .045 : .018);
-        torso.rotation.z = s * .035; torso.rotation.x = estado === 'corre' ? -.09 : -.025;
+        brazos.forEach((b, i) => { b.hombro.rotation.x = (i ? s : -s) * paso * .8; b.codo.rotation.x = .25; });
+        cuerpo.position.y = Math.abs(Math.cos(fase)) * .018;
+        torso.rotation.z = s * .035; torso.rotation.x = -.025;
         cabeza.rotation.z = -s * .025;
       } else if (estado === 'muerto') {
         const t = Math.min(1, transcurrido / .85), curva = 1 - Math.pow(1 - t, 3);
@@ -355,6 +472,13 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
       if (capa) capa.rotation.x = .1 + Math.sin(fase) * (estado === 'corre' ? .18 : .045);
       if (aura) aura.children.forEach((c, i) => { const a = c.userData.a + reloj; c.position.set(Math.cos(a) * .48, .3 + (i % 4) * .4 + Math.sin(reloj * 2 + i) * .09, Math.sin(a) * .48); c.rotation.y += dt; });
       if (globo && reloj > globoHasta) { grupo.remove(globo); liberarSprite(globo); globo = null; }
+      // el polvo queda en el mundo, crece y se desvanece
+      for (let i = polvo.length - 1; i >= 0; i--) {
+        const p = polvo[i]; p.userData.vida -= dt;
+        const k = 1 - p.userData.vida / .55;
+        p.scale.setScalar((.6 + k * 1.4) * (p.userData.base || 1)); p.position.y += dt * .25 * (p.userData.base || 1); p.material.opacity = .45 * (1 - k);
+        if (p.userData.vida <= 0) { p.removeFromParent(); p.material.dispose(); polvo.splice(i, 1); }
+      }
     },
     dispose() {
       const geometries = new Set(), mats = new Set();

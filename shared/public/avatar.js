@@ -21,7 +21,7 @@ export function lookDeId(id, color = '#7aa2ff') {
 export function lookDeNombre(nombre) {
   const n = String(nombre || '').trim();
   const npc = Object.values(POR_ID).find((x) => x.nombre.toLowerCase() === n.toLowerCase());
-  if (npc) return { ...npc.look, smoking: npc.smoking };
+  if (npc) return { ...npc.look }; // el smoking de Dobro es solo para el casino
   return LOOKS_EXTRA[n] || lookDeId(n, '#9be15d');
 }
 
@@ -49,7 +49,23 @@ export function avatarSvg(look = {}, { fondo = null, titulo = '' } = {}) {
   s += `<path d="M${cx - ancho} 100 Q${cx - ancho} ${70} ${cx} ${68} Q${cx + ancho} ${70} ${cx + ancho} 100 Z" fill="${remera}"/>`;
   if (L.smoking) s += `<path d="M44 70 L50 86 L56 70 Z" fill="#f4f4ee"/><rect x="45" y="70" width="10" height="4" rx="2" fill="#0b0b0b"/>`;
   if (L.ropa?.franja && !L.smoking) s += `<rect x="${cx - ancho + 4}" y="84" width="${ancho * 2 - 8}" height="5" fill="${L.ropa.franja}"/>`;
+  const cap = !L.smoking && L.capucha;
+  if (!L.smoking && L.ropa?.estampado === 'cuadros') {
+    // camisa a cuadros: franjas cruzadas semitransparentes del color de la remera sobre blanco
+    s += `<path d="M${cx - ancho} 100 Q${cx - ancho} 70 ${cx} 68 Q${cx + ancho} 70 ${cx + ancho} 100 Z" fill="#f3f1ec"/>`;
+    for (let x = cx - ancho; x < cx + ancho; x += 8) s += `<rect x="${x}" y="68" width="4" height="32" fill="${remera}" opacity=".55"/>`;
+    for (let y = 70; y < 100; y += 8) s += `<rect x="${cx - ancho}" y="${y}" width="${ancho * 2}" height="4" fill="${remera}" opacity=".55"/>`;
+  }
+  if (L.campera && !L.smoking) s += `<path d="M${cx - ancho} 100 Q${cx - ancho} 70 ${cx - 6} 68 L${cx - 10} 100Z M${cx + ancho} 100 Q${cx + ancho} 70 ${cx + 6} 68 L${cx + 10} 100Z" fill="${L.campera}"/>`;
+  if ((L.polo || L.camisa) && !L.smoking) {
+    s += `<path d="M${cx - 9} 68 L${cx - 1} 76 L${cx - 2} 68Z M${cx + 9} 68 L${cx + 1} 76 L${cx + 2} 68Z" fill="${oscurecer(remera, 0.82)}"/>`;
+    for (let i = 0; i < (L.camisa ? 4 : 2); i++) s += `<circle cx="${cx}" cy="${79 + i * 6}" r="1" fill="${L.camisa ? '#f4f1ea' : '#0b0b0b'}"/>`;
+  }
+  if (cap) s += `<path d="M${cx - 4} 74 v12 M${cx + 4} 74 v12" stroke="#eeeae0" stroke-width="1.4"/>`;
+  if (L.mochila) s += `<path d="M${cx - ancho + 9} 100 L${cx - ancho + 11} 70 M${cx + ancho - 9} 100 L${cx + ancho - 11} 70" stroke="${L.mochila}" stroke-width="4"/>`;
+  if (L.camara) s += `<path d="M${cx - 12} 70 L${cx + 2} 90" stroke="#111" stroke-width="1.6"/><rect x="${cx - 4}" y="88" width="14" height="9" rx="2" fill="#18181b"/><circle cx="${cx + 3}" cy="92.5" r="3.2" fill="#3a5f86" stroke="#0b0b0b" stroke-width="1.2"/>`;
   if (L.capa) s += `<path d="M${cx - ancho - 2} 100 Q${cx - ancho} 72 ${cx - 14} 70 L${cx - 18} 100Z M${cx + ancho + 2} 100 Q${cx + ancho} 72 ${cx + 14} 70 L${cx + 18} 100Z" fill="${L.capa}"/>`;
+  if (cap) s += `<ellipse cx="${cx}" cy="${cy + 2}" rx="${rx + 8}" ry="${ry + 9}" fill="${oscurecer(L.capucha, 0.85)}"/>`;
   // pelo de atrás (largo)
   if (est === 'largo') s += `<path d="M${cx - rx - 3} ${cy - 4} Q${cx - rx - 6} ${cy + 30} ${cx - rx + 2} ${cy + 32} L${cx + rx - 2} ${cy + 32} Q${cx + rx + 6} ${cy + 30} ${cx + rx + 3} ${cy - 4} Z" fill="${pelo}"/>`;
   // orejas y cabeza
@@ -58,6 +74,12 @@ export function avatarSvg(look = {}, { fondo = null, titulo = '' } = {}) {
   // pelo de arriba
   const top = `M${cx - rx - 1} ${cy - 2}`;
   if (est === 'corto' || est === 'largo') s += `<path d="${top} Q${cx - rx} ${cy - ry - 8} ${cx} ${cy - ry - 3} Q${cx + rx} ${cy - ry - 8} ${cx + rx + 1} ${cy - 2} Q${cx + rx - 4} ${cy - 14} ${cx + 4} ${cy - 15} Q${cx - 10} ${cy - 15} ${cx - rx + 3} ${cy - 6} Z" fill="${pelo}"/>`;
+  else if (est === 'rapado') s += `<path d="${top} Q${cx - rx} ${cy - ry - 6} ${cx} ${cy - ry - 1} Q${cx + rx} ${cy - ry - 6} ${cx + rx + 1} ${cy - 2} Q${cx + rx - 5} ${cy - 12} ${cx} ${cy - 13} Q${cx - rx + 5} ${cy - 12} ${cx - rx - 1} ${cy - 2}Z" fill="${pelo}" opacity=".5"/>`;
+  else if (est === 'entradas') s += `<path d="${top} Q${cx - rx} ${cy - ry - 7} ${cx} ${cy - ry - 2} Q${cx + rx} ${cy - ry - 7} ${cx + rx + 1} ${cy - 2} Q${cx + rx - 3} ${cy - 10} ${cx + 10} ${cy - 14} Q${cx + 4} ${cy - 19} ${cx} ${cy - 18} Q${cx - 4} ${cy - 19} ${cx - 10} ${cy - 14} Q${cx - rx + 3} ${cy - 10} ${cx - rx - 1} ${cy - 2}Z" fill="${pelo}"/>`;
+  else if (est === 'rulosCorto') {
+    s += `<path d="${top} Q${cx - rx} ${cy - ry - 6} ${cx} ${cy - ry - 1} Q${cx + rx} ${cy - ry - 6} ${cx + rx + 1} ${cy - 2} Q${cx + rx - 4} ${cy - 14} ${cx} ${cy - 16} Q${cx - rx + 4} ${cy - 14} ${cx - rx - 1} ${cy - 2}Z" fill="${pelo}" opacity=".85"/>`;
+    for (const [dx, dy] of [[-10, -20], [-3, -23], [5, -23], [11, -19], [0, -17], [-7, -15], [8, -15]]) s += `<circle cx="${cx + dx}" cy="${cy + dy}" r="5" fill="${pelo}"/>`;
+  }
   else if (est === 'poco') s += `<path d="M${cx - rx - 1} ${cy + 4} Q${cx - rx - 2} ${cy - 10} ${cx - rx + 6} ${cy - 14} L${cx - rx + 6} ${cy + 2} Z M${cx + rx + 1} ${cy + 4} Q${cx + rx + 2} ${cy - 10} ${cx + rx - 6} ${cy - 14} L${cx + rx - 6} ${cy + 2} Z" fill="${pelo}"/>`;
   else if (est === 'rulos' || est === 'rulosPoco') {
     const n = est === 'rulos' ? 9 : 5;
@@ -81,10 +103,17 @@ export function avatarSvg(look = {}, { fondo = null, titulo = '' } = {}) {
   s += `<path d="M${cx - 2.2} ${cy - 6.5}" />`;
   const ceja = L.barba || (est === 'calvo' ? oscurecer(piel, 0.6) : pelo);
   s += `<path d="M${cx - 12} ${cy - 5} Q${cx - 7.5} ${cy - 7.5} ${cx - 3} ${cy - 5.5} M${cx + 12} ${cy - 5} Q${cx + 7.5} ${cy - 7.5} ${cx + 3} ${cy - 5.5}" stroke="${ceja}" stroke-width="${est === 'calvo' ? 1.3 : 2}" fill="none" stroke-linecap="round"/>`;
-  if (L.barba) s += `<path d="M${cx - rx + 2} ${cy + 6} Q${cx - rx + 2} ${cy + ry + 6} ${cx} ${cy + ry + 6} Q${cx + rx - 2} ${cy + ry + 6} ${cx + rx - 2} ${cy + 6} Q${cx + 8} ${cy + 16} ${cx} ${cy + 16} Q${cx - 8} ${cy + 16} ${cx - rx + 2} ${cy + 6}Z" fill="${L.barba}"/><path d="M${cx - 6} ${cy + 12} Q${cx} ${cy + 10} ${cx + 6} ${cy + 12}" stroke="${L.barba}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  if (L.barba) s += `<g opacity="${L.barbaCorta ? 0.75 : 1}"><path d="M${cx - rx + 2} ${cy + 6} Q${cx - rx + 2} ${cy + ry + 6} ${cx} ${cy + ry + 6} Q${cx + rx - 2} ${cy + ry + 6} ${cx + rx - 2} ${cy + 6} Q${cx + 8} ${cy + 16} ${cx} ${cy + 16} Q${cx - 8} ${cy + 16} ${cx - rx + 2} ${cy + 6}Z" fill="${L.barba}"/><path d="M${cx - 6} ${cy + 12} Q${cx} ${cy + 10} ${cx + 6} ${cy + 12}" stroke="${L.barba}" stroke-width="2.6" fill="none" stroke-linecap="round"/></g>`;
   s += `<path d="M${cx - 4.5} ${cy + 13.5} Q${cx} ${cy + 12.2} ${cx + 4.5} ${cy + 13.5} Q${cx} ${cy + 16.4} ${cx - 4.5} ${cy + 13.5}Z" fill="#b9675e"/>`;
   // accesorios
-  if (L.lentes) s += `<g fill="none" stroke="${L.lentes}" stroke-width="2"><circle cx="${cx - 7.5}" cy="${cy + 1}" r="6"/><circle cx="${cx + 7.5}" cy="${cy + 1}" r="6"/><path d="M${cx - 1.5} ${cy + 1}h3"/></g>`;
+  if (L.lentes) {
+    const vidrio = L.lentesClaros ? `fill="#dff0f5" fill-opacity=".25"` : 'fill="none"';
+    s += L.lentesForma === 'cuadrada'
+      ? `<g stroke="${L.lentes}" stroke-width="2.2" ${vidrio}><rect x="${cx - 14}" y="${cy - 4}" width="12" height="9.5" rx="2.5"/><rect x="${cx + 2}" y="${cy - 4}" width="12" height="9.5" rx="2.5"/><path d="M${cx - 2} ${cy}h4" fill="none"/></g>`
+      : `<g stroke="${L.lentes}" stroke-width="2" ${vidrio}><circle cx="${cx - 7.5}" cy="${cy + 1}" r="6"/><circle cx="${cx + 7.5}" cy="${cy + 1}" r="6"/><path d="M${cx - 1.5} ${cy + 1}h3" fill="none"/></g>`;
+  }
+  // capucha puesta: el borde tapa la frente y los costados
+  if (cap) s += `<path d="M${cx - rx - 7} ${cy + 22} Q${cx - rx - 9} ${cy - ry - 12} ${cx} ${cy - ry - 11} Q${cx + rx + 9} ${cy - ry - 12} ${cx + rx + 7} ${cy + 22} L${cx + rx + 1} ${cy + 20} Q${cx + rx + 2} ${cy - ry - 3} ${cx} ${cy - ry - 3} Q${cx - rx - 2} ${cy - ry - 3} ${cx - rx - 1} ${cy + 20}Z" fill="${L.capucha}"/>`;
   if (L.antifaz) s += `<rect x="${cx - rx + 1}" y="${cy - 5}" width="${rx * 2 - 2}" height="10" rx="5" fill="${L.antifaz}" opacity=".9"/><ellipse cx="${cx - 7.5}" cy="${cy}" rx="3" ry="3" fill="#fff"/><ellipse cx="${cx + 7.5}" cy="${cy}" rx="3" ry="3" fill="#fff"/>`;
   if (L.kipa) s += `<path d="M${cx - 9} ${cy - ry + 3} Q${cx} ${cy - ry - 7} ${cx + 9} ${cy - ry + 3} Z" fill="${L.kipa}"/>`;
   if (L.sombrero) s += `<rect x="${cx - rx - 8}" y="${cy - ry - 2}" width="${rx * 2 + 16}" height="5" rx="2" fill="${L.sombrero}"/><rect x="${cx - 13}" y="${cy - ry - 14}" width="26" height="13" rx="3" fill="${L.sombrero}"/>`;

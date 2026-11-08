@@ -13,7 +13,7 @@ export function montarElenco(canvas,{grupo=false}={}) {
   function set(i) {
     modelos.forEach(p=>p.dispose());modelos=[];actual=(i+NPCS.length)%NPCS.length;
     const ids=grupo?[4,actual,3]:[actual];
-    ids.forEach((id,k)=>{const npc=NPCS[id];const p=crearPersona(THREE,{...npc.look,smoking:npc.smoking},{sombras:true});p.grupo.position.x=grupo?(k-1)*1.08:0;p.grupo.position.z=grupo&&k!==1?.2:0;if(grupo&&k===1)p.grupo.scale.setScalar(1.14);p.grupo.rotation.y=grupo?(k-1)*.18:angle;scene.add(p.grupo);modelos.push(p);});
+    ids.forEach((id,k)=>{const npc=NPCS[id];const p=crearPersona(THREE,{...npc.look},{sombras:true});p.grupo.position.x=grupo?(k-1)*1.08:0;p.grupo.position.z=grupo&&k!==1?.2:0;if(grupo&&k===1)p.grupo.scale.setScalar(1.14);p.grupo.rotation.y=grupo?(k-1)*.18:angle;scene.add(p.grupo);modelos.push(p);});
     canvas.dispatchEvent(new CustomEvent('personaje',{detail:NPCS[actual]}));
   }
   canvas.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId);});
