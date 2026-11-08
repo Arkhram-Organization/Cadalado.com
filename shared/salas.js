@@ -15,6 +15,7 @@
 //   lobby(r, ctx)           → (opcional) resumen para la lista de salas, o null
 //   despues(r, antes, ctx)  → (opcional, async) al guardar: historial, saldos…
 //   rutas(ruta, request, util) → (opcional, async) rutas extra de la API
+import { limpiarLook } from './public/look.js';
 import { getStore } from './store.js';
 import { usuarioActual } from './cuenta.js';
 import { json, readJson, serverError, subruta } from './http.js';
@@ -103,14 +104,15 @@ export function crearJuego(def) {
     return r;
   }
 
-  function agregarJugador(r, pid, { nombre, uid }, ctx) {
+  function agregarJugador(r, pid, { nombre, uid, look }, ctx) {
     const ya = r.jugadores[pid];
     if (ya) {
       ya.nombre = nombre;
       if (uid) ya.uid = uid;
+      if (look) ya.look = limpiarLook(look);
       return ya;
     }
-    const j = { pid, nombre, uid: uid || undefined, unido: Date.now() };
+    const j = { pid, nombre, uid: uid || undefined, unido: Date.now(), look: look ? limpiarLook(look) : undefined };
     r.jugadores[pid] = j;
     def.unirse?.(r, j, ctx);
     return j;
@@ -195,7 +197,7 @@ export function crearJuego(def) {
   function mensaje(r, pid, pres, { cursor = null, h = null, primera = false } = {}) {
     const now = Date.now();
     const ctx = contexto(r, { pid, pres, jugador: pid ? r.jugadores[pid] : null });
-    const jugadores = Object.values(r.jugadores).map((j) => ({ id: idPublico(j.pid), nombre: j.nombre, online: ctx.online.has(j.pid), cuenta: !!j.uid }));
+    const jugadores = Object.values(r.jugadores).map((j) => ({ id: idPublico(j.pid), nombre: j.nombre, online: ctx.online.has(j.pid), cuenta: !!j.uid, look: j.look || null }));
     const estado = { code: r.code, host: idPublico(r.host), yo: pid ? idPublico(pid) : null, jugadores, ...def.vista(r, ctx) };
     const hs = hash(JSON.stringify(estado));
     const eventos = [];
@@ -227,7 +229,8 @@ export function crearJuego(def) {
       const u = msg.t === 'join' ? await usuarioActual(request) : null;
       const res = await mutar(code, async (rm, ctx) => {
         if (msg.t === 'join') {
-          agregarJugador(rm, pid, { nombre: u?.nombre || limpiarNombre(msg.nombre), uid: u?.id }, ctx);
+          // el personaje: el de la cuenta, o el que trae el navegador
+          agregarJugador(rm, pid, { nombre: u?.nombre || limpiarNombre(msg.nombre), uid: u?.id, look: u?.look || msg.look || null }, ctx);
           if (!rm.host || !rm.jugadores[rm.host]) rm.host = pid;
           return {};
         }

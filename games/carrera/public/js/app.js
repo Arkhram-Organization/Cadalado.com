@@ -1,6 +1,7 @@
 import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { POR_ID, charlas, rngNpc } from '/comun/npcs.js';
 import { dicho } from '/comun/dichos.js';
+import { lookParaDibujo } from '/comun/look.js';
 import { Escena } from './escena.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
 import { Red } from './red.js';
@@ -150,6 +151,11 @@ function abrirSala(code) {
   const yo = () => est?.yo;
   const nombreDe = (id) => est?.jugadores.find((j) => j.id === id)?.nombre || '';
   const colorDe = (id) => COLORES[est?.skins?.[id] ?? 0];
+  // el personaje que cada uno armó en /personaje (si no, uno con su color de la sala)
+  const lookDe = (id) => {
+    const l = est?.jugadores.find((j) => j.id === id)?.look;
+    return l ? lookParaDibujo(l) : lookJugador(id, colorDe(id));
+  };
   const nombreBot = (i) => {
     const id = est.botNpc[i];
     const rep = est.botNpc.slice(0, i).filter((x) => x === id).length;
@@ -530,7 +536,7 @@ function abrirSala(code) {
         jugador.llego = false;
         jugador.ubicar(0, 0, -4);
       }
-      escena.personaje(yo(), lookJugador(yo(), colorDe(yo())), nombreDe(yo()) + ' (vos)', true);
+      escena.personaje(yo(), lookDe(yo()), nombreDe(yo()) + ' (vos)', true);
       escena.mover(yo(), jugador.estado(), dt);
       envio += dt;
       if (envio > 1 / 15) {
@@ -547,7 +553,7 @@ function abrirSala(code) {
         if (!j || !j.online) remotos.delete(id);
         continue;
       }
-      escena.personaje(id, lookJugador(id, colorDe(id)), j.nombre);
+      escena.personaje(id, lookDe(id), j.nombre);
       const k = Math.min(1, dt * 12);
       const salto = Math.hypot(r.meta.x - r.obj.x, r.meta.z - r.obj.z) > 6;
       for (const c of ['x', 'y', 'z']) r.obj[c] = salto ? r.meta[c] : r.obj[c] + (r.meta[c] - r.obj[c]) * k;

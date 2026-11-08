@@ -28,6 +28,14 @@ export function pid() {
 
 export const nombreGuardado = () => leer('cadalado.nombre') || leer('chessort.name') || '';
 export const guardarNombre = (n) => n && guardar('cadalado.nombre', n.trim().slice(0, 20));
+// El personaje armado en /personaje (si no tenés cuenta queda en este navegador)
+export const lookGuardado = () => {
+  try {
+    return JSON.parse(leer('cadalado.look') || 'null');
+  } catch {
+    return null;
+  }
+};
 
 let cuentaP = null;
 export function cuenta() {
@@ -74,7 +82,7 @@ export class Sala {
 
   async unirse() {
     const u = await cuenta();
-    await this.enviar({ t: 'join', nombre: u?.nombre || nombreGuardado() || 'Invitado' });
+    await this.enviar({ t: 'join', nombre: u?.nombre || nombreGuardado() || 'Invitado', look: u?.look || lookGuardado() });
     this.programar(this.intervalo());
   }
 

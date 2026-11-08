@@ -1,5 +1,5 @@
 import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
-import { avatarSvg, lookDeId, lookDeNombre } from '/comun/avatar.js';
+import { avatarSvg, lookDeId, lookDeNombre, lookDeJugador } from '/comun/avatar.js';
 import { PLANTILLAS } from './plantillas.js';
 
 const PL = new Map(PLANTILLAS.map((p) => [p.id, p]));
@@ -220,8 +220,8 @@ function abrirSala(code) {
   const nombreDe = (id) => est.jugadores.find((j) => j.id === id)?.nombre || '—';
   const avatares = new Map();
   const avatarDe = (j) => {
-    const k = j.id + j.nombre;
-    if (!avatares.has(k)) avatares.set(k, avatarSvg(j.bot ? lookDeNombre(j.nombre) : lookDeId(j.id, colorDe(j.id)), { titulo: j.nombre }));
+    const k = j.id + j.nombre + JSON.stringify(j.look || '');
+    if (!avatares.has(k)) avatares.set(k, avatarSvg(j.bot ? lookDeNombre(j.nombre) : lookDeJugador(j, j.id, colorDe(j.id)), { titulo: j.nombre }));
     return avatares.get(k);
   };
 

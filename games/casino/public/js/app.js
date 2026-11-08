@@ -1,4 +1,5 @@
 import { Sala, marco, api, pid, esc, toast, sonar, recordar } from '/comun/sala.js';
+import { lookDeJugador } from '/comun/avatar.js';
 import { fmt, ficha, carta, SIMBOLO } from './piezas.js';
 import { montarRuleta } from './ruleta.js';
 import { montarBlackjack } from './blackjack.js';
@@ -176,6 +177,8 @@ function mesa(code) {
     esc,
     sonar,
     colorDe,
+    // el personaje de cada persona (el que armó en /personaje)
+    lookDe: (id) => lookDeJugador(est?.jugadores.find((j) => j.id === id), id, colorDe(id)),
     mostrarSaldo,
     ahora: () => sala.ahora(),
     enviar: (msg) => sala.enviar(msg),

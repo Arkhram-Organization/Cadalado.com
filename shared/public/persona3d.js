@@ -175,9 +175,6 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     ojos.push(ojo);
     const ceja = tubo(.015, .064, mat(L.barba || (L.pelo.estilo === 'calvo' ? '#755341' : L.pelo.color)), s * .113, .095, -.255, cabeza);
     ceja.rotation.z = Math.PI / 2 + s * .12; cejas.push(ceja);
-    // Sutil volumen en pómulos y nariz, la cara mantiene los colores de cada NPC.
-    bola(.068, piel, s * .166, -.104, -.203, cabeza, 1, .85, .55);
-    bola(.042, rosado, s * .178, -.102, -.230, cabeza, 1, .65, .16);
   }
   bola(.053, rosado, 0, -.073, -.286, cabeza, .89, 1, .91);
   bola(.029, piel, 0, -.027, -.261, cabeza, .70, 1.4, .65);
@@ -271,8 +268,20 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     }
   }
   if (L.kipa) {
-    const k = pieza(new THREE.SphereGeometry(.16, 22, 10, 0, Math.PI * 2, 0, Math.PI * .36), mat(L.kipa), 0, .24, .07, cabeza);
-    k.rotation.x = .30;
+    // kipá grande: cubre buena parte de la coronilla, con un borde finito
+    const k = pieza(new THREE.SphereGeometry(.235, 26, 12, 0, Math.PI * 2, 0, Math.PI * .4), mat(L.kipa), 0, .2, .07, cabeza);
+    k.rotation.x = .28; k.scale.set(1, .95, 1);
+    // borde pegado a la base de la kipá (va dentro de la kipá, así gira con ella)
+    const borde = aro(.235 * Math.sin(Math.PI * .4), .008, mat(new THREE.Color(L.kipa).multiplyScalar(.7)), 0, .235 * Math.cos(Math.PI * .4), 0, k); borde.rotation.x = Math.PI / 2;
+  }
+  if (L.gorra) {
+    // gorra con visera
+    const g = mat(L.gorra);
+    const copa = pieza(new THREE.SphereGeometry(.325, 28, 14, 0, Math.PI * 2, 0, Math.PI * .5), g, 0, .075, .01, cabeza);
+    copa.scale.set(gordo ? 1.08 : 1.01, .95, .94);
+    const visera = bola(.2, g, 0, .1, -.3, cabeza, 1.05, .07, 1);
+    visera.rotation.x = -.12;
+    bola(.022, g, 0, .385, .0, cabeza);
   }
   if (L.sombrero) {
     bola(.38, mat(L.sombrero), 0, .29, 0, cabeza, 1, .08, .87);
@@ -288,7 +297,10 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   if (capucha) {
     const m = mat(L.capucha, { roughness: .9 });
     const hueco = .82;
-    const h = pieza(new THREE.SphereGeometry(.36, 30, 20, Math.PI * 1.5 + hueco, Math.PI * 2 - hueco * 2, 0, Math.PI * .68), m, 0, .02, .02, cabeza);
+    // arriba cerrada (tapa la frente) y a los costados/atrás con el hueco de la cara
+    const arriba = pieza(new THREE.SphereGeometry(.36, 30, 10, 0, Math.PI * 2, 0, Math.PI * .3), m, 0, .02, .02, cabeza);
+    arriba.scale.set(gordo ? 1.1 : 1.02, 1.12, 1);
+    const h = pieza(new THREE.SphereGeometry(.36, 30, 16, Math.PI * 1.5 + hueco, Math.PI * 2 - hueco * 2, Math.PI * .29, Math.PI * .39), m, 0, .02, .02, cabeza);
     h.scale.set(gordo ? 1.1 : 1.02, 1.12, 1);
     const borde = aro(.255, .045, m, 0, -.02, -.22, cabeza, Math.PI * 1.25);
     borde.rotation.set(0, 0, -Math.PI * .125); borde.scale.set(1.05, 1.3, 1);

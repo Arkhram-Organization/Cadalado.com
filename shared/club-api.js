@@ -34,6 +34,9 @@ export async function handle(request) {
     if (ruta === '/yo' && metodo === 'POST') {
       return json({ usuario: await c.cambiarNombre(await necesitaCuenta(request), body.nombre) });
     }
+    if (ruta === '/look' && metodo === 'POST') {
+      return json({ usuario: await c.guardarLook(await necesitaCuenta(request), body.look) });
+    }
     if (ruta === '/historial' && metodo === 'GET') {
       const u = await necesitaCuenta(request);
       const hist = await c.historial(u.id);

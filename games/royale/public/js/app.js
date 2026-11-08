@@ -2,7 +2,7 @@ import { Isla3D } from './escena3d.js';
 import { OBJETOS, recoger } from './inventario.js';
 import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { POR_ID } from '/comun/npcs.js';
-import { avatarSvg, lookDeId } from '/comun/avatar.js';
+import { avatarSvg, lookDeId, lookDeJugador } from '/comun/avatar.js';
 import { Red } from '/comun/red.js';
 import { generarMapa, zona, ARMAS, VIDA, ESCUDO_MAX, LADO, rng } from './mundo.js';
 import { spritesPersona, spritesBotin, pintarMapa, copa, miniMapa, SP_W, SP_H } from './sprites.js';
@@ -171,7 +171,7 @@ function abrirSala(code) {
   const guardadoClave='cadalado-royale-'+code;
   const yoId = () => est?.yo;
   const nombreDe = (id) => (String(id).startsWith('bot') ? est?.botNombres?.[Number(String(id).slice(3))] : est?.jugadores.find((j) => j.id === id)?.nombre) || '—';
-  const lookDe = (id) => (String(id).startsWith('bot') ? { ...POR_ID[est.botNpc[Number(String(id).slice(3))]]?.look } : lookDeId(id, colorDe(id)));
+  const lookDe = (id) => (String(id).startsWith('bot') ? { ...POR_ID[est.botNpc[Number(String(id).slice(3))]]?.look } : lookDeJugador(est.jugadores.find((j) => j.id === id), id, colorDe(id)));
   // quién simula los bots: el que armó la sala si está; si no, el primero conectado
   const idAnfitrion = () => {
     if (!est) return null;
@@ -338,7 +338,7 @@ function abrirSala(code) {
         lob.dataset.firma = firma;
         lob.innerHTML = `<h2>En el barco, rumbo a la isla</h2>
           <p>${esHost ? 'Cuando estén todos, ¡largá!' : `Larga ${esc(e.jugadores.find((j) => j.id === e.host)?.nombre || '')}.`} Caés con una pistola: buscá algo mejor en las casas.</p>
-          <div class="gente">${online.map((j) => `<div><span class="av">${avatarSvg(lookDeId(j.id, colorDe(j.id)))}</span>${esc(j.nombre)}${j.id === e.yo ? ' (vos)' : ''}</div>`).join('')}
+          <div class="gente">${online.map((j) => `<div><span class="av">${avatarSvg(lookDeJugador(j, j.id, colorDe(j.id)))}</span>${esc(j.nombre)}${j.id === e.yo ? ' (vos)' : ''}</div>`).join('')}
             ${e.botNpc.map((n, i) => `<div class="${n === 'mati' ? 'dorado' : ''}"><span class="av">${avatarSvg({ ...POR_ID[n]?.look })}</span>${esc(e.botNombres[i])}<small>bot</small></div>`).join('')}</div>
           ${esHost ? `<div class="fila-lob"><select class="entrada" data-bots>${[0, 3, 5, 7, 9, 11, 15].map((n) => `<option ${n === e.bots ? 'selected' : ''} value="${n}">${n} bots</option>`).join('')}</select><button class="btn btn-lima btn-grande" data-largar>¡A la isla!</button></div>` : ''}
           <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>moverse</span><span><kbd>Mouse</kbd></span><span>apuntar y disparar</span><span><kbd>E</kbd></span><span>agarrar arma</span><span><kbd>R</kbd></span><span>recargar</span><span><kbd>Q</kbd></span><span>cambiar casillero</span><span><kbd>F</kbd> / clic</span><span>usar objeto seleccionado</span><span><kbd>X</kbd></span><span>soltar objeto</span></div>`;

@@ -92,7 +92,7 @@ export function montarBlackjack(zona, h) {
       if (e.fase === 'jugando' && e.turno === mio && antes?.turno !== mio) h.sonar('aviso');
       const nuevas = (lista, prev) => lista.length > (prev?.length || 0);
       if (antes && (nuevas(e.banca, antes.banca) || e.asientos.some((a, i) => a && nuevas(a.cartas, antes.asientos[i]?.cartas)))) h.sonar('carta');
-      mesa.actualizar(e, { color: h.colorDe });
+      mesa.actualizar(e, { color: h.colorDe, look: h.lookDe });
       h.estadoMesa(
         { espera: 'Esperando jugadores', apuestas: 'Hagan sus apuestas', jugando: 'Mano en juego', banca: 'Juega la banca', pago: 'Pagando' }[e.fase],
         e.fase === 'apuestas' ? 'abierta' : e.fase === 'jugando' || e.fase === 'banca' ? 'cerrada' : ''

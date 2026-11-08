@@ -1,6 +1,7 @@
 // Avatares dibujados (SVG) de personas: busto con cara, pelo, ropa y accesorios.
 // Usan el mismo "look" que los muñecos 3D (ver npcs.js), así cada personaje se reconoce en todos los juegos.
 import { POR_ID, LOOKS_EXTRA, rngNpc } from './npcs.js';
+import { lookParaDibujo } from './look.js';
 
 // Look para una persona real (sale de su id, con el color que eligió).
 export function lookDeId(id, color = '#7aa2ff') {
@@ -16,6 +17,9 @@ export function lookDeId(id, color = '#7aa2ff') {
     ropa: { remera: color, pantalon: '#2b2b33' },
   };
 }
+
+// Look de una persona en una sala: el personaje que armó en /personaje, o uno que sale de su id.
+export const lookDeJugador = (j, id, color) => (j?.look ? lookParaDibujo(j.look) : lookDeId(id, color));
 
 // Look de un bot por su nombre (NPC del club o personaje extra de los memes).
 export function lookDeNombre(nombre) {
@@ -97,7 +101,6 @@ export function avatarSvg(look = {}, { fondo = null, titulo = '' } = {}) {
     s += `<path d="M${cx + dx - 4.8} ${cy - 0.4} Q${cx + dx} ${cy - 3.8} ${cx + dx + 4.8} ${cy - 0.4}" stroke="#2a1d16" stroke-width="1.1" fill="none"/>`;
   }
   if (!L.robot) {
-    s += `<circle cx="${cx - 13}" cy="${cy + 10}" r="3.4" fill="#ff8a7a" opacity=".18"/><circle cx="${cx + 13}" cy="${cy + 10}" r="3.4" fill="#ff8a7a" opacity=".18"/>`;
     s += `<path d="M${cx} ${cy + 2} Q${cx - 2.6} ${cy + 8} ${cx - 2.2} ${cy + 9} Q${cx} ${cy + 10.2} ${cx + 2.2} ${cy + 9}" stroke="${oscurecer(piel, 0.7)}" stroke-width="1.3" fill="none" stroke-linecap="round"/>`;
   }
   s += `<path d="M${cx - 2.2} ${cy - 6.5}" />`;
@@ -115,7 +118,8 @@ export function avatarSvg(look = {}, { fondo = null, titulo = '' } = {}) {
   // capucha puesta: el borde tapa la frente y los costados
   if (cap) s += `<path d="M${cx - rx - 7} ${cy + 22} Q${cx - rx - 9} ${cy - ry - 12} ${cx} ${cy - ry - 11} Q${cx + rx + 9} ${cy - ry - 12} ${cx + rx + 7} ${cy + 22} L${cx + rx + 1} ${cy + 20} Q${cx + rx + 2} ${cy - ry - 3} ${cx} ${cy - ry - 3} Q${cx - rx - 2} ${cy - ry - 3} ${cx - rx - 1} ${cy + 20}Z" fill="${L.capucha}"/>`;
   if (L.antifaz) s += `<rect x="${cx - rx + 1}" y="${cy - 5}" width="${rx * 2 - 2}" height="10" rx="5" fill="${L.antifaz}" opacity=".9"/><ellipse cx="${cx - 7.5}" cy="${cy}" rx="3" ry="3" fill="#fff"/><ellipse cx="${cx + 7.5}" cy="${cy}" rx="3" ry="3" fill="#fff"/>`;
-  if (L.kipa) s += `<path d="M${cx - 9} ${cy - ry + 3} Q${cx} ${cy - ry - 7} ${cx + 9} ${cy - ry + 3} Z" fill="${L.kipa}"/>`;
+  if (L.kipa) s += `<path d="M${cx - 13} ${cy - ry + 4} Q${cx} ${cy - ry - 9} ${cx + 13} ${cy - ry + 4} Z" fill="${L.kipa}"/>`;
+  if (L.gorra) s += `<path d="M${cx - rx - 1} ${cy - 4} Q${cx - rx} ${cy - ry - 9} ${cx} ${cy - ry - 8} Q${cx + rx} ${cy - ry - 9} ${cx + rx + 1} ${cy - 4}Z" fill="${L.gorra}"/><path d="M${cx - rx + 2} ${cy - 5} Q${cx} ${cy - 1} ${cx + rx + 12} ${cy - 6} L${cx + rx + 10} ${cy - 3} Q${cx} ${cy + 2} ${cx - rx + 2} ${cy - 2}Z" fill="${oscurecer(L.gorra, 0.8)}"/>`;
   if (L.sombrero) s += `<rect x="${cx - rx - 8}" y="${cy - ry - 2}" width="${rx * 2 + 16}" height="5" rx="2" fill="${L.sombrero}"/><rect x="${cx - 13}" y="${cy - ry - 14}" width="26" height="13" rx="3" fill="${L.sombrero}"/>`;
   if (L.auriculares) s += `<path d="M${cx - rx - 2} ${cy + 2} Q${cx - rx} ${cy - ry - 8} ${cx} ${cy - ry - 7} Q${cx + rx} ${cy - ry - 8} ${cx + rx + 2} ${cy + 2}" stroke="${L.auriculares}" stroke-width="3.5" fill="none"/><rect x="${cx - rx - 6}" y="${cy - 4}" width="7" height="12" rx="3" fill="${L.auriculares}"/><rect x="${cx + rx - 1}" y="${cy - 4}" width="7" height="12" rx="3" fill="${L.auriculares}"/>`;
   if (L.robot) s += `<path d="M${cx} ${cy - ry} v-8" stroke="#8a96a3" stroke-width="2"/><circle cx="${cx}" cy="${cy - ry - 9}" r="3" fill="#ff6b5b"/>`;

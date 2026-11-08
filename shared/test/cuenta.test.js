@@ -90,3 +90,18 @@ test('sin sesión no hay datos privados', async () => {
   assert.equal((await x('GET', '/amigos')).status, 401);
   assert.equal((await x('POST', '/chat', { con: 'general', texto: 'hola' })).status, 401);
 });
+
+test('personaje: se limpia lo que llega y se guarda en la cuenta', async () => {
+  const { limpiarLook, lookParaDibujo, aplicarVestimenta, VESTIMENTAS } = await import('../public/look.js');
+  const l = limpiarLook({ piel: '#ABCDEF', pelo: { estilo: 'hackeo', color: 'red' }, prenda: 'buzo', capucha: '#1f2a4d', script: '<x>', ropa: { remera: 'javascript:' } });
+  assert.equal(l.piel, '#abcdef');
+  assert.equal(l.pelo.estilo, 'corto');
+  assert.equal(l.pelo.color, '#2b1d14');
+  assert.equal(l.ropa.remera, '#7aa2ff');
+  assert.equal(l.script, undefined);
+  const d = lookParaDibujo(l);
+  assert.equal(d.mangasLargas, true);
+  assert.equal(d.capucha, '#1f2a4d');
+  for (const v of VESTIMENTAS) assert.ok(limpiarLook(aplicarVestimenta(l, v.id)), v.id);
+  assert.equal(aplicarVestimenta(l, 'fotografo').camara, true);
+});

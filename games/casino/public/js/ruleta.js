@@ -231,7 +231,7 @@ export function montarRuleta(zona, h) {
     if (el.dataset.firma === firma) return;
     el.dataset.firma = firma;
     el.innerHTML = lista.map((x) => {
-      if (!avs.has(x.id)) avs.set(x.id, avatarSvg(x.bot ? lookDeNombre(x.nombre) : lookDeId(x.id, h.colorDe(x.id)), { titulo: x.nombre }));
+      if (!avs.has(x.id)) avs.set(x.id, avatarSvg(x.bot ? lookDeNombre(x.nombre) : h.lookDe?.(x.id) || lookDeId(x.id, h.colorDe(x.id)), { titulo: x.nombre }));
       return `<div class="persona-mesa" data-quien="${x.id}" data-nombre="${h.esc(x.nombre)}"><span class="av">${avs.get(x.id)}</span><small>${h.esc(x.nombre)}</small><span class="globo-mesa"></span></div>`;
     }).join('');
   }

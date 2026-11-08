@@ -2,6 +2,7 @@
 // Todo vive en Redis (shared/store.js). Las contraseñas se guardan con scrypt (nunca en texto plano).
 import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
 import { getStore } from './store.js';
+import { limpiarLook } from './public/look.js';
 
 const SESSION_DAYS = 60;
 const COOKIE = 'cl_ses';
@@ -54,7 +55,7 @@ export function cookieSesion(request, token) {
 }
 
 // Lo que se puede mostrar de un usuario (sin la contraseña).
-export const publico = (u) => u && { id: u.id, usuario: u.usuario, nombre: u.nombre, creado: u.creado };
+export const publico = (u) => u && { id: u.id, usuario: u.usuario, nombre: u.nombre, creado: u.creado, look: u.look || null };
 
 async function usuarioPorId(id) {
   return id ? parse(await getStore().get(`u:${id}`)) : null;
@@ -126,6 +127,14 @@ export async function cambiarNombre(u, nombre) {
   const n = limpiarNombre(nombre);
   if (!n) throw new ErrorCuenta('Poné un nombre.');
   u.nombre = n;
+  await getStore().set(`u:${u.id}`, JSON.stringify(u));
+  return publico(u);
+}
+
+// ---------- personaje ----------
+// El personaje que cada uno arma en /personaje (se guarda limpio: solo opciones permitidas).
+export async function guardarLook(u, look) {
+  u.look = limpiarLook(look);
   await getStore().set(`u:${u.id}`, JSON.stringify(u));
   return publico(u);
 }
