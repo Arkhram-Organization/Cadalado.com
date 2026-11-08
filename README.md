@@ -63,6 +63,16 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
 - Desde el club se **desafía** a un amigo: se crea la mesa y le llega el link por chat.
 - Para jugar no hace falta cuenta.
 
+### Muro y sugerencias (portada)
+
+- **El muro** (arriba de la portada): cualquiera publica texto y fotos, comenta y da me gusta, **sin cuenta**.
+  La foto se achica en el navegador (JPG, lado mayor 1280 px) y se guarda en Redis; se sirve en `/api/club/muro/foto?id=…`.
+  Quedan las últimas 200 publicaciones. Con cuenta salís con tu nombre, tu personaje y una marca de "con cuenta".
+- **Sugerencias** (abajo de todo): ideas de juegos o cambios, con votos (uno por dispositivo). Las más votadas van primero.
+- Sin cuenta, cada navegador guarda una clave para poder borrar lo suyo. Hay topes por IP para frenar el spam.
+- **Moderar:** poné en Vercel la variable `CLUB_ADMINS` con los usuarios admin separados por coma (ej. `seba,theo`).
+  Esos usuarios, con su cuenta, pueden borrar cualquier publicación o idea y marcar ideas como "En camino" o "Hecho".
+
 ## Cómo trabajamos
 
 Hay **dos ramas**, nada más:

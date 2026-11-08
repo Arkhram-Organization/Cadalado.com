@@ -1,6 +1,7 @@
 import {JUEGOS} from './datos.js';
 import {NPCS} from '/comun/npcs.js';
 import {montarElenco} from './elenco.js';
+import {montarMuro,montarSugerencias} from './muro.js';
 const $=s=>document.querySelector(s);
 const hero=montarElenco($('#hero-personajes'),{grupo:true});
 const elenco=montarElenco($('#elenco'));
@@ -14,3 +15,6 @@ $('#games').innerHTML=JUEGOS.map(j=>`<a class="game" href="${j.url}"><div class=
 async function cargar(){for(const j of JUEGOS){try{const r=await fetch(j.lobby);if(!r.ok)continue;const d=await r.json();const n=(d.salas||d.open||[]).length;const el=document.querySelector('[data-room="'+j.id+'"]');el.textContent=n?n+(n===1?' sala abierta':' salas abiertas'):'Armá una partida';el.classList.toggle('room-status',n>0);}catch{}}}
 cargar();setInterval(cargar,20000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)cargar();});
+// Muro de publicaciones (arriba) y sugerencias (abajo de todo).
+montarMuro($('[data-muro]'));
+montarSugerencias($('[data-sugerencias]'));
