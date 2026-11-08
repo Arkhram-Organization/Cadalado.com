@@ -55,4 +55,5 @@ y acercan la captura, secciones que aparecen al bajar. Todo se apaga con "reduci
 Rioplatense, breve y con humor medido.
 - "¿Sale una?" · "Mandá el link. Se juega." · "La revancha está pendiente." · "Abrí la primera mesa."
 - Sin palabras de empresa ("plataforma", "solución", "usuarios").
-- Sin inventar: los roles del equipo y las novedades se escriben con datos confirmados.
+- Sin inventar: las novedades se escriben con datos confirmados.
+- Sin créditos: el sitio no muestra nombres de los creadores.

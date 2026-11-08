@@ -8,19 +8,20 @@ La identidad (logo, colores, tipografía, tono) está en [`MARCA.md`](MARCA.md).
 
 Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 
-| Qué | Carpeta | Rama de trabajo | Dirección |
-|---|---|---|---|
-| Portal (inicio, equipo, entrar, club) | [`portal`](portal) | `main` | `cadalado.com` |
-| Ajedrez | [`games/chessort`](games/chessort) | `chessort` | `cadalado.com/ajedrez` |
-| Truco | [`games/truco`](games/truco) | `truco` | `cadalado.com/truco` |
-| Ángeles Peña (carrera de obstáculos 3D) | [`games/carrera`](games/carrera) | `chessort` | `cadalado.com/carrera` |
-| El casino de Dobro (ruleta, blackjack, slots) | [`games/casino`](games/casino) | `chessort` | `cadalado.com/casino` |
-| Make it Meme | [`games/memes`](games/memes) | `chessort` | `cadalado.com/memes` |
-| Cuentas, historial, amigos y chats | [`shared`](shared) | `main` | `cadalado.com/club` |
+| Qué | Carpeta | Dirección |
+|---|---|---|
+| Portal (inicio, personaje, entrar, club) | [`portal`](portal) | `cadalado.com` |
+| Ajedrez | [`games/chessort`](games/chessort) | `cadalado.com/ajedrez` |
+| Truco | [`games/truco`](games/truco) | `cadalado.com/truco` |
+| Ángeles Peña (carrera de obstáculos 3D) | [`games/carrera`](games/carrera) | `cadalado.com/carrera` |
+| El casino de Dobro (ruleta, blackjack, slots) | [`games/casino`](games/casino) | `cadalado.com/casino` |
+| Make it Meme | [`games/memes`](games/memes) | `cadalado.com/memes` |
+| Último en pie (battle royale 3D) | [`games/royale`](games/royale) | `cadalado.com/royale` |
+| Cuentas, historial, amigos y chats | [`shared`](shared) | `cadalado.com/club` |
 
 ```
-portal/public/         el portal: inicio, /equipo, /entrar, /club (HTML, CSS y JS sin frameworks)
-  js/datos.js          catálogo: juegos, equipo y novedades (lo único que hay que tocar para sumar algo)
+portal/public/         el portal: inicio, /personaje, /entrar, /club (HTML, CSS y JS sin frameworks)
+  js/datos.js          catálogo: juegos, ideas y novedades (lo único que hay que tocar para sumar algo)
 games/chessort/        ajedrez: public/ (navegador), api.js + lib/ (servidor), test/
 games/truco/           truco:   public/ (navegador, 3D), api.js + lib/sala.js (servidor), test/
 games/memes|casino|carrera/   los juegos nuevos: public/, api.js, lib/ (reglas), test/
@@ -64,38 +65,35 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
 
 ## Cómo trabajamos
 
-- **Cada juego tiene su carpeta y su rama**, y cada rama toca solo su carpeta (`games/<juego>/`).
-  Así nunca hay conflictos entre equipos.
-- `main` junta lo que ya funciona de todos. No se programa directo ahí: cuando algo queda estable,
-  se abre un Pull Request de la rama del juego hacia `main`.
-- El portal vive en `main` y se publica desde ahí.
+Hay **dos ramas**, nada más:
+
+| Rama | Para qué |
+|---|---|
+| `chessort` | **Todo el trabajo.** Acá se programa y se prueba (Vercel arma un preview con su propia dirección). |
+| `main` | **Producción** (`cadalado.com`). Solo recibe lo que ya anda en `chessort`, por Pull Request o merge. No se programa directo. |
+
+```bash
+git checkout chessort
+```
+
+```bash
+git pull origin chessort
+```
+
+Cuando algo queda estable, se abre un Pull Request de `chessort` hacia `main` (o se hace merge directo si
+`main` no tiene nada distinto). Las ramas viejas (`truco`, `claude/...`) se borraron; su contenido ya estaba
+integrado y quedó guardado en los tags `archivo/truco` y `archivo/claude-trusting-fermi`.
 
 ### Sumar un juego nuevo
 
-```bash
-git checkout main
-```
-
-```bash
-git pull
-```
-
-```bash
-git checkout -b truco
-```
-
 1. Creá `games/<juego>/public/` con lo que ve el navegador. Va a quedar en `cadalado.com/<juego>/`.
-2. Si tiene salas online, poné el servidor en `games/<juego>/api.js` y `games/<juego>/lib/`, guardando en Redis
-   con `shared/store.js` (mirá `games/truco/lib/sala.js` o `games/chessort/lib/room.js`). Para el historial,
+2. Si tiene salas online, usá el motor de `shared/salas.js` (mirá `games/memes/lib/memes.js`) o poné el servidor en
+   `games/<juego>/api.js` y `games/<juego>/lib/`, guardando en Redis con `shared/store.js`. Para el historial,
    llamá a `registrarPartida` de `shared/cuenta.js` cuando termine la partida.
 3. Agregá su función en `api/juegos/<juego>.js` (3 líneas, como las otras), sus rutas en `vercel.json`,
    y sumalo a `scripts/build.mjs` y `dev-server.js`. Los paquetes de npm van en el `package.json` de la raíz.
 4. Usá el logo de cadalado y poné un link de vuelta a `/`.
 5. Sumalo al portal en [`portal/public/js/datos.js`](portal/public/js/datos.js), con una captura real en `portal/public/img/`.
-
-```bash
-git push -u origin truco
-```
 
 ## Publicar (Vercel)
 
@@ -111,8 +109,8 @@ Un solo proyecto para todo el sitio:
 El plan gratis de Upstash tiene un límite mensual de operaciones. Para un grupo de amigos alcanza; si se queda
 corto, se pasa al plan por uso desde su panel. Para revisar la conexión: `cadalado.com/ajedrez/api/estado`.
 
-Cada push a `main` publica el sitio. Las ramas de cada juego (`chessort`, `truco`) generan
-**previews** con su propia dirección, para probar antes de pasar a `main`.
+Cada push a `main` publica el sitio. Cada push a `chessort` genera un **preview** con su propia dirección,
+para probar antes de pasar a `main`.
 
 ## Probar en tu compu
 

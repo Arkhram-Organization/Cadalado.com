@@ -66,12 +66,5 @@
       "source": "/casino/mesa/:code",
       "destination": "/casino/index.html"
     }
-  ],
-  "redirects": [
-    {
-      "source": "/creadores",
-      "destination": "/equipo",
-      "permanent": true
-    }
   ]
 }
