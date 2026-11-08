@@ -1,7 +1,9 @@
 // Elenco compartido: muñequitos de proporciones de animación, ropa construida por capas
 // y una cara esculpida. El frente del personaje es -Z (contrato de todos los juegos).
 // Las fotografías futuras sólo necesitan ajustar `look`; el rig y las animaciones se comparten.
-export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
+export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5, detalle = 1 } = {}) {
+  // detalle > 1: más segmentos en las curvas (para fichas e imágenes grandes; en los juegos queda en 1)
+  const seg = (n) => Math.max(3, Math.round(n * detalle));
   const L = { piel: '#e8c4a8', ojos: '#5a3a22', cuerpo: 'normal', ...look,
     pelo: { estilo: 'corto', color: '#2b1d14', ...look.pelo },
     ropa: { remera: '#7aa2ff', pantalon: '#3a4256', ...look.ropa } };
@@ -17,11 +19,11 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     const p = new THREE.Mesh(geo, m); p.position.set(x, y, z); p.castShadow = sombras; p.receiveShadow = false; parent.add(p); return p;
   };
   const bola = (r, m, x, y, z, parent, sx = 1, sy = 1, sz = 1) => {
-    const p = pieza(new THREE.SphereGeometry(r, 24, 16), m, x, y, z, parent); p.scale.set(sx, sy, sz); return p;
+    const p = pieza(new THREE.SphereGeometry(r, seg(24), seg(16)), m, x, y, z, parent); p.scale.set(sx, sy, sz); return p;
   };
-  const tubo = (r, largo, m, x, y, z, parent) => pieza(new THREE.CapsuleGeometry(r, largo, 5, 12), m, x, y, z, parent);
+  const tubo = (r, largo, m, x, y, z, parent) => pieza(new THREE.CapsuleGeometry(r, largo, seg(5), seg(12)), m, x, y, z, parent);
   const cubo = (w, h, d, m, x, y, z, parent) => pieza(new THREE.BoxGeometry(w, h, d), m, x, y, z, parent);
-  const aro = (r, grosor, m, x, y, z, parent, arco = Math.PI * 2) => pieza(new THREE.TorusGeometry(r, grosor, 6, 24, arco), m, x, y, z, parent);
+  const aro = (r, grosor, m, x, y, z, parent, arco = Math.PI * 2) => pieza(new THREE.TorusGeometry(r, grosor, seg(6), seg(24), arco), m, x, y, z, parent);
   const piel = mat(L.piel, L.robot ? { metalness: .65, roughness: .34 } : { roughness: .57 });
   const rosado = mat(new THREE.Color(L.piel).lerp(new THREE.Color('#d17c66'), .25));
   // Tela de la remera: lisa, o a cuadros (camisa tipo vichy) si el look lo pide.
@@ -185,7 +187,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   // Pelo esculpido en mechones con siluetas diferentes, conservando el peinado del elenco.
   const estilo = L.pelo.estilo;
   if (['corto', 'largo', 'rulos'].includes(estilo)) {
-    const casco = pieza(new THREE.SphereGeometry(.318, 28, 16, 0, Math.PI * 2, 0, Math.PI * .54), pelo, 0, .045, .012, cabeza);
+    const casco = pieza(new THREE.SphereGeometry(.318, seg(28), seg(16), 0, Math.PI * 2, 0, Math.PI * .54), pelo, 0, .045, .012, cabeza);
     casco.scale.set(gordo ? 1.08 : 1, 1.04, .92);
     if (estilo !== 'rulos') for (let i = 0; i < 6; i++) {
       const x = (i - 2.5) * .074;
@@ -211,7 +213,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   }
   // Rapado: una capa finita del color del pelo pegada al cráneo.
   if (estilo === 'rapado' || estilo === 'rulosCorto') {
-    const r = pieza(new THREE.SphereGeometry(.309, 28, 16, 0, Math.PI * 2, 0, Math.PI * (estilo === 'rapado' ? .5 : .47)), mat(L.pelo.color, { transparent: true, opacity: estilo === 'rapado' ? .55 : .92, roughness: 1 }), 0, .04, .006, cabeza);
+    const r = pieza(new THREE.SphereGeometry(.309, seg(28), seg(16), 0, Math.PI * 2, 0, Math.PI * (estilo === 'rapado' ? .5 : .47)), mat(L.pelo.color, { transparent: true, opacity: estilo === 'rapado' ? .55 : .92, roughness: 1 }), 0, .04, .006, cabeza);
     r.scale.set(gordo ? 1.09 : 1.005, 1.065, .905);
     r.rotation.x = estilo === 'rulosCorto' ? .3 : .3; // la línea del pelo más arriba en la frente
   }
@@ -222,7 +224,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   }
   // Pelo corto con entradas (canoso de Glinsky): sin flequillo y la frente despejada
   if (estilo === 'entradas') {
-    const c = pieza(new THREE.SphereGeometry(.316, 28, 16, 0, Math.PI * 2, 0, Math.PI * .5), pelo, 0, .05, .03, cabeza);
+    const c = pieza(new THREE.SphereGeometry(.316, seg(28), seg(16), 0, Math.PI * 2, 0, Math.PI * .5), pelo, 0, .05, .03, cabeza);
     c.scale.set(gordo ? 1.08 : 1, 1.04, .93); c.rotation.x = .38;
     for (const sd of [-1, 1]) bola(.07, pelo, sd * .275, .02, .07, cabeza, .5, 1.2, 1.3);
   }
@@ -232,12 +234,12 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   }
   if (L.barba) {
     const barba = mat(L.barba);
-    const b = pieza(new THREE.SphereGeometry(.282, 24, 12, 0, Math.PI * 2, Math.PI * .62, Math.PI * .38), barba, 0, -.025, -.035, cabeza);
+    const b = pieza(new THREE.SphereGeometry(.282, seg(24), seg(12), 0, Math.PI * 2, Math.PI * .62, Math.PI * .38), barba, 0, -.025, -.035, cabeza);
     b.scale.set(gordo ? 1.08 : 1, 1.2, .91);
     if (L.barbaCorta) {
       // barba corta: empieza más abajo (no tapa los cachetes) y deja ver un poco la piel
       b.geometry.dispose();
-      b.geometry = new THREE.SphereGeometry(.282, 24, 12, 0, Math.PI * 2, Math.PI * .7, Math.PI * .3);
+      b.geometry = new THREE.SphereGeometry(.282, seg(24), seg(12), 0, Math.PI * 2, Math.PI * .7, Math.PI * .3);
       b.scale.set(gordo ? 1.06 : .99, 1.17, .9); b.material = mat(L.barba, { transparent: true, opacity: .82, roughness: 1 });
     }
     if (!L.barbaCorta) for (const s of [-1, 1]) {
@@ -269,7 +271,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   }
   if (L.kipa) {
     // kipá grande: cubre buena parte de la coronilla, con un borde finito
-    const k = pieza(new THREE.SphereGeometry(.235, 26, 12, 0, Math.PI * 2, 0, Math.PI * .4), mat(L.kipa), 0, .2, .07, cabeza);
+    const k = pieza(new THREE.SphereGeometry(.235, seg(26), seg(12), 0, Math.PI * 2, 0, Math.PI * .4), mat(L.kipa), 0, .2, .07, cabeza);
     k.rotation.x = .28; k.scale.set(1, .95, 1);
     // borde pegado a la base de la kipá (va dentro de la kipá, así gira con ella)
     const borde = aro(.235 * Math.sin(Math.PI * .4), .008, mat(new THREE.Color(L.kipa).multiplyScalar(.7)), 0, .235 * Math.cos(Math.PI * .4), 0, k); borde.rotation.x = Math.PI / 2;
@@ -277,7 +279,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   if (L.gorra) {
     // gorra con visera
     const g = mat(L.gorra);
-    const copa = pieza(new THREE.SphereGeometry(.325, 28, 14, 0, Math.PI * 2, 0, Math.PI * .5), g, 0, .075, .01, cabeza);
+    const copa = pieza(new THREE.SphereGeometry(.325, seg(28), seg(14), 0, Math.PI * 2, 0, Math.PI * .5), g, 0, .075, .01, cabeza);
     copa.scale.set(gordo ? 1.08 : 1.01, .95, .94);
     const visera = bola(.2, g, 0, .1, -.3, cabeza, 1.05, .07, 1);
     visera.rotation.x = -.12;
@@ -298,9 +300,9 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     const m = mat(L.capucha, { roughness: .9 });
     const hueco = .82;
     // arriba cerrada (tapa la frente) y a los costados/atrás con el hueco de la cara
-    const arriba = pieza(new THREE.SphereGeometry(.36, 30, 10, 0, Math.PI * 2, 0, Math.PI * .3), m, 0, .02, .02, cabeza);
+    const arriba = pieza(new THREE.SphereGeometry(.36, seg(30), seg(10), 0, Math.PI * 2, 0, Math.PI * .3), m, 0, .02, .02, cabeza);
     arriba.scale.set(gordo ? 1.1 : 1.02, 1.12, 1);
-    const h = pieza(new THREE.SphereGeometry(.36, 30, 16, Math.PI * 1.5 + hueco, Math.PI * 2 - hueco * 2, Math.PI * .29, Math.PI * .39), m, 0, .02, .02, cabeza);
+    const h = pieza(new THREE.SphereGeometry(.36, seg(30), seg(16), Math.PI * 1.5 + hueco, Math.PI * 2 - hueco * 2, Math.PI * .29, Math.PI * .39), m, 0, .02, .02, cabeza);
     h.scale.set(gordo ? 1.1 : 1.02, 1.12, 1);
     const borde = aro(.255, .045, m, 0, -.02, -.22, cabeza, Math.PI * 1.25);
     borde.rotation.set(0, 0, -Math.PI * .125); borde.scale.set(1.05, 1.3, 1);
@@ -349,7 +351,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   // Polvito al correr: se suelta en la escena (no en el personaje) para que quede atrás.
   const polvo = [];
   let ultimoPaso = 0;
-  const geoPolvo = new THREE.SphereGeometry(.07, 8, 6);
+  const geoPolvo = new THREE.SphereGeometry(.07, seg(8), seg(6));
   const soltarPolvo = (lado) => {
     const escena = grupo.parent;
     if (!escena || polvo.length > 10) return;
@@ -427,6 +429,11 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         cuerpo.position.y = Math.abs(Math.cos(fase)) * .018;
         torso.rotation.z = s * .035; torso.rotation.x = -.025;
         cabeza.rotation.z = -s * .025;
+      } else if (estado === 'apose') {
+        // Pose A quieta (brazos separados, piernas un poco abiertas): para fichas de personaje y pasar a 3D.
+        brazos[0].hombro.rotation.z = -.62; brazos[1].hombro.rotation.z = .62;
+        brazos.forEach(b => b.codo.rotation.x = 0);
+        piernas[0].cadera.rotation.z = -.07; piernas[1].cadera.rotation.z = .07;
       } else if (estado === 'muerto') {
         const t = Math.min(1, transcurrido / .85), curva = 1 - Math.pow(1 - t, 3);
         cuerpo.rotation.x = curva * 1.49; cuerpo.rotation.z = Math.sin(t * Math.PI) * .24;
