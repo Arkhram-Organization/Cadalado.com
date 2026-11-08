@@ -10,7 +10,7 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 
 | Qué | Carpeta | Dirección |
 |---|---|---|
-| Portal (inicio, personaje, entrar, club) | [`portal`](portal) | `cadalado.com` |
+| Portal (inicio, personaje, equipo, entrar, club) | [`portal`](portal) | `cadalado.com` |
 | Ajedrez | [`games/chessort`](games/chessort) | `cadalado.com/ajedrez` |
 | Truco | [`games/truco`](games/truco) | `cadalado.com/truco` |
 | Ángeles Peña (carrera de obstáculos 3D) | [`games/carrera`](games/carrera) | `cadalado.com/carrera` |
@@ -20,7 +20,7 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 | Cuentas, historial, amigos y chats | [`shared`](shared) | `cadalado.com/club` |
 
 ```
-portal/public/         el portal: inicio, /personaje, /entrar, /club (HTML, CSS y JS sin frameworks)
+portal/public/         el portal: inicio, /personaje, /equipo, /entrar, /club (HTML, CSS y JS sin frameworks)
   js/datos.js          catálogo: juegos, ideas y novedades (lo único que hay que tocar para sumar algo)
 games/chessort/        ajedrez: public/ (navegador), api.js + lib/ (servidor), test/
 games/truco/           truco:   public/ (navegador, 3D), api.js + lib/sala.js (servidor), test/

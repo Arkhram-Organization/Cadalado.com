@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-//  Catálogo de cadalado: juegos, ideas y novedades.
+//  Catálogo de cadalado: juegos, ideas, equipo y novedades.
 //  Para sumar algo, agregá un objeto a la lista que corresponda.
 // ─────────────────────────────────────────────────────────────
 
@@ -91,6 +91,12 @@ export const IDEAS = [
   { titulo: 'Preguntados criollo', texto: 'Trivia por categorías en tiempo real: el que contesta primero y bien, suma.', etiqueta: 'Idea' },
 ];
 
+// Solo datos confirmados y sin nombres: cada tarjeta dice qué hizo, no quién.
+export const EQUIPO = [
+  { rol: 'Sitio y juegos', juegos: ['ajedrez', 'carrera', 'casino', 'memes', 'royale'] },
+  { rol: 'Truco', juegos: ['truco'] },
+  { rol: 'Equipo', juegos: [] },
+];
 
 export const NOVEDADES = [
   { etiqueta: 'Nuevo', titulo: 'Último en pie', texto: 'Battle royale 3D con inventario y personajes animados con los personajes de cadalado.', juego: 'royale' },

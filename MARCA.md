@@ -56,4 +56,4 @@ Rioplatense, breve y con humor medido.
 - "¿Sale una?" · "Mandá el link. Se juega." · "La revancha está pendiente." · "Abrí la primera mesa."
 - Sin palabras de empresa ("plataforma", "solución", "usuarios").
 - Sin inventar: las novedades se escriben con datos confirmados.
-- Sin créditos: el sitio no muestra nombres de los creadores.
+- Sin nombres: la sección de equipo dice qué armó cada uno, no quién es.

@@ -1,5 +1,5 @@
-import { JUEGOS, NOVEDADES, IDEAS } from './datos.js';
-import { iniciarPagina, esc, revelar, hace } from './comun.js';
+import { JUEGOS, EQUIPO, NOVEDADES, IDEAS } from './datos.js';
+import { iniciarPagina, esc, revelar, hace, personas } from './comun.js';
 
 iniciarPagina();
 const $ = (s) => document.querySelector(s);
@@ -141,7 +141,7 @@ try {
   }
 } catch {}
 
-// ---------------------------------------------------------------- novedades e ideas
+// ---------------------------------------------------------------- novedades y equipo
 $('[data-novedades]').innerHTML = NOVEDADES.map((n, i) => {
   const j = n.juego && juego(n.juego);
   const href = n.enlace || j?.url;
@@ -151,6 +151,7 @@ $('[data-novedades]').innerHTML = NOVEDADES.map((n, i) => {
     <h3>${esc(n.titulo)}</h3><p>${esc(n.texto)}</p></${tag}>`;
 }).join('');
 
+$('[data-equipo]').innerHTML = personas(EQUIPO);
 $('[data-ideas]').innerHTML = IDEAS.map((idea, i) => `<div class="idea revela" style="transition-delay:${i * 0.06}s">
   <span class="chip" style="align-self:flex-start">${esc(idea.etiqueta)}</span><h3>${esc(idea.titulo)}</h3><p>${esc(idea.texto)}</p></div>`).join('');
 revelar();

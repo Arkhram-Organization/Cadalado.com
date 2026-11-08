@@ -52,6 +52,20 @@ export const hace = (ts) => {
   return `hace ${Math.round(s / 86400)} d`;
 };
 
+// Tarjetas del equipo (inicio y /equipo).
+export function personas(lista) {
+  const juego = (id) => JUEGOS.find((j) => j.id === id);
+  // sin nombres: cada tarjeta muestra qué armó esa persona del grupo
+  return lista
+    .map((p, i) => `<article class="persona revela" style="transition-delay:${i * 0.08}s">
+      <span class="avatar" style="--av:${juego(p.juegos[0])?.color || 'var(--lima)'}" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>
+      <span class="rol">Del grupo</span>
+      <h3>${esc(p.rol)}</h3>
+      <div class="juegos-de">${p.juegos.map((id) => `<span class="chip" style="box-shadow:inset 0 0 0 1px ${juego(id).color}">${esc(juego(id).nombre)}</span>`).join('')}</div>
+    </article>`)
+    .join('');
+}
+
 // ---------- cuenta ----------
 let yoPromesa = null;
 export function yo() {
@@ -82,7 +96,7 @@ function cabecera() {
     <div class="contenedor">
       <a class="logo" href="/" data-logo aria-label="cadalado, inicio"><img src="/marca.svg" alt=""><span>cadalado</span></a>
       <nav class="nav" id="nav" aria-label="Principal">
-        ${link('/#juegos', 'Juegos')}${link('/personaje', 'Tu personaje')}${link('/club', 'Club')}
+        ${link('/#juegos', 'Juegos')}${link('/personaje', 'Tu personaje')}${link('/equipo', 'Equipo')}${link('/club', 'Club')}
       </nav>
       <div class="cabecera-der">
         <span data-cuenta></span>
@@ -109,7 +123,7 @@ function pie() {
       </div>
       <div>
         <h4>Club</h4>
-        <ul><li><a href="/club">Tu cuenta</a></li><li><a href="/personaje">Tu personaje</a></li><li><a href="/club#amigos">Amigos</a></li><li><a href="/club#chats">Chats</a></li></ul>
+        <ul><li><a href="/club">Tu cuenta</a></li><li><a href="/personaje">Tu personaje</a></li><li><a href="/club#amigos">Amigos</a></li><li><a href="/club#chats">Chats</a></li><li><a href="/equipo">Equipo</a></li></ul>
       </div>
       <div>
         <h4>Créditos</h4>
