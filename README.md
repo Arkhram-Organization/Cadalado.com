@@ -81,8 +81,8 @@ git pull origin chessort
 ```
 
 Cuando algo queda estable, se abre un Pull Request de `chessort` hacia `main` (o se hace merge directo si
-`main` no tiene nada distinto). Las ramas viejas (`truco`, `claude/...`) se borraron; su contenido ya estaba
-integrado y quedó guardado en los tags `archivo/truco` y `archivo/claude-trusting-fermi`.
+`main` no tiene nada distinto). Las ramas viejas de la época de Cloudflare (`truco`, `claude/...`) quedaron guardadas en la rama
+`archivo` (no se trabaja ahí); lo del truco ya estaba integrado en `games/truco`.
 
 ### Sumar un juego nuevo
 
