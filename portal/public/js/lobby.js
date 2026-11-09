@@ -25,19 +25,36 @@ export async function montarLobby(raiz) {
   // ---------------- entradas de los juegos
   let modo = Math.max(0, JUEGOS.findIndex((j) => j.id === (localStorage.getItem('cadalado.modo') || 'royale')));
   const entradas = $('[data-entradas]', raiz);
-  entradas.innerHTML = JUEGOS.map((j, i) => `<button class="lb-entrada" data-i="${i}" style="--c:${j.color}">
-      <span class="lb-num">${String(i + 1).padStart(2, '0')}</span>
+  // el casino va en el medio y grande (con la mesa de Dobro); cada juego con su imagen y su botón Jugar
+  const orden = JUEGOS.map((j, i) => i).filter((i) => JUEGOS[i].id !== 'casino');
+  const iCasino = JUEGOS.findIndex((j) => j.id === 'casino');
+  if (iCasino >= 0) orden.splice(Math.floor(orden.length / 2), 0, iCasino);
+  entradas.innerHTML = orden.map((i) => { const j = JUEGOS[i]; return `<div class="lb-entrada ${j.id === 'casino' ? 'grande' : ''}" data-i="${i}" style="--c:${j.color}" tabindex="0" role="button" aria-label="Ver ${esc(j.nombre)}">
+      <span class="lb-img"><img src="${j.captura}" alt="" loading="lazy"><span class="lb-sala" data-sala="${j.id}"></span></span>
       <span class="lb-txt"><b>${esc(j.nombre)}</b><small>${esc(j.linea)}</small></span>
-      <span class="lb-sala" data-sala="${j.id}"></span></button>`).join('');
+      <button class="lb-jugar-chico" data-jugar-juego="${i}">Jugar</button></div>`; }).join('');
   let grupoApi = null;
   const elegir = (i, desdeGrupo = false) => {
     modo = i; localStorage.setItem('cadalado.modo', JUEGOS[i].id);
     if (!desdeGrupo) grupoApi?.elegirJuego(JUEGOS[i].id);
-    entradas.querySelectorAll('.lb-entrada').forEach((b, k) => b.classList.toggle('on', k === i));
+    entradas.querySelectorAll('.lb-entrada').forEach((b) => b.classList.toggle('on', +b.dataset.i === i));
     $('[data-jugar]', raiz).href = JUEGOS[i].url;
     $('[data-jugar-nombre]', raiz).textContent = JUEGOS[i].nombre;
+    // vista previa: el póster del juego de fondo, detrás de los personajes
+    const fondo = $('[data-fondo]', raiz);
+    if (fondo && JUEGOS[i].poster) {
+      const capa = document.createElement('div');
+      capa.className = 'lb-fondo-capa'; capa.style.backgroundImage = `url(${JUEGOS[i].poster})`;
+      fondo.append(capa); requestAnimationFrame(() => capa.classList.add('ver'));
+      while (fondo.children.length > 2) fondo.firstChild.remove();
+    }
   };
-  entradas.onclick = (e) => { const b = e.target.closest('[data-i]'); if (b) elegir(+b.dataset.i); };
+  entradas.onclick = (e) => {
+    const jb = e.target.closest('[data-jugar-juego]');
+    if (jb) { e.stopPropagation(); const i = +jb.dataset.jugarJuego; elegir(i); return grupoApi?.jugar(JUEGOS[i].id, JUEGOS[i].url); }
+    const b = e.target.closest('[data-i]'); if (b) elegir(+b.dataset.i);
+  };
+  entradas.onkeydown = (e) => { const b = e.target.closest('[data-i]'); if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); elegir(+b.dataset.i); } };
   elegir(modo);
 
   // ---------------- salas abiertas y cinta con el chat del club
@@ -70,13 +87,13 @@ export async function montarLobby(raiz) {
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const escena = new THREE.Scene();
-  escena.fog = new THREE.Fog('#141413', 9, 22);
+  
   escena.add(new THREE.HemisphereLight('#e9f2d6', '#20241c', 1.6));
   const foco = new THREE.SpotLight('#fff6e0', 60, 20, .55, .6, 1.4); foco.position.set(0, 7, -3.5); foco.target.position.set(0, 0, .6); foco.castShadow = true; foco.shadow.mapSize.set(1024, 1024); escena.add(foco, foco.target);
-  const lima = new THREE.PointLight('#c5f04a', 2.2, 3.5); lima.position.set(0, .15, -1.3); escena.add(lima);
+  const lima = new THREE.PointLight('#c5f04a', .7, 2.5); lima.position.set(0, .15, -1.3); escena.add(lima);
   const contra = new THREE.DirectionalLight('#9ec3ff', .8); contra.position.set(3, 4, 6); escena.add(contra);
   // piso: oscuro, con anillos finos y un círculo lima para vos
-  const piso = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: '#1b1f19', roughness: .9 }));
+  const piso = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: '#1b1f19', roughness: .9, transparent: true, opacity: .55 }));
   piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; escena.add(piso);
   for (const r of [1.6, 3.2, 4.8]) {
     const a = new THREE.Mesh(new THREE.RingGeometry(r, r + .012, 96), new THREE.MeshBasicMaterial({ color: '#c5f04a', transparent: true, opacity: .16 }));
