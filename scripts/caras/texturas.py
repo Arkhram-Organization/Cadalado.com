@@ -8,12 +8,12 @@ ALTO=1.85  # metros
 C={
  'mati':   dict(f='28.png',box=None,menton=200,cinto=None, pelo=(0,.78,'pelo'), torso=False),
  'glinsky':dict(f='24.webp',box=(690,280,1110,860),menton=195,cinto=372,pelo=(0,.8,'pelo'), torso=True),
- 'julo':   dict(f='30.png',box=None,menton=170,cinto=None,pelo=None, torso=False),
+ 'julo':   dict(f='42.png',box=(60,10,310,570),menton=212,cinto=362,pelo=None, torso=True, ajustarTorso=.98, espaldaLisa=True, lados={'izq':('38.png',None),'der':('40.png',None)}),
  'dobro':  dict(croma=True,f='31.png',box=None,menton=201,cinto=392,pelo=(0,.8,'pelo'), torso=True),
  'faur':   dict(f='32.png',box=None,menton=238,cinto=400,pelo=(.32,.82,'fleco'), torso=True),
 }
 ESPALDAS={'faur':('33.png',False),'julo':('34.png',False),'glinsky':('35.png',False),'dobro':('36.png',True),'mati':('37.png',False,(120,110,300,470))}
-def espalda(k, ancho, alto, torsoRel=None, tamTorso=None):
+def espalda(k, ancho, alto, torsoRel=None, tamTorso=None, ajuste=True):
     # recorta la nuca (y la espalda) de la captura de atrás, del mismo tamaño que el frente
     f,croma,*caja=ESPALDAS[k]
     pil=Image.open(IMG+f).convert('RGB')
@@ -34,9 +34,46 @@ def espalda(k, ancho, alto, torsoRel=None, tamTorso=None):
     if torsoRel:
         y1=min(bot-5,cuello+int((cuello-top)*torsoRel))
         rr=corrida(m[cuello+3],hx); cx=(rr[0]+rr[1])//2
-        tor,_,_=parte(im,mt,cuello+2,y1,cx,10,1,limitar=True)
+        tor,_,_=parte(im,mt,cuello+2,y1,cx,10,1,limitar=ajuste)
         tor=np.asarray(Image.fromarray(tor.astype('uint8')).resize(tamTorso,Image.LANCZOS)).astype(float)[:, ::-1]
     return cab,tor
+def lado(f, box, cara_izq, alto_cab_m, torsoRel, nfc=16, nft=10):
+    # perfil de costado: profundidad (adelante/atrás) de cada fila de la cabeza y del torso, y la textura del costado
+    pil=Image.open(IMG+f).convert('RGB')
+    if box: pil=pil.crop(box)
+    im=np.asarray(pil).astype(int); m=mascara(im)
+    rows=np.where(m.sum(1)>3)[0]; top,bot=int(rows[0]),int(rows[-1]); H=bot-top
+    best=None
+    for y in range(top+int(H*.15),top+int(H*.42)):
+        if not m[y].any(): continue
+        r=corrida(m[y],int(np.where(m[y])[0].mean()))
+        if r and (best is None or r[1]-r[0]<best[1]): best=(y,r[1]-r[0])
+    cuello=best[0]; rr=corrida(m[cuello],int(np.where(m[cuello])[0].mean())); nc=(rr[0]+rr[1]+1)/2
+    mpp=alto_cab_m/(cuello-top)
+    mh=envolvente(m,top,cuello)
+    def z(a,b):
+        return ((a-nc)*mpp,(b+1-nc)*mpp) if cara_izq else (-(b+1-nc)*mpp,-(a-nc)*mpp)
+    cab=[]
+    for i in range(nfc+1):
+        y=top+int(round(i/nfc*(cuello-top))); r=corrida(mh[y],int(nc)) or (int(nc)-1,int(nc)+1); cab.append(z(*r))
+    # textura del costado de la cabeza (la cara queda a la izquierda)
+    xs=np.where(mh[top:cuello+1].any(0))[0]; a0,b0=int(xs.min()),int(xs.max())
+    rec=im[top:cuello+1,a0:b0+1]; mm=m[top:cuello+1,a0:b0+1]&mh[top:cuello+1,a0:b0+1]
+    rec=rellenar(rec,mm)
+    if not cara_izq: rec=rec[:, ::-1]
+    zmin,zmax=z(a0,b0)
+    tor=[]
+    y1=min(bot-5,cuello+int((cuello-top)*torsoRel))
+    anchos=[]
+    for i in range(nft+1):
+        y=cuello+2+int(round(i/nft*(y1-cuello-2))); r=corrida(m[y],int(nc)) or (int(nc)-1,int(nc)+1); anchos.append(r)
+    # el brazo que cuelga al costado ensancha el perfil: se limita a la mediana del pecho
+    w=np.median([b-a for a,b in anchos[2:7]])*1.08
+    for a,b in anchos:
+        c=(a+b)/2
+        if b-a>w: a,b=c-w/2,c+w/2
+        tor.append(z(a,b))
+    return dict(cab=cab,tor=tor,tex=rec,ext=(round(zmin,4),round(zmax,4)))
 def cargar(c):
     p=Image.open(IMG+c['f']).convert('RGB')
     if c['box']: p=p.crop(c['box'])
@@ -58,6 +95,9 @@ def corrida(fila, cx):
     q=np.where(lab==l)[0]; return int(q.min()),int(q.max())
 def rellenar(arr, m):
     # cada pixel fuera de la máscara toma el color del pixel de la máscara más cercano
+    # (antes se achica la máscara: los bordes mezclan figura y fondo)
+    e=ndimage.binary_erosion(m,iterations=2)
+    if e.sum()>m.sum()*.6: m=e
     idx=ndimage.distance_transform_edt(~m,return_distances=False,return_indices=True)
     return arr[idx[0],idx[1]]
 def envolvente(m,y0,y1):
@@ -77,7 +117,11 @@ def parte(im,m,y0,y1,cx,filas,escala,minimo=3,mtex=None,limitar=False):
     if limitar:
         # abajo del pecho, que las manos o los puños pegados no ensanchen el torso
         n=len(xl); mid=slice(int(n*.35),int(n*.6)); hw=np.median((xr-xl)[mid])/2*1.06
-        for i in range(int(n*.5),n):
+        desde=int(n*.5)
+        if limitar is not True:
+            # brazos pegados al cuerpo: se recorta al ancho del cinturón desde abajo de las mangas
+            hw=min(cx-xl[-3:].mean(), xr[-3:].mean()-cx)*limitar; desde=int(n*.3)
+        for i in range(desde,n):
             xl[i]=max(xl[i],cx-hw); xr[i]=min(xr[i],cx+hw)
     # suavizar un poco el contorno
     xl=ndimage.uniform_filter1d(xl.astype(float),3); xr=ndimage.uniform_filter1d(xr.astype(float),3)
@@ -146,16 +190,43 @@ for k,c in C.items():
             t=j/(Wc-1)  # 0 = borde derecho de la cara, 1 = borde izquierdo (espalda espejada)
             k1=max(0,1-t/.12)*.6; k2=max(0,(t-.88)/.12)*.6
             esp[i,j]=esp[i,j]*(1-k1-k2)+Rc*k1+Lc*k2
-    atlas(cab,esp).save(OUT+f'{k}-cabeza.webp',quality=90)
-    d=dict(cabeza=dict(perfil=perf,**dim),piel=piel,pelo=pelo,
+    lados=None
+    if c.get('lados'):
+        altoCab=(c['menton']-top)*esc; trel=((c['cinto']-c['menton'])/(c['menton']-top)) if c.get('cinto') else .9
+        L=lado(*c['lados']['izq'],True,altoCab,trel); R=lado(*c['lados']['der'],False,altoCab,trel)
+        for i in range(len(perf)):
+            zf=(L['cab'][i][0]+R['cab'][i][0])/2; zb=(L['cab'][i][1]+R['cab'][i][1])/2
+            perf[i]+= [round(zf,4), round(zb,4)]
+        lados=dict(izq=L['ext'],der=R['ext'])
+        Hc,Wc2=cab.shape[:2]
+        pi=np.asarray(Image.fromarray(L['tex'].astype('uint8')).resize((Wc2,Hc),Image.LANCZOS)).astype(float)
+        pd=np.asarray(Image.fromarray(R['tex'].astype('uint8')).resize((Wc2,Hc),Image.LANCZOS)).astype(float)
+        hh=int(round(cab.shape[0]*256/cab.shape[1]))
+        A=Image.new('RGB',(1024,hh))
+        for n,arr in enumerate([cab,esp,pi,pd]): A.paste(Image.fromarray(arr.astype('uint8')).resize((256,hh),Image.LANCZOS),(256*n,0))
+        A.save(OUT+f'{k}-cabeza.webp',quality=90)
+        c['_lados']=(L,R)
+    else:
+        atlas(cab,esp).save(OUT+f'{k}-cabeza.webp',quality=90)
+    d=dict(cabeza=dict(perfil=perf,**dim,**({'lados':lados} if lados else {})),piel=piel,pelo=pelo,
            cabezaAlto=round((c['menton']-top)*esc,4))
     if c['torso'] and c['cinto']:
-        tor,perft,dimt=parte(im,mt,c['menton']+3,c['cinto'],cx,10,esc,limitar=True)
+        tor,perft,dimt=parte(im,mt,c['menton']+3,c['cinto'],cx,10,esc,limitar=c.get('ajustarTorso',True))
         # espalda: color del costado del torso (la prenda de afuera)
-        lado=mediana(im,m,c['menton']+int((c['cinto']-c['menton'])*.55),c['menton']+int((c['cinto']-c['menton'])*.7),int(cx-(dimt['x1']-dimt['x0'])/esc*.38),int(cx-(dimt['x1']-dimt['x0'])/esc*.3))
-        _,esp=espalda(k,cab.shape[1],cab.shape[0],torsoRel=(c['cinto']-c['menton'])/(c['menton']-top),tamTorso=(tor.shape[1],tor.shape[0]))
+        colorLado=mediana(im,m,c['menton']+int((c['cinto']-c['menton'])*.55),c['menton']+int((c['cinto']-c['menton'])*.7),int(cx-(dimt['x1']-dimt['x0'])/esc*.38),int(cx-(dimt['x1']-dimt['x0'])/esc*.3))
+        _,esp=espalda(k,cab.shape[1],cab.shape[0],torsoRel=(c['cinto']-c['menton'])/(c['menton']-top),tamTorso=(tor.shape[1],tor.shape[0]),ajuste=c.get('ajustarTorso',True))
+        if c.get('espaldaLisa'):
+            # remera lisa: atrás va el color de la remera y el cinturón abajo (las capturas de espalda están caminando)
+            Ht=tor.shape[0]; ccx=tor.shape[1]//2
+            ropa=np.median(tor[int(Ht*.4):int(Ht*.7), ccx-5:ccx+5].reshape(-1,3),0)
+            cint=np.median(tor[int(Ht*.94):, ccx-25:ccx-12].reshape(-1,3),0)
+            esp=np.zeros_like(tor,dtype=float); esp[:]=ropa; esp[int(Ht*.9):]=cint
         atlas(tor,esp).save(OUT+f'{k}-torso.webp',quality=90)
-        d['torso']=dict(perfil=perft,**dimt); d['prenda']=lado
+        if c.get('_lados'):
+            L,R=c['_lados']
+            for i in range(len(perft)):
+                perft[i]+= [round((L['tor'][i][0]+R['tor'][i][0])/2,4), round((L['tor'][i][1]+R['tor'][i][1])/2,4)]
+        d['torso']=dict(perfil=perft,**dimt); d['prenda']=colorLado
     datos[k]=d
     print(k,'piel',piel,'pelo',pelo,'cabeza',dim, 'torso' in d and d['prenda'])
 json.dump(datos,open('perfiles.json','w'))

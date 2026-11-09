@@ -549,18 +549,33 @@ function texturaCompartida(THREE, url) {
 }
 
 // perfil: filas [y hacia abajo, x izquierda, x derecha] (m). Devuelve una malla con el tope en y=0.
-function silueta(THREE, perfil, { x0, x1, alto }, { prof = () => 1, p = .85, segs = 12, nariz = 0 } = {}) {
+function silueta(THREE, perfil, { x0, x1, alto, lados = null }, { prof = () => 1, p = .85, segs = 12, nariz = 0 } = {}) {
   const pos = [], uv = [];
-  const U = (x, frente) => { const k = Math.min(1, Math.max(0, (x - x0) / (x1 - x0))); return frente ? k * .5 : .5 + (1 - k) * .5; };
+  // Con perfiles de costado (filas [y, xl, xr, zf, zb]) la profundidad sale de las capturas de perfil, y la
+  // textura tiene cuatro paneles: frente | espalda | costado izquierdo | costado derecho.
+  const conProf = perfil[0].length >= 5;
+  const paneles = lados ? 4 : 2, ancho = 1 / paneles;
+  if (lados) segs = 16;
+  const region = (t) => { const c = Math.cos(t); if (!lados) return c > 0 ? 'frente' : 'espalda'; if (c > .7071) return 'frente'; if (c < -.7071) return 'espalda'; return Math.sin(t) < 0 ? 'izq' : 'der'; };
+  const U = (v, reg) => {
+    const x = v[0], z = v[2];
+    if (reg === 'frente' || reg === 'espalda') {
+      const k = Math.min(1, Math.max(0, (x - x0) / (x1 - x0)));
+      return reg === 'frente' ? k * ancho : ancho + (1 - k) * ancho;
+    }
+    const [zmin, zmax] = lados[reg];
+    const k = Math.min(1, Math.max(0, (z - zmin) / (zmax - zmin)));
+    return (reg === 'izq' ? 2 : 3) * ancho + k * ancho;
+  };
   const V = (y) => 1 - Math.min(1, Math.max(0, y / alto));
-  const anillos = perfil.map(([y, xl, xr]) => {
+  const anillos = perfil.map(([y, xl, xr, zf, zb]) => {
     const xm = (xl + xr) / 2, hw = Math.max(.006, (xr - xl) / 2), hd = hw * prof(y / alto);
     const pts = [];
     for (let j = 0; j <= segs; j++) {
       const t = (j / segs) * Math.PI * 2, sn = Math.sin(t), cs = Math.cos(t);
-      let z = -hd * Math.sign(cs) * Math.abs(cs) ** p;
+      let z = conProf ? (cs > 0 ? zf : zb) * Math.abs(cs) ** p : -hd * Math.sign(cs) * Math.abs(cs) ** p;
       // nariz: la columna del medio se adelanta a la altura de la nariz
-      if (nariz && cs > .8) z -= nariz * hw * Math.exp(-((((y / alto) - .62) / .1) ** 2)) * (cs - .8) * 5;
+      if (nariz && !conProf && cs > .8) z -= nariz * hw * Math.exp(-((((y / alto) - .62) / .1) ** 2)) * (cs - .8) * 5;
       pts.push([xm + hw * Math.sign(sn) * Math.abs(sn) ** p, -y, z]);
     }
     return pts;
@@ -574,15 +589,15 @@ function silueta(THREE, perfil, { x0, x1, alto }, { prof = () => 1, p = .85, seg
     const l = Math.hypot(...n) || 1; return n.map((x) => x / l);
   }));
   const nor = [];
-  const tri = (a, b, c, frente, na = null) => {
-    for (const [v, n] of [a, b, c]) { pos.push(v[0], v[1], v[2]); uv.push(U(v[0], frente), V(-v[1])); nor.push(...(na || n)); }
+  const tri = (a, b, c, reg) => {
+    for (const [v, n] of [a, b, c]) { pos.push(v[0], v[1], v[2]); uv.push(U(v, reg), V(-v[1])); nor.push(...n); }
   };
   for (let i = 0; i < anillos.length - 1; i++) {
     for (let j = 0; j < segs; j++) {
-      const frente = Math.cos(((j + .5) / segs) * Math.PI * 2) > 0;
+      const reg = region(((j + .5) / segs) * Math.PI * 2);
       const P = (ii, jj) => [anillos[ii][jj], N[ii][jj]];
       const a = P(i, j), b = P(i, j + 1), c = P(i + 1, j + 1), d = P(i + 1, j);
-      tri(a, b, d, frente); tri(b, c, d, frente);
+      tri(a, b, d, reg); tri(b, c, d, reg);
     }
   }
   // tapas arriba y abajo
@@ -591,9 +606,9 @@ function silueta(THREE, perfil, { x0, x1, alto }, { prof = () => 1, p = .85, seg
     const centro = [cx, r[0][1], cz];
     const n = [0, abajo ? -1 : 1, 0];
     for (let j = 0; j < segs; j++) {
-      const frente = Math.cos(((j + .5) / segs) * Math.PI * 2) > 0;
+      const reg = region(((j + .5) / segs) * Math.PI * 2);
       const c0 = [centro, n], c1 = [r[j], n], c2 = [r[j + 1], n];
-      if (abajo) tri(c0, c2, c1, frente); else tri(c0, c1, c2, frente);
+      if (abajo) tri(c0, c2, c1, reg); else tri(c0, c1, c2, reg);
     }
   }
   const g = new THREE.BufferGeometry();
@@ -716,15 +731,16 @@ function crearPersonaFoto(THREE, L, F, opciones = {}) {
     bola(.035, mat('#ff9b73', { emissive: '#ff704e', emissiveIntensity: .8 }), cabeza, 0, altoCabeza + .14, .02);
   }
   if (F.kipa) {
-    const k = pieza(new THREE.SphereGeometry(.16, 10, 4, 0, Math.PI * 2, 0, Math.PI * .32), mat(F.kipa), 0, altoCabeza - .12, .11, cabeza);
-    k.rotation.x = .55;
+    const r = F.kipaGrande ? .23 : .16; // kipá grande: tapa buena parte de la coronilla
+    const k = pieza(new THREE.SphereGeometry(r, 14, 4, 0, Math.PI * 2, 0, Math.PI * .3), mat(F.kipa, { roughness: .6 }), 0, altoCabeza - r * .93, .035, cabeza);
+    k.rotation.x = .3; k.scale.set(1.04, 1, 1.12);
   }
 
   // --- brazos (hombro, codo y mano)
   const hombroY = menton - alturaCadera - (F.torso ? .13 : .085);
   const largoBrazo = (menton - (F.torso ? .13 : .085)) - ALTO * .235;
   const brazo = largoBrazo * .43, antebrazo = largoBrazo * .37;
-  const rBrazo = Math.max(.06, Math.min(.075, anchoHombro * .24));
+  const rBrazo = F.brazo || Math.max(.06, Math.min(.075, anchoHombro * .24));
   const manga = F.mangas === 'larga';
   const brazos = [-1, 1].map((s) => {
     const hombro = new THREE.Group(); hombro.position.set(s * (anchoHombro - rBrazo * (F.torso ? 1.25 : .25)), hombroY, .01); torso.add(hombro);
