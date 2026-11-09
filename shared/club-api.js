@@ -45,7 +45,18 @@ export async function handle(request) {
       return json({ historial: hist, resumen: c.resumen(hist) });
     }
     if (ruta === '/perfil' && metodo === 'GET') {
-      return json(await c.perfil(url.searchParams.get('usuario')));
+      return json(await c.perfil(url.searchParams.get('usuario'), await c.usuarioActual(request)));
+    }
+    if (ruta === '/perfil' && metodo === 'POST') {
+      return json({ usuario: await c.guardarPerfil(await necesitaCuenta(request), body) });
+    }
+    if (ruta === '/perfil/imagen' && metodo === 'POST') {
+      return json({ usuario: await c.guardarImagen(await necesitaCuenta(request), body.tipo, body.dato || null) });
+    }
+    if (ruta === '/perfil/imagen' && metodo === 'GET') {
+      const img = await c.leerImagen(url.searchParams.get('usuario'), url.searchParams.get('tipo'));
+      if (!img) return new Response('No encontrada', { status: 404 });
+      return new Response(img.bytes, { headers: { 'content-type': img.tipo, 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
     }
     if (ruta === '/amigos' && metodo === 'GET') {
       return json(await c.amigos(await necesitaCuenta(request)));

@@ -55,7 +55,7 @@ export function cookieSesion(request, token) {
 }
 
 // Lo que se puede mostrar de un usuario (sin la contraseña).
-export const publico = (u) => u && { id: u.id, usuario: u.usuario, nombre: u.nombre, creado: u.creado, look: u.look || null };
+export const publico = (u) => u && { id: u.id, usuario: u.usuario, nombre: u.nombre, creado: u.creado, look: u.look || null, perfil: limpiarPerfil(u.perfil) };
 
 async function usuarioPorId(id) {
   return id ? parse(await getStore().get(`u:${id}`)) : null;
@@ -131,6 +131,72 @@ export async function cambiarNombre(u, nombre) {
   return publico(u);
 }
 
+// ---------- perfil ----------
+// Todo lo personalizable del perfil. La foto y la portada se guardan aparte (pueden pesar) y acá queda
+// solo la versión (para que el navegador no muestre una vieja).
+const COLOR_OK = /^#[0-9a-fA-F]{6}$/;
+const FONDOS = ['lima', 'noche', 'atardecer', 'cancha', 'casino', 'oceano', 'fuego', 'violeta'];
+const JUEGOS_OK = ['royale', 'carrera', 'casino', 'haxball', 'memes', 'truco', 'ajedrez'];
+const IMG_OK = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
+const texto = (t, max) => String(t ?? '').replace(/[\u0000-\u0009\u000b-\u001f\u007f\u200b-\u200f\u202a-\u202e]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
+export function limpiarPerfil(p) {
+  const x = p && typeof p === 'object' ? p : {};
+  return {
+    bio: texto(x.bio, 280),
+    estado: texto(x.estado, 60).replace(/\n/g, ' '),
+    lugar: texto(x.lugar, 40).replace(/\n/g, ' '),
+    color: COLOR_OK.test(x.color) ? x.color.toLowerCase() : '#c5f04a',
+    fondo: FONDOS.includes(x.fondo) ? x.fondo : 'lima',
+    favorito: JUEGOS_OK.includes(x.favorito) ? x.favorito : '',
+    frase: texto(x.frase, 80).replace(/\n/g, ' '),
+    foto: Number(x.foto) || 0, // versión de la foto (0 = sin foto)
+    portada: Number(x.portada) || 0,
+    personaje: x.personaje !== false, // mostrar tu personaje 3D en el perfil
+  };
+}
+
+export async function guardarPerfil(u, datos) {
+  const actual = limpiarPerfil(u.perfil);
+  const nuevo = limpiarPerfil({ ...actual, ...datos, foto: actual.foto, portada: actual.portada });
+  u.perfil = nuevo;
+  if (datos.nombre !== undefined) {
+    const n = limpiarNombre(datos.nombre);
+    if (!n) throw new ErrorCuenta('Poné un nombre.');
+    u.nombre = n;
+  }
+  await getStore().set(`u:${u.id}`, JSON.stringify(u));
+  return publico(u);
+}
+
+// tipo: 'foto' | 'portada'; dato: data URL de imagen o null para sacarla
+export async function guardarImagen(u, tipo, dato) {
+  if (!['foto', 'portada'].includes(tipo)) throw new ErrorCuenta('Tipo inválido.');
+  const store = getStore();
+  const p = limpiarPerfil(u.perfil);
+  if (dato) {
+    const max = tipo === 'foto' ? 450_000 : 900_000;
+    if (typeof dato !== 'string' || dato.length > max) throw new ErrorCuenta('La imagen es muy pesada.');
+    if (!IMG_OK.test(dato)) throw new ErrorCuenta('Solo se pueden subir imágenes JPG, PNG o WebP.');
+    await store.set(`${tipo}:${u.id}`, dato);
+    p[tipo] = Date.now();
+  } else {
+    await store.del(`${tipo}:${u.id}`);
+    p[tipo] = 0;
+  }
+  u.perfil = p;
+  await store.set(`u:${u.id}`, JSON.stringify(u));
+  return publico(u);
+}
+
+export async function leerImagen(usuario, tipo) {
+  if (!['foto', 'portada'].includes(tipo)) return null;
+  const u = await usuarioPorNombre(usuario);
+  if (!u) return null;
+  const d = await getStore().get(`${tipo}:${u.id}`);
+  const m = d && IMG_OK.exec(d);
+  return m ? { tipo: 'image/' + m[1], bytes: Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0)) } : null;
+}
+
 // ---------- personaje ----------
 // El personaje que cada uno arma en /personaje (se guarda limpio: solo opciones permitidas).
 export async function guardarLook(u, look) {
@@ -163,12 +229,15 @@ export function resumen(hist) {
   return r;
 }
 
-export async function perfil(usuario) {
+export async function perfil(usuario, yo = null) {
   const u = await usuarioPorNombre(usuario);
   if (!u) throw new ErrorCuenta('No existe ese usuario.', 404);
   const hist = await historial(u.id, MAX_HIST);
   const visto = Number(await getStore().get(`visto:${u.id}`)) || 0;
-  return { usuario: publico(u), resumen: resumen(hist), ultimas: hist.slice(0, 10), enLinea: Date.now() - visto < ONLINE_MS };
+  const rel = await getStore().hgetall(`amigos:${u.id}`);
+  const amigos = Object.values(rel).filter((e) => e === 'amigo').length;
+  const relacion = yo && yo.id !== u.id ? (rel[yo.id] === 'amigo' ? 'amigo' : rel[yo.id] === 'recibida' ? 'enviada' : rel[yo.id] === 'enviada' ? 'recibida' : '') : yo?.id === u.id ? 'yo' : '';
+  return { usuario: publico(u), resumen: resumen(hist), ultimas: hist.slice(0, 10), enLinea: Date.now() - visto < ONLINE_MS, amigos, relacion };
 }
 
 // ---------- amigos ----------

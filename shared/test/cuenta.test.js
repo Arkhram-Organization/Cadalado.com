@@ -105,3 +105,24 @@ test('personaje: se limpia lo que llega y se guarda en la cuenta', async () => {
   for (const v of VESTIMENTAS) assert.ok(limpiarLook(aplicarVestimenta(l, v.id)), v.id);
   assert.equal(aplicarVestimenta(l, 'fotografo').camara, true);
 });
+
+test('perfil: datos personalizables, foto y portada, y vista pública', async () => {
+  const api = cliente('12.0.0.' + Math.floor(Math.random() * 200));
+  const usuario = 'pf' + rnd();
+  await api('POST', '/registro', { usuario, nombre: 'Pía', clave: 'secreta1' });
+  let r = await api('POST', '/perfil', { bio: 'Hola\n\n\n\nsoy Pía', estado: 'jugando haxball', color: '#FF0000', fondo: 'casino', favorito: 'haxball', foto: 999, nombre: 'Pía M' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.usuario.perfil.bio, 'Hola\n\nsoy Pía');
+  assert.equal(r.data.usuario.perfil.color, '#ff0000');
+  assert.equal(r.data.usuario.perfil.foto, 0, 'la versión de la foto no se toca a mano');
+  assert.equal(r.data.usuario.nombre, 'Pía M');
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  r = await api('POST', '/perfil/imagen', { tipo: 'foto', dato: PNG });
+  assert.ok(r.data.usuario.perfil.foto > 0);
+  assert.equal((await api('POST', '/perfil/imagen', { tipo: 'foto', dato: 'data:image/svg+xml;base64,PHN2Zz4=' })).status, 400);
+  const res = await handle(new Request(`http://localhost/api/club/perfil/imagen?usuario=${usuario}&tipo=foto`));
+  assert.equal(res.headers.get('content-type'), 'image/png');
+  r = await cliente('12.9.9.9')('GET', '/perfil?usuario=' + usuario);
+  assert.equal(r.data.usuario.perfil.estado, 'jugando haxball');
+  assert.equal(r.data.relacion, '');
+});
