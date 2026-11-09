@@ -12,6 +12,31 @@ C={
  'dobro':  dict(croma=True,f='31.png',box=None,menton=201,cinto=392,pelo=(0,.8,'pelo'), torso=True),
  'faur':   dict(f='32.png',box=None,menton=238,cinto=400,pelo=(.32,.82,'fleco'), torso=True),
 }
+ESPALDAS={'faur':('33.png',False),'julo':('34.png',False),'glinsky':('35.png',False),'dobro':('36.png',True),'mati':('37.png',False,(120,110,300,470))}
+def espalda(k, ancho, alto, torsoRel=None, tamTorso=None):
+    # recorta la nuca (y la espalda) de la captura de atrás, del mismo tamaño que el frente
+    f,croma,*caja=ESPALDAS[k]
+    pil=Image.open(IMG+f).convert('RGB')
+    if caja: pil=pil.crop(caja[0])
+    im=np.asarray(pil).astype(int); m=mascara(im); mt=mascara(im,croma) if croma else m
+    rows=np.where(m.sum(1)>3)[0]; top,bot=int(rows[0]),int(rows[-1]); H=bot-top
+    best=None
+    for y in range(top+int(H*.12),top+int(H*.42)):
+        r=corrida(m[y],int(np.where(m[y])[0].mean())) if m[y].any() else None
+        if r and (best is None or r[1]-r[0]<best[1]): best=(y,r[1]-r[0])
+    cuello=best[0]
+    mids=[sum(corrida(m[y],int(np.where(m[y])[0].mean())))/2 for y in range(top+int((cuello-top)*.3),cuello) if m[y].any()]
+    hx=int(np.median(mids))
+    mh=envolvente(m,top,cuello)
+    cab,_,_=parte(im,mh,top,cuello,hx,16,1,mtex=m)
+    cab=np.asarray(Image.fromarray(cab.astype('uint8')).resize((ancho,alto),Image.LANCZOS)).astype(float)[:, ::-1]
+    tor=None
+    if torsoRel:
+        y1=min(bot-5,cuello+int((cuello-top)*torsoRel))
+        rr=corrida(m[cuello+3],hx); cx=(rr[0]+rr[1])//2
+        tor,_,_=parte(im,mt,cuello+2,y1,cx,10,1,limitar=True)
+        tor=np.asarray(Image.fromarray(tor.astype('uint8')).resize(tamTorso,Image.LANCZOS)).astype(float)[:, ::-1]
+    return cab,tor
 def cargar(c):
     p=Image.open(IMG+c['f']).convert('RGB')
     if c['box']: p=p.crop(c['box'])
@@ -101,7 +126,12 @@ for k,c in C.items():
         esp[int(a*H):int(b*H)]=col
         # transición suave hacia la nuca
         for i in range(int(b*H),min(H,int(b*H)+6)): t=(i-int(b*H))/6; esp[i]=col*(1-t)+esp[i]*t
-    # costados: la espalda arranca con el color del borde de la cara (oreja/pelo) y va hacia el color de atrás
+    # atrás: la nuca de la captura de espalda
+    tamT=None
+    if c['torso'] and c['cinto']: tamT=None
+    nuca,_=espalda(k,cab.shape[1],cab.shape[0])
+    esp=nuca.copy()
+    # costados: la espalda arranca con el color del borde de la cara (oreja/pelo) y se mezcla con la nuca
     Wc=cab.shape[1]; esp=esp.astype(float)
     def borde(fila, lado):
         xs=np.where(mh[top+fila, :])[0] if top+fila < mh.shape[0] else []
@@ -114,7 +144,7 @@ for k,c in C.items():
         Lc=cab[i,a:a+3].mean(0); Rc=cab[i,b-2:b+1].mean(0)
         for j in range(Wc):
             t=j/(Wc-1)  # 0 = borde derecho de la cara, 1 = borde izquierdo (espalda espejada)
-            k1=max(0,1-t/.3); k2=max(0,(t-.7)/.3)
+            k1=max(0,1-t/.12)*.6; k2=max(0,(t-.88)/.12)*.6
             esp[i,j]=esp[i,j]*(1-k1-k2)+Rc*k1+Lc*k2
     atlas(cab,esp).save(OUT+f'{k}-cabeza.webp',quality=90)
     d=dict(cabeza=dict(perfil=perf,**dim),piel=piel,pelo=pelo,
@@ -123,7 +153,7 @@ for k,c in C.items():
         tor,perft,dimt=parte(im,mt,c['menton']+3,c['cinto'],cx,10,esc,limitar=True)
         # espalda: color del costado del torso (la prenda de afuera)
         lado=mediana(im,m,c['menton']+int((c['cinto']-c['menton'])*.55),c['menton']+int((c['cinto']-c['menton'])*.7),int(cx-(dimt['x1']-dimt['x0'])/esc*.38),int(cx-(dimt['x1']-dimt['x0'])/esc*.3))
-        esp=np.zeros_like(tor); esp[:]=np.array([int(lado[i:i+2],16) for i in (1,3,5)])
+        _,esp=espalda(k,cab.shape[1],cab.shape[0],torsoRel=(c['cinto']-c['menton'])/(c['menton']-top),tamTorso=(tor.shape[1],tor.shape[0]))
         atlas(tor,esp).save(OUT+f'{k}-torso.webp',quality=90)
         d['torso']=dict(perfil=perft,**dimt); d['prenda']=lado
     datos[k]=d
