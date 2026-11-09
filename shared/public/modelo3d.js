@@ -4,6 +4,7 @@
 // las de un personaje sirven para cualquier otro modelo con el mismo esqueleto.
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { clone as clonarEsqueleto } from './vendor/SkeletonUtils.js';
+import { travieso, voltereta } from './gestos.js';
 
 const ALTO = 1.85; // misma altura que el resto del elenco
 const cache = new Map();
@@ -13,6 +14,8 @@ let qMuslo = null, qRodilla = null; // giros para sentarse (sobre la pose de los
 const CLIPS = {
   quieto: ['Short_Breathe_and_Look_Around', 'Idle'],
   habla: ['Talk_with_Hands_Open'],
+  saluda: ['Waving', 'Wave', 'Talk_with_Hands_Open'],
+  voltereta: ['Run_and_Jump', 'Hop_with_Arms_Raised'],
   camina: ['Walking'],
   corre: ['Running'],
   atras: ['Walk_Backward'],
@@ -32,7 +35,7 @@ const CLIPS = {
   agachadoLado: ['Crouch_Walk_Left_with_Gun_inplace'],
 };
 export const SENTADO = { muslo: -Math.PI / 2, rodilla: Math.PI / 2 };
-const UNA_VEZ = new Set(['muerto', 'golpe', 'pina', 'granada', 'recarga', 'salto']);
+const UNA_VEZ = new Set(['muerto', 'golpe', 'pina', 'granada', 'recarga', 'salto', 'voltereta']);
 const QUEDA = new Set(['muerto']); // se queda en el último cuadro
 const alias = { idle: 'quieto', caminar: 'camina', correr: 'corre', morir: 'muerto', muerte: 'muerto', celebrar: 'festeja', disparar: 'dispara', recargar: 'recarga', curar: 'recarga', cura: 'recarga', cae: 'golpe', patada: 'pina', buceo: 'salto' };
 
@@ -70,6 +73,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
 
   let mixer = null, acciones = {}, actual = null, estadoActual = '', huesos = {}, alturaCadera = .95;
   let globo = null, globoHasta = 0, hablaHasta = 0, reloj = 0, transcurrido = 0;
+  const trav = travieso(look);
   const listo = cargar(url).then((g) => {
     const m = clonarEsqueleto(g.scene);
     const caja = new THREE.Box3().setFromObject(m);
@@ -111,6 +115,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
     grupo, cabeza, altura: 2, listo,
     manos: { izquierda: manoI, derecha: manoD },
     expresar() {},
+    gesto(id) { trav.pedir(id); },
     decir(texto, seg = 4.5) {
       if (globo) { grupo.remove(globo); liberarSprite(globo); }
       globo = sprite(THREE, texto, '#141413', '#ffffff', tamGlobo, true);
@@ -126,6 +131,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
       }
       estado = alias[estado] || estado;
       dt = Math.max(0, Math.min(dt, .1)); reloj += dt;
+      estado = trav.filtrar(estado, dt, reloj); // gestos pedidos y travesuras
       const sentado = estado === 'sentado', tirado = estado === 'tirado';
       let clip = sentado ? 'quieto' : tirado ? 'muerto' : estado === 'apose' ? null : estado;
       if (clip === 'quieto' && reloj < hablaHasta && acciones.habla) clip = 'habla';
@@ -142,7 +148,9 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
         }
       }
       cuerpo.position.y = sentado ? .43 - alturaCadera : 0;
+      cuerpo.position.z = 0;
       if (tirado && !acciones.muerto) { cuerpo.rotation.x = Math.PI / 2; cuerpo.position.y = .17; } else cuerpo.rotation.x = 0;
+      if (estado === 'voltereta') voltereta(cuerpo, transcurrido / 1.05, .9, .75); // vuelta carnero encima del salto
       if (globo && reloj > globoHasta) { grupo.remove(globo); liberarSprite(globo); globo = null; }
     },
     dispose() {

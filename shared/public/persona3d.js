@@ -4,6 +4,7 @@
 import { PERFILES } from './caras/perfiles.js';
 import { pintarCara, siluetaCabeza } from './caras/pintar.js';
 import { crearPersonaModelo } from './modelo3d.js';
+import { travieso, voltereta } from './gestos.js';
 
 export function crearPersona(THREE, look = {}, opciones = {}) {
   // Personajes del elenco con modelo propio (hechos en Meshy): cara y torso de sus capturas.
@@ -356,13 +357,13 @@ export function crearPersona(THREE, look = {}, opciones = {}) {
   const cachetes = [-1, 1].map(s => bola(.073, piel, s * .183, -.100, -.224, cabeza, 1, .95, .70));
   const arruga = aro(.033, .004, mat('#aa7860'), 0, -.047, -.309, cabeza, Math.PI);
   lengua.visible = dientes.visible = arruga.visible = false; cachetes.forEach(c => c.visible = false);
-  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera: .69 }, { nombre, colorNombre, tamCartel, tamGlobo });
+  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera: .69, trav: travieso(L) }, { nombre, colorNombre, tamCartel, tamGlobo });
 }
 
 // Rig compartido: animaciones, globos de diálogo, cartel con el nombre y polvo al correr.
 // Sirve para cualquier cuerpo que tenga estas articulaciones (cuerpo, torso, cabeza, brazos y piernas).
 function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
-  const { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera = .69, poseQuieto = null, alListo = null, abrirBrazos = .08 } = P;
+  const { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera = .69, poseQuieto = null, alListo = null, abrirBrazos = .08, trav = null } = P;
   const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.76)', tamCartel) : null;
   if (cartel) { cartel.position.y = 2.13; grupo.add(cartel); }
   let globo = null, globoHasta = 0, reloj = 0, fase = 0, transcurrido = 0, anterior = '', parpadeo = 3;
@@ -384,6 +385,8 @@ function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 
   const alias = { idle: 'quieto', caminar: 'camina', correr: 'corre', morir: 'muerto', muerte: 'muerto', celebrar: 'festeja', disparar: 'dispara', recargar: 'recarga', curar: 'cura' };
   const api = {
     grupo, cabeza, altura: 2,
+    // gesto pedido (B en la carrera): baila, festeja, saluda, voltereta, habla
+    gesto(id) { trav?.pedir(id); },
     // se resuelve cuando el personaje terminó de cargar sus texturas (para sacarle una foto)
     listo: alListo || Promise.resolve(),
     manos: { izquierda: brazos[0].mano, derecha: brazos[1].mano },
@@ -417,7 +420,9 @@ function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 
           : e.corre ? 'corre' : e.mueve || e.velocidad > .05 ? 'camina' : e.apunta ? 'apunta' : 'quieto';
       }
       estado = alias[estado] || estado; dt = Math.max(0, Math.min(dt, .1));
-      reloj += dt; transcurrido = estado === anterior ? transcurrido + dt : 0; anterior = estado;
+      reloj += dt;
+      if (trav) estado = trav.filtrar(estado, dt, reloj); // gestos pedidos y travesuras
+      transcurrido = estado === anterior ? transcurrido + dt : 0; anterior = estado;
       fase += dt * (estado === 'corre' ? 12 : estado === 'camina' ? 7 : 3);
       const s = Math.sin(fase), paso = estado === 'corre' ? .72 : .42;
       cuerpo.position.set(0, 0, 0); cuerpo.rotation.set(0, 0, 0);
@@ -449,6 +454,26 @@ function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 
         cuerpo.position.y = Math.abs(Math.cos(fase)) * .018;
         torso.rotation.z = s * .035; torso.rotation.x = -.025;
         cabeza.rotation.z = -s * .025;
+      } else if (estado === 'baila') {
+        const b = Math.sin(reloj * 7);
+        cuerpo.position.set(b * .06, Math.abs(Math.sin(reloj * 7)) * .07, 0);
+        torso.rotation.y = Math.sin(reloj * 3.5) * .35; torso.rotation.z = b * .08;
+        brazos[0].hombro.rotation.set(Math.sin(reloj * 3.5) * .6, 0, -1.3 - b * .5); brazos[0].codo.rotation.x = 1.1;
+        brazos[1].hombro.rotation.set(-Math.sin(reloj * 3.5) * .6, 0, 1.3 - b * .5); brazos[1].codo.rotation.x = 1.1;
+        piernas[0].rodilla.rotation.x = -Math.max(0, b) * .5; piernas[1].rodilla.rotation.x = -Math.max(0, -b) * .5;
+        cabeza.rotation.z = b * .15; boca.scale.y = 1.4;
+      } else if (estado === 'saluda') {
+        brazos[1].hombro.rotation.set(0, 0, 2.55); brazos[1].codo.rotation.set(0, 0, Math.sin(reloj * 11) * .45);
+        cabeza.rotation.z = -.1; boca.scale.y = 1.3;
+      } else if (estado === 'habla') {
+        brazos.forEach((b, i) => { b.hombro.rotation.x = .45 + Math.sin(reloj * 4 + i * 2) * .25; b.codo.rotation.x = 1 + Math.sin(reloj * 5 + i) * .3; b.hombro.rotation.z = (i ? 1 : -1) * .25; });
+        cabeza.rotation.y = Math.sin(reloj * 2) * .2; boca.scale.y = 1 + Math.abs(Math.sin(reloj * 14)) * .8;
+      } else if (estado === 'voltereta') {
+        const k = transcurrido / 1.05;
+        voltereta(cuerpo, k, .85, .7);
+        const t = Math.sin(Math.min(1, k) * Math.PI);
+        piernas.forEach((p) => { p.cadera.rotation.x = 1.5 * t; p.rodilla.rotation.x = -2 * t; });
+        brazos.forEach((b) => { b.hombro.rotation.x = 1.4 * t; b.codo.rotation.x = 1.2 * t; });
       } else if (estado === 'apose') {
         // Pose A quieta (brazos separados, piernas un poco abiertas): para fichas de personaje y pasar a 3D.
         brazos[0].hombro.rotation.z = -.62; brazos[1].hombro.rotation.z = .62;
@@ -818,7 +843,7 @@ function crearPersonaFoto(THREE, L, F, opciones = {}) {
   const boca = nada(), sonrisa = nada(), lengua = nada(), dientes = nada(), arruga = nada();
   const cachetes = [nada(), nada()], cejas = [nada(), nada()], ojos = [nada(), nada()];
   const seg = (n) => n;
-  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera, abrirBrazos: .17, poseQuieto: F.pose || null, alListo: Promise.all(cargas) }, opciones);
+  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera, abrirBrazos: .17, trav: travieso(L), poseQuieto: F.pose || null, alListo: Promise.all(cargas) }, opciones);
 }
 
 function compactar(THREE, raiz) {

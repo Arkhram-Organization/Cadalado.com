@@ -3,6 +3,8 @@
 
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
+import { POR_ID } from './npcs.js';
+
 export const ESTILOS_PELO = [
   ['calvo', 'Pelado'], ['rapado', 'Rapado'], ['poco', 'Solo costados'], ['entradas', 'Corto con entradas'],
   ['corto', 'Corto'], ['rulosCorto', 'Rulos cortos'], ['rulos', 'Rulos'], ['rulosPoco', 'Rulos ralos'], ['largo', 'Largo'],
@@ -84,12 +86,15 @@ export function limpiarLook(x) {
     campera: color(l.campera), capucha: color(l.capucha), gorra: color(l.gorra), sombrero: color(l.sombrero),
     kipa: color(l.kipa), auriculares: color(l.auriculares), antifaz: color(l.antifaz), capa: color(l.capa),
     mochila: color(l.mochila), guantes: color(l.guantes), camara: !!l.camara,
+    // casillero: jugar con un personaje del elenco (solo ids que existen)
+    npc: typeof l.npc === 'string' && POR_ID[l.npc] ? l.npc : '',
   };
 }
 
 // Lo que entiende el dibujo 3D (persona3d) y los avatares, a partir del look editable.
 export function lookParaDibujo(x) {
   const l = limpiarLook(x);
+  if (l.npc) return { ...POR_ID[l.npc].look }; // elegiste un personaje del casillero
   const d = {
     piel: l.piel, ojos: l.ojos, cuerpo: l.cuerpo, pelo: l.pelo,
     ropa: { remera: l.ropa.remera, pantalon: l.ropa.pantalon, zapatillas: l.ropa.zapatillas, bolso: l.ropa.bolso || false },

@@ -2,7 +2,9 @@
 // Se guarda en la cuenta (si entraste) y en este navegador; los juegos lo mandan al entrar a una sala.
 import * as THREE from '/comun/vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
-import { avatarSvg } from '/comun/avatar.js';
+import { avatarSvg, lookDeNombre } from '/comun/avatar.js';
+import { NPCS } from '/comun/npcs.js';
+import { GESTOS } from '/comun/gestos.js';
 import { LOOK_BASE, VESTIMENTAS, ESTILOS_PELO, CUERPOS, PRENDAS, BARBAS, LENTES, PALETAS, limpiarLook, lookParaDibujo, aplicarVestimenta, lookAlAzar } from '/comun/look.js';
 import { iniciarPagina, api, yo, esc, toast } from './comun.js';
 
@@ -90,8 +92,11 @@ medir();
 armar();
 requestAnimationFrame(cuadro);
 
-$('[data-anims]').innerHTML = [['quieto', 'Quieto'], ['camina', 'Caminar'], ['corre', 'Correr'], ['festeja', 'Festejar'], ['salto', 'Saltar']].map(([k, t]) => `<button class="chip-op ${k === animacion ? 'on' : ''}" data-anim="${k}">${t}</button>`).join('');
+$('[data-anims]').innerHTML = [['quieto', 'Quieto'], ['camina', 'Caminar'], ['corre', 'Correr'], ['salto', 'Saltar']].map(([k, t]) => `<button class="chip-op ${k === animacion ? 'on' : ''}" data-anim="${k}">${t}</button>`).join('')
+  + `<span class="pj-gestos-t">Gestos (B en la carrera)</span>` + GESTOS.map((g) => `<button class="chip-op" data-gesto="${g.id}">${g.nombre}</button>`).join('');
 $('[data-anims]').addEventListener('click', (e) => {
+  const g = e.target.closest('[data-gesto]');
+  if (g) { animacion = 'quieto'; $('[data-anims]').querySelectorAll('[data-anim]').forEach((x) => x.classList.toggle('on', x.dataset.anim === 'quieto')); return persona?.gesto?.(g.dataset.gesto); }
   const b = e.target.closest('[data-anim]');
   if (!b) return;
   animacion = b.dataset.anim;
@@ -105,6 +110,7 @@ function poner(ruta, valor) {
   let o = look;
   for (const k of partes.slice(0, -1)) o = o[k] ??= {};
   o[partes.at(-1)] = valor;
+  look.npc = ''; // al editar, volvés a tu personaje
   look = limpiarLook(look);
   armar();
   pintar();
@@ -126,7 +132,11 @@ const bloque = (titulo, cuerpo, abierto = false) => `<details class="bloque" ${a
 
 function pintar() {
   const abiertos = [...document.querySelectorAll('.bloque')].map((d) => d.open);
+  const casillero = bloque('Casillero: jugá con alguien del elenco', `<p class="ayuda">Elegí un personaje y entrás a los juegos con él (con su modelo, sus gestos y sus travesuras).</p>
+    <div class="vestimentas casillero">${NPCS.map((n) => `<button class="vest ${look.npc === n.id ? 'on' : ''}" data-npc="${n.id}"><span class="av">${avatarSvg(lookDeNombre(n.nombre))}</span><b>${esc(n.nombre)}</b></button>`).join('')}</div>
+    ${look.npc ? `<p class="ayuda">Estás jugando como <b>${esc(NPCS.find((n) => n.id === look.npc)?.nombre || '')}</b>. <button class="btn btn-chico" data-npc="">Volver a mi personaje</button></p>` : ''}`, true);
   const html = [
+    casillero,
     bloque('Vestimentas de base', `<p class="ayuda">Cambian la ropa y los accesorios; después podés editar todo.</p><div class="vestimentas">${VESTIMENTAS.map((v) => `<button class="vest" data-vest="${v.id}"><span class="av">${avatarSvg(lookParaDibujo(aplicarVestimenta(look, v.id)))}</span><b>${esc(v.nombre)}</b></button>`).join('')}</div>`, true),
     bloque('Cuerpo', `<span class="et">Piel</span>${colores('piel', PALETAS.piel)}<span class="et">Ojos</span>${colores('ojos', PALETAS.ojos)}<span class="et">Contextura</span>${opciones('cuerpo', CUERPOS)}`),
     bloque('Pelo', `<span class="et">Peinado</span>${opciones('pelo.estilo', ESTILOS_PELO)}<span class="et">Color</span>${colores('pelo.color', PALETAS.pelo)}`),
@@ -151,9 +161,15 @@ function pintar() {
 }
 
 $('[data-editor]').addEventListener('click', (e) => {
+  const npc = e.target.closest('[data-npc]');
+  if (npc) {
+    look = limpiarLook({ ...look, npc: npc.dataset.npc });
+    armar();
+    return pintar();
+  }
   const v = e.target.closest('[data-vest]');
   if (v) {
-    look = aplicarVestimenta(look, v.dataset.vest);
+    look = { ...aplicarVestimenta(look, v.dataset.vest), npc: '' };
     armar();
     return pintar();
   }

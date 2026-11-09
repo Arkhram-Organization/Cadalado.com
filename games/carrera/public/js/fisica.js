@@ -290,8 +290,20 @@ export class Jugador {
       this.ry += d * Math.min(1, dt * 12);
     }
     const tirado = this.aturdido > 0 && this.enSuelo && this.aturdido < (this.aturdidoMax || TIRADO) - 0.2;
-    this.anim = this.llego ? 'festeja' : this.pina > 0 ? this.tipoGolpe : tirado ? 'tirado' : this.aturdido > 0 ? 'golpe' : this.buceo > 0 ? 'buceo' : !this.enSuelo ? 'salto' : vh > 0.8 ? 'corre' : 'quieto';
+    // gesto pedido con la B: dura lo que dura; moverse, saltar o recibir un golpe lo corta
+    if (this.gesto) {
+      this.gestoT -= dt;
+      if (this.gestoT <= 0 || this.llego || this.aturdido > 0 || !this.enSuelo || (vh > 0.8 && this.gesto !== 'voltereta')) this.gesto = null;
+    }
+    this.anim = this.gesto ? 'g-' + this.gesto : this.llego ? 'festeja' : this.pina > 0 ? this.tipoGolpe : tirado ? 'tirado' : this.aturdido > 0 ? 'golpe' : this.buceo > 0 ? 'buceo' : !this.enSuelo ? 'salto' : vh > 0.8 ? 'corre' : 'quieto';
     return ev;
+  }
+
+  // gestos (la duración la manda quien lo pide, para no depender de nada del navegador)
+  pedirGesto(id, dur) {
+    if (this.llego || this.aturdido > 0 || !this.enSuelo) return;
+    this.gesto = id;
+    this.gestoT = dur;
   }
 
   estado() {
