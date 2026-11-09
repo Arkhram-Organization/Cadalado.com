@@ -10,6 +10,7 @@ export const GESTOS = [
   { id: 'habla', nombre: 'Charlar', tecla: '5', dur: 3.2 },
   { id: 'flexiones', nombre: 'Flexiones', tecla: '6', dur: 3 },
   { id: 'duerme', nombre: 'Dormir', tecla: '7', dur: 9.5 },
+  { id: 'musculos', nombre: 'Músculos', tecla: '8', dur: 3 },
 ];
 export const DURACION = Object.fromEntries(GESTOS.map((g) => [g.id, g.dur]));
 

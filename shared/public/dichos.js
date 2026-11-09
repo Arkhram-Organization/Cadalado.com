@@ -28,6 +28,12 @@ const DICHOS = {
     turno: ['¿Otra mano?', 'Yo no juego, yo reparto.'],
   },
   volcho: {
+    saludo: ['Llegó el volcho.', 'Soy el volcho.'],
+    gana: ['El volcho no pierde.', '¿Quién ganó? El volcho.'],
+    pierde: ['El volcho dejó ganar.', 'Esto no cuenta, che.'],
+    turno: ['Le toca al volcho.', 'Mirá al volcho.'],
+  },
+  olcho: {
     saludo: ['Hola, soy la rata. Jaja.', 'Shana Tova Umeka.', 'Llegó la rata. La ratatata.'],
     gana: ['¡La rata gana! Shimyz.', 'Esto se lo dedico a Trosman.', 'Shana Tova Umeka, perdedores.'],
     pierde: ['La rata se escabulle y vuelve.', 'Javila…', 'Seguro fue culpa de Trosman.'],
