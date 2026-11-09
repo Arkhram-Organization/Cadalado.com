@@ -87,3 +87,46 @@
   .lb-muro{order:3;background:none;max-height:90vh}
   .lb-ayuda{display:none}
 }
+
+/* lobbys compartidas */
+.lb-lobbys{display:flex;align-items:center;gap:8px;background:none;border:1px solid var(--line);color:var(--paper);border-radius:6px;padding:10px 14px;font:700 12px Barlow,sans-serif;letter-spacing:1.4px;text-transform:uppercase;cursor:pointer}
+.lb-lobbys b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#2a3025;color:var(--lima);font-size:13px;letter-spacing:0}
+.lb-lobbys.con-gente{border-color:var(--lima)}.lb-lobbys.con-gente b{background:var(--lima);color:#1b2213}
+.lb-lobbys:hover{border-color:#c5f04a99}
+.lb-jugar.esperando{background:#2a3025;color:var(--paper);animation:none;cursor:default}
+.gr-fondo{position:fixed;inset:0;z-index:40;background:#0008}
+.gr-panel{position:fixed;top:0;right:0;bottom:0;z-index:41;width:min(420px,100vw);background:#171a16;border-left:1px solid var(--line);overflow:auto;padding:20px;color:var(--paper);font-family:Barlow,Arial,sans-serif;box-shadow:-20px 0 60px #000a}
+.gr-panel[hidden],.gr-fondo[hidden]{display:none}
+.gr-panel header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.gr-panel h2{font:800 34px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0}
+.gr-panel h3{font:800 13px/1 Barlow,sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--lima);margin:22px 0 10px;display:flex;justify-content:space-between}
+.gr-panel h3 .mono{font-family:'JetBrains Mono',monospace;color:#b9bfae;letter-spacing:1px}
+.gr-cerrar{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--paper);font-size:24px;cursor:pointer}
+.gr-miembros{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.gr-miembros li,.gr-fila{display:flex;align-items:center;gap:10px;background:#1d211b;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.gr-miembros li span:not(.gr-cara){flex:1;font-weight:600}
+.gr-miembros small{color:#a7ad9e;font-weight:500}
+.gr-miembros em{font-style:normal;font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;color:#1b2213;background:var(--lima);padding:3px 7px;border-radius:4px}
+.gr-cara{display:inline-block;width:36px;height:36px;border-radius:50%;overflow:hidden;flex:none}
+.gr-cara svg{width:100%;height:100%;display:block}
+.gr-caras{display:flex}.gr-caras .gr-cara{width:30px;height:30px;margin-right:-8px;border:2px solid #1d211b}
+.gr-txt{flex:1;display:grid;gap:2px;min-width:0;margin-left:6px}
+.gr-txt b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr-txt small{font-size:12px;color:#a7ad9e}
+.gr-fila{margin-bottom:8px}
+.gr-flecha{flex:none;width:44px;height:44px;border-radius:50%;border:0;background:var(--lima);color:#1b2213;display:grid;place-items:center;cursor:pointer;transition:transform .15s}
+.gr-flecha svg{width:22px;height:22px}
+.gr-flecha:hover{transform:translateX(3px) scale(1.06)}
+.gr-flecha:disabled{opacity:.4;cursor:default}
+.gr-acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.gr-switch{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;width:100%}
+.gr-switch input{accent-color:#c5f04a;width:18px;height:18px}
+.gr-switch span{display:none}
+.gr-vacio{color:#a7ad9e;font-size:14px}.gr-vacio a{color:var(--lima)}
+.gr-invitacion{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;background:#1d211b;border:1px solid var(--lima);border-radius:10px;padding:12px 14px;color:var(--paper);box-shadow:0 14px 40px #000a;font-family:Barlow,Arial,sans-serif}
+.gr-invitacion .btn-lima svg{width:14px;height:14px;vertical-align:-2px}
+@media (max-width:860px){.lb-lobbys{padding:8px 10px}}
+.gr-btn{flex:none;font:700 12px Barlow,sans-serif;letter-spacing:.5px;color:var(--paper);background:#2a3025;border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer}
+.gr-btn:hover{border-color:#c5f04a88}.gr-btn:disabled{opacity:.6;cursor:default}
+.gr-btn.lima{background:var(--lima);color:#1b2213;border-color:var(--lima)}
+.gr-btn svg{width:14px;height:14px;vertical-align:-2px}

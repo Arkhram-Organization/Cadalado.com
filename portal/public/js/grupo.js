@@ -1,0 +1,158 @@
+// Lobbys compartidas: tu grupo, invitar amigos, unirte a la lobby de un amigo o a una abierta (con la flechita)
+// y que el líder arranque el juego para todos. Habla con /api/club/grupo y /api/club/grupos.
+import { api, esc, toast } from './comun.js';
+import { avatarSvg, lookDeNombre } from '/comun/avatar.js';
+import { lookParaDibujo } from '/comun/look.js';
+
+const PID_KEY = 'cadalado.pid'; // el mismo que usan los juegos
+function pid() {
+  try {
+    let p = localStorage.getItem(PID_KEY);
+    if (!p || !/^[A-Za-z0-9_-]{8,64}$/.test(p)) {
+      p = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b % 56]).join('');
+      localStorage.setItem(PID_KEY, p);
+    }
+    return p;
+  } catch { return 'anon' + Math.random().toString(36).slice(2, 12); }
+}
+const leer = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const flecha = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const cara = (m) => `<span class="gr-cara">${avatarSvg(m.look ? lookParaDibujo(m.look) : lookDeNombre(m.nombre))}</span>`;
+
+// Juegos donde el líder puede armar la sala para todos (los demás se suman con el link).
+const SALAS = {
+  royale: (o) => ({ api: '/api/royale/crear', url: '/royale/sala/', opciones: { bots: 7, publica: false, ...o } }),
+  carrera: (o) => ({ api: '/api/carrera/crear', url: '/carrera/sala/', opciones: { bots: 5, publica: false, ...o } }),
+  memes: (o) => ({ api: '/api/memes/crear', url: '/memes/sala/', opciones: { bots: 2, publica: false, ...o } }),
+  haxball: (o) => ({ api: '/api/haxball/crear', url: '/haxball/sala/', opciones: { bots: 1, publica: false, ...o } }),
+};
+
+export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
+  const yo = () => ({ pid: pid(), nombre: usuario?.nombre || nombre(), look: usuario?.look || leer('cadalado.look', null) });
+  const q = () => { const y = yo(); return `pid=${encodeURIComponent(y.pid)}&nombre=${encodeURIComponent(y.nombre)}${y.look ? '&look=' + encodeURIComponent(JSON.stringify(y.look)) : ''}`; };
+  let grupo = null, listas = { abiertos: [], amigos: [] }, desde = Date.now() - 60_000, irVisto = null, abierto = false;
+  const vistas = new Set();
+
+  // ---------- panel
+  const panel = document.createElement('aside');
+  panel.className = 'gr-panel'; panel.hidden = true;
+  panel.setAttribute('aria-label', 'Lobbys');
+  document.body.append(panel);
+  const fondo = document.createElement('div'); fondo.className = 'gr-fondo'; fondo.hidden = true; document.body.append(fondo);
+  fondo.onclick = () => mostrar(false);
+  function mostrar(v = !abierto) {
+    abierto = v; panel.hidden = fondo.hidden = !v;
+    if (v) { cargarListas(); pintar(); }
+  }
+
+  async function accion(datos) {
+    try {
+      const r = await api('/api/club/grupo', { ...yo(), ...datos });
+      grupo = r.grupo; pintar(); alCambiar?.(grupo);
+      return grupo;
+    } catch (e) { toast(e.message, true); return null; }
+  }
+  async function refrescar() {
+    try {
+      const r = await api('/api/club/grupo?' + q() + '&desde=' + desde);
+      const antes = grupo;
+      grupo = r.grupo;
+      for (const inv of r.invitaciones || []) {
+        desde = Math.max(desde, inv.ts);
+        if (vistas.has(inv.ts)) continue;
+        vistas.add(inv.ts);
+        invitacion(inv);
+      }
+      // el líder arrancó: se van todos
+      if (grupo?.ir && grupo.ir.ts !== irVisto && !grupo.soyLider && Date.now() - grupo.ir.ts < 30_000) {
+        irVisto = grupo.ir.ts;
+        toast('¡Arranca el juego! Te llevamos con tu lobby…');
+        setTimeout(() => (location.href = grupo.ir.url), 900);
+      }
+      if (JSON.stringify(antes) !== JSON.stringify(grupo)) { pintar(); alCambiar?.(grupo); }
+    } catch {}
+  }
+  async function cargarListas() {
+    try { listas = await api('/api/club/grupos?' + q()); pintar(); } catch {}
+  }
+  function invitacion(inv) {
+    const t = document.createElement('div');
+    t.className = 'gr-invitacion';
+    t.innerHTML = `<b>${esc(inv.de)}</b> te invitó a su lobby <button class="gr-btn lima" data-si>Unirme ${flecha}</button><button class="gr-btn" data-no>Ahora no</button>`;
+    document.body.append(t);
+    t.querySelector('[data-si]').onclick = () => { t.remove(); accion({ accion: 'unirse', id: inv.grupo }); };
+    t.querySelector('[data-no]').onclick = () => t.remove();
+    setTimeout(() => t.remove(), 20_000);
+  }
+
+  function filaLobby(g, etiqueta) {
+    return `<div class="gr-fila"><div class="gr-caras">${g.miembros.slice(0, 4).map(cara).join('')}</div>
+      <div class="gr-txt"><b>${esc(etiqueta || 'Lobby de ' + g.lider)}</b><small>${g.miembros.length} ${g.miembros.length === 1 ? 'persona' : 'personas'} · ${esc(g.juego || '')}${g.lleno ? ' · llena' : ''}</small></div>
+      <button class="gr-flecha" data-unirse="${g.id}" ${g.lleno ? 'disabled' : ''} title="Meterme a esta lobby" aria-label="Meterme a la lobby de ${esc(g.lider)}">${flecha}</button></div>`;
+  }
+  function pintar() {
+    if (!abierto || !grupo) return;
+    const link = `${location.origin}/?lobby=${grupo.id}`;
+    const amigos = listas.amigos || [];
+    panel.innerHTML = `
+      <header><h2>Lobbys</h2><button class="gr-cerrar" data-cerrar aria-label="Cerrar">×</button></header>
+      <section><h3>Tu lobby <span class="mono">${grupo.id}</span></h3>
+        <ul class="gr-miembros">${grupo.miembros.map((m) => `<li>${cara(m)}<span>${esc(m.nombre)}${m.yo ? ' <small>vos</small>' : ''}</span>${m.lider ? '<em>líder</em>' : grupo.soyLider ? `<button class="gr-btn" data-echar="${esc(m.nombre)}">Sacar</button>` : ''}</li>`).join('')}</ul>
+        <div class="gr-acciones">
+          ${grupo.soyLider ? `<label class="gr-switch"><input type="checkbox" data-abierto ${grupo.abierto ? 'checked' : ''}><span></span>Abierta a cualquiera</label>` : ''}
+          <button class="gr-btn" data-link>Copiar link de invitación</button>
+          ${grupo.miembros.length > 1 ? '<button class="gr-btn" data-salir>Salir de la lobby</button>' : ''}
+        </div>
+      </section>
+      <section><h3>Amigos</h3>
+        ${usuario ? (amigos.length ? amigos.map((a) => `<div class="gr-fila">${cara(a)}<div class="gr-txt"><b>${esc(a.nombre)}</b><small>${a.grupo ? (a.grupo.id === grupo.id ? 'En tu lobby' : `En una lobby de ${a.grupo.miembros.length}`) : a.enLinea ? 'En línea' : 'Desconectado'}</small></div>
+          ${a.grupo && a.grupo.id !== grupo.id ? `<button class="gr-flecha" data-unirse="${a.grupo.id}" title="Meterme a su lobby" aria-label="Meterme a la lobby de ${esc(a.nombre)}">${flecha}</button>` : ''}
+          ${!a.grupo || a.grupo.id !== grupo.id ? `<button class="gr-btn" data-invitar="${esc(a.usuario)}">Invitar</button>` : ''}</div>`).join('') : '<p class="gr-vacio">Todavía no sumaste amigos. <a href="/club#amigos">Agregalos en el club</a>.</p>')
+          : '<p class="gr-vacio"><a href="/entrar">Entrá con tu cuenta</a> para ver a tus amigos e invitarlos. Mientras, mandales el link.</p>'}
+      </section>
+      <section><h3>Lobbys abiertas</h3>
+        ${(listas.abiertos || []).length ? listas.abiertos.map((g) => filaLobby(g)).join('') : '<p class="gr-vacio">No hay lobbys abiertas ahora. Abrí la tuya y que se sume gente.</p>'}
+      </section>`;
+    panel.querySelector('[data-cerrar]').onclick = () => mostrar(false);
+    panel.querySelector('[data-abierto]')?.addEventListener('change', (e) => accion({ accion: 'abierto', valor: e.target.checked }));
+    panel.querySelector('[data-link]').onclick = () => { navigator.clipboard?.writeText(link); toast('Link copiado: el que lo abra entra a tu lobby.'); };
+    panel.querySelector('[data-salir]')?.addEventListener('click', () => accion({ accion: 'salir' }));
+    panel.querySelectorAll('[data-echar]').forEach((b) => (b.onclick = () => accion({ accion: 'echar', nombre: b.dataset.echar })));
+    panel.querySelectorAll('[data-unirse]').forEach((b) => (b.onclick = async () => { if (await accion({ accion: 'unirse', id: b.dataset.unirse })) { toast('¡Entraste a la lobby!'); cargarListas(); } }));
+    panel.querySelectorAll('[data-invitar]').forEach((b) => (b.onclick = async () => { if (await accion({ accion: 'invitar', usuario: b.dataset.invitar })) { b.textContent = 'Invitado'; b.disabled = true; toast('Invitación enviada'); } }));
+  }
+
+  // JUGAR: el líder arma la sala (si el juego lo permite) y se van todos
+  async function jugar(juego, urlBase) {
+    if (!grupo || grupo.miembros.length < 2) return irA(urlBase);
+    if (!grupo.soyLider) return toast('Arranca el líder de la lobby.', true);
+    let url = urlBase;
+    const s = SALAS[juego]?.({});
+    if (s) {
+      try {
+        const { code } = await api(s.api, { pid: pid(), nombre: yo().nombre, opciones: s.opciones });
+        url = s.url + code;
+      } catch (e) { return toast(e.message, true); }
+    }
+    await accion({ accion: 'jugar', url });
+    irA(url);
+  }
+
+  // entrar con un link de invitación (?lobby=CODIGO)
+  const porLink = new URLSearchParams(location.search).get('lobby');
+  (async () => {
+    if (porLink) {
+      history.replaceState(null, '', location.pathname + location.hash);
+      if (await accion({ accion: 'unirse', id: porLink })) toast('¡Entraste a la lobby!');
+    } else await refrescar();
+    alCambiar?.(grupo);
+  })();
+  setInterval(() => { if (!document.hidden) refrescar(); }, 2500);
+  setInterval(() => { if (!document.hidden && abierto) cargarListas(); }, 8000);
+
+  return {
+    mostrar, jugar,
+    get grupo() { return grupo; },
+    elegirJuego: (id) => grupo?.soyLider && grupo.miembros.length > 1 && accion({ accion: 'juego', juego: id }),
+  };
+}

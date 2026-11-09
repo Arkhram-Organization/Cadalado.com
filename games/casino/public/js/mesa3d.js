@@ -414,7 +414,8 @@ export class MesaBJ {
       if (actual) this.scene.remove(actual.persona.grupo);
       const look = a.bot ? { ...POR_ID[a.bot]?.look } : nombres.look?.(a.id) || lookDeId(a.id, nombres.color?.(a.id) || '#7aa2ff');
       const p = crearPersona(THREE, look, { nombre: a.nombre + (a.soyYo ? ' (vos)' : ''), colorNombre: a.soyYo ? '#c5f04a' : '#fff', tamCartel: 0.26, tamGlobo: 0.24 });
-      const s = puntoArco(i, 3.12);
+      // los modelos de Meshy son más anchos que los muñecos: un poco más lejos de la mesa
+      const s = puntoArco(i, look.modelo ? 3.32 : 3.12);
       p.grupo.position.set(s.x, 0.06, s.z); // la cadera queda apoyada en el asiento
       const dx = 0 - s.x;
       const dz = CENTRO_Z - s.z;

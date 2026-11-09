@@ -203,7 +203,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
           }
         }
       }
-      cuerpo.position.y = sentado ? .43 - alturaCadera : estado === 'duerme' ? Math.sin(reloj * 2) * .01 : 0;
+      cuerpo.position.y = sentado ? .55 - alturaCadera : estado === 'duerme' ? Math.sin(reloj * 2) * .01 : 0;
       cuerpo.position.z = 0;
       if (tirado && !acciones.muerto?.length) { cuerpo.rotation.x = Math.PI / 2; cuerpo.position.y = .17; } else cuerpo.rotation.x = 0;
       if (estado === 'voltereta' && !/Roll|Flip/i.test(actual?.getClip().name || '')) voltereta(cuerpo, transcurrido / 1.05, .9, .75); // vuelta carnero encima del salto

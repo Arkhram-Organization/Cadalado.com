@@ -8,6 +8,8 @@ import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { frase } from '/comun/npcs.js';
 import { JUEGOS } from './datos.js';
 import { yo, esc, api } from './comun.js';
+import { montarGrupo } from './grupo.js';
+import { lookDeNombre } from '/comun/avatar.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const leer = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -27,8 +29,10 @@ export async function montarLobby(raiz) {
       <span class="lb-num">${String(i + 1).padStart(2, '0')}</span>
       <span class="lb-txt"><b>${esc(j.nombre)}</b><small>${esc(j.linea)}</small></span>
       <span class="lb-sala" data-sala="${j.id}"></span></button>`).join('');
-  const elegir = (i) => {
+  let grupoApi = null;
+  const elegir = (i, desdeGrupo = false) => {
     modo = i; localStorage.setItem('cadalado.modo', JUEGOS[i].id);
+    if (!desdeGrupo) grupoApi?.elegirJuego(JUEGOS[i].id);
     entradas.querySelectorAll('.lb-entrada').forEach((b, k) => b.classList.toggle('on', k === i));
     $('[data-jugar]', raiz).href = JUEGOS[i].url;
     $('[data-jugar-nombre]', raiz).textContent = JUEGOS[i].nombre;
@@ -128,6 +132,46 @@ export async function montarLobby(raiz) {
   });
   ruedaGestos({ alElegir: (id) => yoP.gesto?.(id) });
 
+  // ---------------- lobby compartida: los del grupo aparecen al lado tuyo
+  const compas = new Map(); // nombre → persona
+  const LUGARES = [[1.25, -.55], [-1.25, -.55], [2.3, -.1], [-2.3, -.1], [3.2, .4], [-3.2, .4], [3.9, 1]];
+  function ponerCompas(g) {
+    const otros = (g?.miembros || []).filter((m) => !m.yo);
+    const nombres = new Set(otros.map((m) => m.nombre));
+    for (const [n, p] of compas) if (!nombres.has(n)) { escena.remove(p.grupo); p.dispose(); compas.delete(n); }
+    otros.forEach((m, i) => {
+      let p = compas.get(m.nombre);
+      if (!p) {
+        p = crearPersona(THREE, m.look ? lookParaDibujo(m.look) : lookDeNombre(m.nombre), { sombras: !chico, nombre: m.nombre + (m.lider ? ' ★' : ''), colorNombre: '#c5f04a', tamCartel: .32, tamGlobo: .32 });
+        escena.add(p.grupo); compas.set(m.nombre, p);
+        p.decir('¡Llegué!', 2.5);
+      }
+      const [x, z] = LUGARES[i % LUGARES.length];
+      p.grupo.position.set(x, 0, z); p.grupo.rotation.y = -x * .12;
+    });
+    // el elenco se corre para atrás cuando hay gente
+    personas.forEach((p) => (p.grupo.visible = otros.length < 3 || p.grupo.position.z > 2.2));
+  }
+  const btnLobbys = $('[data-lobbys]', raiz);
+  const jugarBtn = $('[data-jugar]', raiz);
+  grupoApi = montarGrupo({
+    usuario: u, nombre: () => miNombre,
+    irA: (url) => (location.href = url),
+    alCambiar: (g) => {
+      ponerCompas(g);
+      const n = g?.miembros.length || 1;
+      btnLobbys.querySelector('b').textContent = n > 1 ? n : '+';
+      btnLobbys.classList.toggle('con-gente', n > 1);
+      const lider = g?.miembros.find((m) => m.lider);
+      const sigo = n > 1 && !g.soyLider;
+      if (sigo && g.juego) { const i = JUEGOS.findIndex((j) => j.id === g.juego); if (i >= 0 && i !== modo) elegir(i, true); }
+      jugarBtn.classList.toggle('esperando', sigo);
+      jugarBtn.querySelector('small').textContent = sigo ? `Elige ${lider?.nombre || 'el líder'}` : n > 1 ? `Jugar con tu lobby (${n})` : 'Jugar a';
+    },
+  });
+  btnLobbys.onclick = () => grupoApi.mostrar();
+  jugarBtn.addEventListener('click', (e) => { e.preventDefault(); grupoApi.jugar(JUEGOS[modo].id, JUEGOS[modo].url); });
+
   let ultimo = performance.now();
   function cuadro(ms) {
     requestAnimationFrame(cuadro);
@@ -146,6 +190,7 @@ export async function montarLobby(raiz) {
     halo.material.opacity = .12 + Math.sin(t * 2) * .04;
     yoP.animar('quieto', dt);
     for (const p of personas) p.animar('quieto', dt);
+    for (const p of compas.values()) p.animar('quieto', dt);
     renderer.render(escena, camara);
   }
   requestAnimationFrame(cuadro);

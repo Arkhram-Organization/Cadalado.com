@@ -2,6 +2,7 @@
 import { json, readJson, serverError, subruta } from './http.js';
 import * as c from './cuenta.js';
 import * as muro from './muro.js';
+import * as grupos from './grupos.js';
 
 const necesitaCuenta = async (request) => {
   const u = await c.usuarioActual(request);
@@ -61,6 +62,16 @@ export async function handle(request) {
     if (ruta === '/chat' && metodo === 'POST') {
       const u = await necesitaCuenta(request);
       return json({ mensaje: await c.escribirChat(request, u, body.con || 'general', body.texto) });
+    }
+    // Lobbys / grupos: con o sin cuenta
+    if (ruta === '/grupo' || ruta === '/grupos') {
+      const u = await c.usuarioActual(request);
+      const datos = metodo === 'POST' ? body : Object.fromEntries(url.searchParams);
+      if (typeof datos.look === 'string') { try { datos.look = JSON.parse(datos.look); } catch { datos.look = null; } }
+      const yo = grupos.quien(u, datos);
+      if (ruta === '/grupos') return json(await grupos.listarGrupos(yo));
+      if (metodo === 'GET') return json({ grupo: await grupos.miGrupo(yo), invitaciones: await grupos.invitaciones(yo, Number(datos.desde) || 0) });
+      return json({ grupo: await grupos.accionGrupo(yo, body) });
     }
     // Muro y sugerencias: se usan sin cuenta (con cuenta salen con tu nombre y tu personaje).
     if (ruta === '/muro/foto' && metodo === 'GET') {
