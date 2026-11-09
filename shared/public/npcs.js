@@ -122,8 +122,8 @@ export const NPCS = [
   {
     id: 'angeles',
     nombre: 'Ángeles Peña',
-    // informática, danza artística y boludeces (modelo provisorio hasta tener el de Meshy)
-    look: { estilo: 'meshy', piel: '#efcbb0', pelo: { estilo: 'largo', color: '#3b2418' }, ojos: '#4a2f1e', cuerpo: 'flaco', ropa: { remera: '#ff7aa8', pantalon: '#2a2d3a', zapatillas: '#f4f1ea' }, genero: 'm' },
+    // informática, danza artística y boludeces. Modelo de Meshy: shared/public/modelos/angeles.glb
+    look: { modelo: 'angeles', estilo: 'meshy', piel: '#efc6a8', pelo: { estilo: 'largo', color: '#141414' }, ojos: '#3a2618', cuerpo: 'normal', lentes: '#141414', ropa: { remera: '#c9cbcc', pantalon: '#3d6fae', zapatillas: '#8d93a8' }, genero: 'm' },
     frases: [
       'Un algoritmo es como una coreografía: pasos, pasos y error.',
       'Hoy hice un pas de bourrée y compilé a la primera.',

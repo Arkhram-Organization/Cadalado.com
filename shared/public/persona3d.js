@@ -3,9 +3,12 @@
 // Las fotografías futuras sólo necesitan ajustar `look`; el rig y las animaciones se comparten.
 import { PERFILES } from './caras/perfiles.js';
 import { pintarCara, siluetaCabeza } from './caras/pintar.js';
+import { crearPersonaModelo } from './modelo3d.js';
 
 export function crearPersona(THREE, look = {}, opciones = {}) {
   // Personajes del elenco con modelo propio (hechos en Meshy): cara y torso de sus capturas.
+  // Personajes con su modelo de Meshy (GLB con esqueleto y animaciones).
+  if (look.modelo) return crearPersonaModelo(THREE, look, opciones, { sprite, liberarSprite });
   if (look.foto && PERFILES[look.foto]) return crearPersonaFoto(THREE, look, PERFILES[look.foto], opciones);
   // El resto del elenco: mismo cuerpo low-poly, con la cara pintada.
   if (look.estilo === 'meshy') return crearPersonaFoto(THREE, look, perfilPintado(THREE, look), opciones);
