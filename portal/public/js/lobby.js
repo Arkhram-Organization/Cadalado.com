@@ -152,6 +152,16 @@ export async function montarLobby(raiz) {
     // el elenco se corre para atrás cuando hay gente
     personas.forEach((p) => (p.grupo.visible = otros.length < 3 || p.grupo.position.z > 2.2));
   }
+  // lugares libres al lado tuyo con la flechita para sumar gente (abre las lobbys para invitar)
+  const lugaresEl = $('[data-invitar-lugares]', raiz);
+  let libres = [];
+  function pintarLibres(g) {
+    const ocupados = (g?.miembros || []).filter((m) => !m.yo).length;
+    libres = [0, 1].map((k) => LUGARES[ocupados + k]).filter(Boolean);
+    lugaresEl.innerHTML = libres.map((_, k) => `<button class="lb-mas" data-mas="${k}" title="Sumar a alguien a tu lobby"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg></span><small>Invitar</small></button>`).join('');
+    lugaresEl.querySelectorAll('[data-mas]').forEach((b) => (b.onclick = () => grupoApi.mostrar(true)));
+  }
+  const proyectar = new THREE.Vector3();
   const btnLobbys = $('[data-lobbys]', raiz);
   const jugarBtn = $('[data-jugar]', raiz);
   grupoApi = montarGrupo({
@@ -159,6 +169,7 @@ export async function montarLobby(raiz) {
     irA: (url) => (location.href = url),
     alCambiar: (g) => {
       ponerCompas(g);
+      pintarLibres(g);
       const n = g?.miembros.length || 1;
       btnLobbys.querySelector('b').textContent = n > 1 ? n : '+';
       btnLobbys.classList.toggle('con-gente', n > 1);
@@ -192,6 +203,12 @@ export async function montarLobby(raiz) {
     for (const p of personas) p.animar('quieto', dt);
     for (const p of compas.values()) p.animar('quieto', dt);
     renderer.render(escena, camara);
+    libres.forEach(([x, z], k) => {
+      const b = lugaresEl.children[k];
+      if (!b) return;
+      proyectar.set(x, .95, z).project(camara);
+      b.style.transform = `translate(${((proyectar.x + 1) / 2) * w}px, ${((1 - proyectar.y) / 2) * h}px) translate(-50%, -50%)`;
+    });
   }
   requestAnimationFrame(cuadro);
 }
