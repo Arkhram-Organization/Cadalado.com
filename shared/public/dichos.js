@@ -57,6 +57,18 @@ const DICHOS = {
     pierde: ['Necesito aceite. Y un abrazo.', 'Error 404: suerte no encontrada.'],
     turno: ['Calculando… calculando…'],
   },
+  angeles: {
+    saludo: ['Llegué haciendo un chassé.', 'Hola, gente. Vengo del ensayo y del laburo, en ese orden.'],
+    gana: ['¡Pirueta de la victoria!', 'Gané en O(1).', 'Esto salió más limpio que mi código.'],
+    pierde: ['Fue un bug de la coreografía.', 'Me faltó un ensayo. Y un try/catch.', 'Perdí, pero con estilo.'],
+    turno: ['Cinco, seis, siete, ocho…', 'Déjenme debuggear la jugada.'],
+  },
+  angie: {
+    saludo: ['Hola, ¿vino Nacho?', 'Llegué. Me trajo Chicha.'],
+    gana: ['¡Se lo dedico a Nacho!', '¡Chicha, mirá! ¡Gané!', 'Lo festejo con sushi. Bueno, con wok de pollo.'],
+    pierde: ['Por suerte Nacho no estaba mirando.', 'Chicha, consolame.', 'Perdí pensando en Nacho.'],
+    turno: ['¿Me toca? Estaba escribiéndole a Nacho.', 'Pará que le pregunto a Chicha.'],
+  },
   mati: {
     saludo: ['Queque.'],
     gana: ['¡Queque!', 'Queque, queque.'],
