@@ -1,7 +1,15 @@
 // Elenco compartido: muñequitos de proporciones de animación, ropa construida por capas
 // y una cara esculpida. El frente del personaje es -Z (contrato de todos los juegos).
 // Las fotografías futuras sólo necesitan ajustar `look`; el rig y las animaciones se comparten.
-export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5, detalle = 1 } = {}) {
+import { PERFILES } from './caras/perfiles.js';
+import { pintarCara, siluetaCabeza } from './caras/pintar.js';
+
+export function crearPersona(THREE, look = {}, opciones = {}) {
+  // Personajes del elenco con modelo propio (hechos en Meshy): cara y torso de sus capturas.
+  if (look.foto && PERFILES[look.foto]) return crearPersonaFoto(THREE, look, PERFILES[look.foto], opciones);
+  // El resto del elenco: mismo cuerpo low-poly, con la cara pintada.
+  if (look.estilo === 'meshy') return crearPersonaFoto(THREE, look, perfilPintado(THREE, look), opciones);
+  const { nombre = '', colorNombre = '#ffffff', sombras = true, tamCartel = 0.65, tamGlobo = 0.5, detalle = 1 } = opciones;
   // detalle > 1: más segmentos en las curvas (para fichas e imágenes grandes; en los juegos queda en 1)
   const seg = (n) => Math.max(3, Math.round(n * detalle));
   const L = { piel: '#e8c4a8', ojos: '#5a3a22', cuerpo: 'normal', ...look,
@@ -345,6 +353,13 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   const cachetes = [-1, 1].map(s => bola(.073, piel, s * .183, -.100, -.224, cabeza, 1, .95, .70));
   const arruga = aro(.033, .004, mat('#aa7860'), 0, -.047, -.309, cabeza, Math.PI);
   lengua.visible = dientes.visible = arruga.visible = false; cachetes.forEach(c => c.visible = false);
+  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera: .69 }, { nombre, colorNombre, tamCartel, tamGlobo });
+}
+
+// Rig compartido: animaciones, globos de diálogo, cartel con el nombre y polvo al correr.
+// Sirve para cualquier cuerpo que tenga estas articulaciones (cuerpo, torso, cabeza, brazos y piernas).
+function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
+  const { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera = .69, poseQuieto = null, alListo = null, abrirBrazos = .08 } = P;
   const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.76)', tamCartel) : null;
   if (cartel) { cartel.position.y = 2.13; grupo.add(cartel); }
   let globo = null, globoHasta = 0, reloj = 0, fase = 0, transcurrido = 0, anterior = '', parpadeo = 3;
@@ -366,6 +381,8 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
   const alias = { idle: 'quieto', caminar: 'camina', correr: 'corre', morir: 'muerto', muerte: 'muerto', celebrar: 'festeja', disparar: 'dispara', recargar: 'recarga', curar: 'cura' };
   const api = {
     grupo, cabeza, altura: 2,
+    // se resuelve cuando el personaje terminó de cargar sus texturas (para sacarle una foto)
+    listo: alListo || Promise.resolve(),
     manos: { izquierda: brazos[0].mano, derecha: brazos[1].mano },
     // Se llama después de animar: modifica sólo la cara, sin interferir con mirada/postura.
     expresar(expr = 'neutral', hablando = false) {
@@ -407,7 +424,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
       lengua.visible = dientes.visible = arruga.visible = false; cachetes.forEach(c => c.visible = false);
       cejas.forEach(c => c.position.y = .095);
       for (const p of piernas) { p.cadera.rotation.set(0, 0, 0); p.rodilla.rotation.set(0, 0, 0); }
-      for (let i = 0; i < 2; i++) { brazos[i].hombro.rotation.set(0, 0, i ? .08 : -.08); brazos[i].codo.rotation.set(.12, 0, 0); }
+      for (let i = 0; i < 2; i++) { brazos[i].hombro.rotation.set(0, 0, i ? abrirBrazos : -abrirBrazos); brazos[i].codo.rotation.set(.12, 0, 0); }
       if (estado === 'corre') {
         // Carrera: rodilla bien arriba adelante, talón al glúteo atrás, brazos que bombean,
         // cuerpo inclinado que rebota y gira un poco contra los brazos.
@@ -467,7 +484,7 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         brazos[0].hombro.rotation.z = -2.6 + s * .18; brazos[1].hombro.rotation.z = 2.6 - s * .18;
         cabeza.rotation.z = s * .12; boca.scale.y = 1.5;
       } else if (estado === 'sentado') {
-        cuerpo.position.y = -.26;
+        cuerpo.position.y = .43 - alturaCadera; // la cadera queda a la altura del asiento
         piernas.forEach(p => { p.cadera.rotation.x = 1.5; p.rodilla.rotation.x = -1.45; });
         brazos.forEach(b => { b.hombro.rotation.x = .95; b.codo.rotation.x = .70; });
         cabeza.rotation.y = Math.sin(fase * .3) * .16;
@@ -481,6 +498,11 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
         cabeza.rotation.x = -.16;
       } else {
         torso.scale.y = 1 + Math.sin(fase) * .007;
+        if (poseQuieto === 'celular') {
+          // Mati: mirando el celular con una mano y la otra en la cintura
+          brazos[0].hombro.rotation.set(.25, 0, -.1); brazos[0].codo.rotation.set(1.55, .5, .45);
+          brazos[1].hombro.rotation.set(.05, 0, .55); brazos[1].codo.rotation.set(.3, 0, -1.25);
+        }
         cabeza.rotation.y = Math.sin(fase * .38) * .11; cabeza.rotation.z = Math.sin(fase * .25) * .025;
       }
       parpadeo -= dt;
@@ -502,11 +524,282 @@ export function crearPersona(THREE, look = {}, { nombre = '', colorNombre = '#ff
     dispose() {
       const geometries = new Set(), mats = new Set();
       grupo.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => mats.add(m)); });
-      geometries.forEach(g => g.dispose()); mats.forEach(m => { m.map?.dispose(); m.dispose(); }); grupo.removeFromParent();
+      geometries.forEach(g => g.dispose()); mats.forEach(m => { if (!m.map?.userData?.compartida) m.map?.dispose(); m.dispose(); }); grupo.removeFromParent();
     },
   };
   api.animar('quieto', 0);
   return api;
+}
+
+// ---------------------------------------------------------------- elenco con modelo propio
+// Estilo low-poly facetado como los modelos de Meshy. La cabeza y el torso son "siluetas": anillos que
+// copian el contorno de frente de la captura, con la captura proyectada adelante y un color liso atrás.
+const texturas = new Map();
+function texturaCompartida(THREE, url) {
+  if (!texturas.has(url)) {
+    let ok;
+    const listo = new Promise((r) => (ok = r));
+    const t = new THREE.TextureLoader().load(url, () => ok(), undefined, () => ok());
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    t.userData.compartida = true;
+    texturas.set(url, { t, listo });
+  }
+  return texturas.get(url);
+}
+
+// perfil: filas [y hacia abajo, x izquierda, x derecha] (m). Devuelve una malla con el tope en y=0.
+function silueta(THREE, perfil, { x0, x1, alto }, { prof = () => 1, p = .85, segs = 12, nariz = 0 } = {}) {
+  const pos = [], uv = [];
+  const U = (x, frente) => { const k = Math.min(1, Math.max(0, (x - x0) / (x1 - x0))); return frente ? k * .5 : .5 + (1 - k) * .5; };
+  const V = (y) => 1 - Math.min(1, Math.max(0, y / alto));
+  const anillos = perfil.map(([y, xl, xr]) => {
+    const xm = (xl + xr) / 2, hw = Math.max(.006, (xr - xl) / 2), hd = hw * prof(y / alto);
+    const pts = [];
+    for (let j = 0; j <= segs; j++) {
+      const t = (j / segs) * Math.PI * 2, sn = Math.sin(t), cs = Math.cos(t);
+      let z = -hd * Math.sign(cs) * Math.abs(cs) ** p;
+      // nariz: la columna del medio se adelanta a la altura de la nariz
+      if (nariz && cs > .8) z -= nariz * hw * Math.exp(-((((y / alto) - .62) / .1) ** 2)) * (cs - .8) * 5;
+      pts.push([xm + hw * Math.sign(sn) * Math.abs(sn) ** p, -y, z]);
+    }
+    return pts;
+  });
+  // normal suave de cada punto (producto entre la dirección alrededor y la dirección hacia abajo)
+  const N = anillos.map((r, i) => r.map((_, j) => {
+    const jj = j % segs, sig = anillos[i][(jj + 1) % segs], ant = anillos[i][(jj - 1 + segs) % segs];
+    const arr = anillos[Math.max(0, i - 1)][jj], abj = anillos[Math.min(anillos.length - 1, i + 1)][jj];
+    const t = [sig[0] - ant[0], sig[1] - ant[1], sig[2] - ant[2]], d = [abj[0] - arr[0], abj[1] - arr[1], abj[2] - arr[2]];
+    const n = [t[1] * d[2] - t[2] * d[1], t[2] * d[0] - t[0] * d[2], t[0] * d[1] - t[1] * d[0]];
+    const l = Math.hypot(...n) || 1; return n.map((x) => x / l);
+  }));
+  const nor = [];
+  const tri = (a, b, c, frente, na = null) => {
+    for (const [v, n] of [a, b, c]) { pos.push(v[0], v[1], v[2]); uv.push(U(v[0], frente), V(-v[1])); nor.push(...(na || n)); }
+  };
+  for (let i = 0; i < anillos.length - 1; i++) {
+    for (let j = 0; j < segs; j++) {
+      const frente = Math.cos(((j + .5) / segs) * Math.PI * 2) > 0;
+      const P = (ii, jj) => [anillos[ii][jj], N[ii][jj]];
+      const a = P(i, j), b = P(i, j + 1), c = P(i + 1, j + 1), d = P(i + 1, j);
+      tri(a, b, d, frente); tri(b, c, d, frente);
+    }
+  }
+  // tapas arriba y abajo
+  for (const [fila, abajo] of [[0, false], [anillos.length - 1, true]]) {
+    const r = anillos[fila], cx = r.reduce((s, v) => s + v[0], 0) / r.length, cz = r.reduce((s, v) => s + v[2], 0) / r.length;
+    const centro = [cx, r[0][1], cz];
+    const n = [0, abajo ? -1 : 1, 0];
+    for (let j = 0; j < segs; j++) {
+      const frente = Math.cos(((j + .5) / segs) * Math.PI * 2) > 0;
+      const c0 = [centro, n], c1 = [r[j], n], c2 = [r[j + 1], n];
+      if (abajo) tri(c0, c2, c1, frente); else tri(c0, c1, c2, frente);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  return g;
+}
+
+// Medidas y textura de cara para un personaje sin captura (se arman desde su look).
+const pintados = new Map();
+function perfilPintado(THREE, L) {
+  const clave = JSON.stringify(L);
+  if (!pintados.has(clave)) {
+    const t = new THREE.CanvasTexture(pintarCara(L));
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData.compartida = true;
+    const flaco = L.cuerpo === 'flaco', gordo = L.cuerpo === 'gordito';
+    pintados.set(clave, {
+      cabeza: siluetaCabeza({ ancho: gordo ? .54 : .5, alto: .6, pelo: L.pelo?.estilo }), cabezaTex: t,
+      piel: L.piel || '#e8c4a8', cinto: .68, hombros: flaco ? .2 : gordo ? .26 : .23, cintura: flaco ? .17 : gordo ? .235 : .195,
+      prenda: L.ropa?.remera || '#7aa2ff', mangas: L.mangasLargas || L.capucha || L.robot ? 'larga' : 'corta', puno: L.ropa?.remera,
+      cuello: L.polo ? 'chomba' : 'v', pantalon: L.ropa?.pantalon || '#3a4256', zapatos: L.robot ? '#5d6773' : L.ropa?.zapatillas || '#e9e1d1',
+      cinturon: L.robot || L.liso ? null : '#5a3a26', kipa: L.kipa || null,
+    });
+  }
+  return pintados.get(clave);
+}
+
+function crearPersonaFoto(THREE, L, F, opciones = {}) {
+  const { sombras = true } = opciones;
+  const ALTO = 1.85;
+  const materiales = new Map();
+  const mat = (color, extra = {}) => {
+    const k = JSON.stringify([color, extra]);
+    if (!materiales.has(k)) materiales.set(k, new THREE.MeshStandardMaterial({ color, roughness: .82, flatShading: true, ...extra }));
+    return materiales.get(k);
+  };
+  const grupo = new THREE.Group(), cuerpo = new THREE.Group();
+  grupo.add(cuerpo);
+  const pieza = (geo, m, x, y, z, parent) => {
+    const p = new THREE.Mesh(geo, m); p.position.set(x, y, z); p.castShadow = sombras; parent.add(p); return p;
+  };
+  // tubo facetado de r1 (arriba) a r2 (abajo), colgando desde y=0 hacia abajo
+  const tubo = (r1, r2, largo, m, parent, x = 0, y = 0, z = 0, lados = 7) => pieza(new THREE.CylinderGeometry(r1, r2, largo, lados, 1), m, x, y - largo / 2, z, parent);
+  const bola = (r, m, parent, x, y, z, sx = 1, sy = 1, sz = 1, a = 7, b = 5) => { const p = pieza(new THREE.SphereGeometry(r, a, b), m, x, y, z, parent); p.scale.set(sx, sy, sz); return p; };
+  const caja = (w, h, d, m, parent, x, y, z) => pieza(new THREE.BoxGeometry(w, h, d), m, x, y, z, parent);
+
+  const metal = L.robot ? { metalness: .6, roughness: .35 } : {};
+  const piel = mat(F.piel, metal);
+  const prenda = mat(F.prenda, metal), pantalon = mat(F.pantalon, metal), zapato = mat(F.zapatos);
+  const cargas = [];
+
+  // --- alturas (desde las capturas)
+  const kc = F.escalaCabeza || 1; // algunas capturas tienen la cabeza en escorzo
+  const altoCabeza = F.cabeza.alto * kc;
+  const menton = ALTO - altoCabeza;
+  const altoTorso = F.torso ? F.torso.alto : menton - F.cinto;
+  const cinto = menton - altoTorso;
+  const alturaCadera = cinto - .07;
+
+  // --- torso (pivote en la cadera, como el resto de los personajes)
+  const torso = new THREE.Group(); torso.position.y = alturaCadera; cuerpo.add(torso);
+  let perfilTorso, dimTorso, matTorso;
+  if (F.torso) {
+    perfilTorso = F.torso.perfil; dimTorso = F.torso;
+    const tx = texturaCompartida(THREE, F.torsoUrl); cargas.push(tx.listo);
+    matTorso = new THREE.MeshStandardMaterial({ map: tx.t, emissiveMap: tx.t, emissive: '#ffffff', emissiveIntensity: .58, color: '#9c9c9c', roughness: .9 });
+  } else {
+    // torso armado: cuello angosto, hombros, pecho y cintura
+    const h = altoTorso, hs = F.hombros, hc = F.cintura;
+    const filas = [[0, .075], [.03, .085], [.06, hs * .8], [.1, hs], [.25, hs * .98], [.5, hs * .9], [.75, hc * 1.04], [1, hc]];
+    perfilTorso = filas.map(([t, w]) => [t * h, -w, w]); dimTorso = { x0: -hs, x1: hs, alto: h };
+    matTorso = prenda;
+  }
+  const geoT = silueta(THREE, perfilTorso, dimTorso, { prof: (v) => (v < .1 ? .5 + v * 1.2 : .62), p: .72, segs: 12 });
+  pieza(geoT, matTorso, 0, menton - alturaCadera + .012, .0, torso);
+  // anchos útiles del torso
+  const ancho = (v) => { const f = perfilTorso[Math.min(perfilTorso.length - 1, Math.round(v * (perfilTorso.length - 1)))]; return (f[2] - f[1]) / 2; };
+  const anchoHombro = Math.max(ancho(.18), ancho(.25));
+  const anchoCintura = Math.max(ancho(1), ancho(.92), ancho(.85) * .97);
+  // cadera / pantalón arriba y cinturón
+  tubo(anchoCintura * .98, anchoCintura * .96, .17, pantalon, torso, 0, cinto - alturaCadera + .01, 0, 9).scale.z = .7;
+  if (F.cinturon && !F.torso) {
+    tubo(anchoCintura * 1.05, anchoCintura * 1.05, .035, mat(F.cinturon), torso, 0, cinto - alturaCadera + .02, 0, 9).scale.z = .7;
+    caja(.05, .032, .015, mat('#b9a27a', { metalness: .5, roughness: .4 }), torso, 0, cinto - alturaCadera + .003, -anchoCintura * .7);
+  }
+  // cuellos y detalles de las prendas armadas
+  if (!F.torso && F.cuello === 'chomba') {
+    for (const sd of [-1, 1]) {
+      const c = caja(.07, .015, .06, prenda, torso, sd * .045, menton - alturaCadera - .03, -.05);
+      c.rotation.set(.5, sd * .5, sd * .35);
+    }
+    for (let i = 0; i < 2; i++) bola(.007, mat('#2a2a2e'), torso, 0, menton - alturaCadera - .07 - i * .04, -F.hombros * .62, 1, 1, 1, 5, 4);
+  }
+  if (!F.torso && F.cuello === 'v') {
+    const v = pieza(new THREE.ConeGeometry(.045, .09, 3), piel, 0, menton - alturaCadera - .04, -F.hombros * .55, torso);
+    v.rotation.set(Math.PI, 0, 0); v.scale.z = .25;
+  }
+  // cuello (piel) por debajo de la cabeza
+  tubo(.062, .07, .09, piel, torso, 0, menton - alturaCadera + .055, .012, 7);
+
+  // --- cabeza (pivote en el mentón)
+  const cabeza = new THREE.Group(); cabeza.position.set(0, menton - alturaCadera + .012, .01); torso.add(cabeza);
+  const txC = F.cabezaTex ? { t: F.cabezaTex } : texturaCompartida(THREE, F.cabezaUrl); if (txC.listo) cargas.push(txC.listo);
+  const geoC = silueta(THREE, F.cabeza.perfil, F.cabeza, { prof: (v) => (v > .82 ? .8 : v < .12 ? .85 : .95), p: .8, segs: 12, nariz: .05 });
+  pieza(geoC, new THREE.MeshStandardMaterial({ map: txC.t, emissiveMap: txC.t, emissive: '#ffffff', emissiveIntensity: .6, color: '#9c9c9c', roughness: .85 }), 0, altoCabeza, 0, cabeza).scale.setScalar(kc);
+  const colorPelo = mat(L.pelo?.color || '#2b1d14');
+  if (!L.foto && L.pelo?.estilo === 'largo') {
+    // pelo largo cayendo atrás hasta los hombros
+    bola(.25, colorPelo, cabeza, 0, altoCabeza * .42, .1, 1.02, 1.3, .62, 8, 6);
+    for (const sd of [-1, 1]) bola(.09, colorPelo, cabeza, sd * .2, altoCabeza * .3, .02, .7, 1.7, .9, 6, 5);
+  }
+  if (L.sombrero) {
+    const ala = pieza(new THREE.CylinderGeometry(.36, .37, .03, 10), mat(L.sombrero), 0, altoCabeza * .86, .02, cabeza); ala.scale.z = .9;
+    pieza(new THREE.CylinderGeometry(.19, .23, .2, 8), mat(L.sombrero), 0, altoCabeza * .97, .02, cabeza);
+    pieza(new THREE.CylinderGeometry(.235, .235, .045, 8), mat('#b8783f'), 0, altoCabeza * .9, .02, cabeza);
+  }
+  if (L.robot) {
+    tubo(.014, .014, .14, mat('#a8a9a4', { metalness: .7, roughness: .3 }), cabeza, 0, altoCabeza + .13, .02, 5);
+    bola(.035, mat('#ff9b73', { emissive: '#ff704e', emissiveIntensity: .8 }), cabeza, 0, altoCabeza + .14, .02);
+  }
+  if (F.kipa) {
+    const k = pieza(new THREE.SphereGeometry(.16, 10, 4, 0, Math.PI * 2, 0, Math.PI * .32), mat(F.kipa), 0, altoCabeza - .12, .11, cabeza);
+    k.rotation.x = .55;
+  }
+
+  // --- brazos (hombro, codo y mano)
+  const hombroY = menton - alturaCadera - (F.torso ? .13 : .085);
+  const largoBrazo = (menton - (F.torso ? .13 : .085)) - ALTO * .235;
+  const brazo = largoBrazo * .43, antebrazo = largoBrazo * .37;
+  const rBrazo = Math.max(.06, Math.min(.075, anchoHombro * .24));
+  const manga = F.mangas === 'larga';
+  const brazos = [-1, 1].map((s) => {
+    const hombro = new THREE.Group(); hombro.position.set(s * (anchoHombro - rBrazo * (F.torso ? 1.25 : .25)), hombroY, .01); torso.add(hombro);
+    bola(rBrazo * (F.torso ? 1.05 : 1.3), prenda, hombro, 0, -.01, 0, 1, 1, .9);
+    if (manga) tubo(rBrazo, rBrazo * .92, brazo, prenda, hombro);
+    else {
+      tubo(rBrazo * (F.torso ? 1.08 : 1.3), rBrazo * (F.torso ? 1.1 : 1.25), brazo * .55, prenda, hombro);
+      tubo(rBrazo * 1.14, rBrazo * 1.14, .03, mat(F.puno || F.prenda), hombro, 0, -brazo * .55 + .012);
+      tubo(rBrazo * .88, rBrazo * .85, brazo * .5, piel, hombro, 0, -brazo * .5);
+    }
+    const codo = new THREE.Group(); codo.position.y = -brazo; hombro.add(codo);
+    bola(rBrazo * .8, manga ? prenda : piel, codo, 0, 0, 0);
+    tubo(rBrazo * .9, rBrazo * .78, antebrazo, manga ? prenda : piel, codo);
+    if (manga) tubo(rBrazo * .76, rBrazo * .76, .035, mat(F.puno), codo, 0, -antebrazo + .02);
+    const mano = new THREE.Group(); mano.position.y = -antebrazo; codo.add(mano);
+    // mano facetada con pulgar
+    const palma = bola(.065, piel, mano, 0, -.06, 0, .8, 1.3, .52, 6, 4);
+    palma.rotation.y = s * .3;
+    const pulgar = tubo(.02, .017, .065, piel, mano, -s * .045, -.025, -.028, 5); pulgar.rotation.z = s * .5;
+    if (F.reloj && s === -1) {
+      tubo(rBrazo * .78, rBrazo * .78, .03, mat(F.reloj), codo, 0, -antebrazo + .05);
+      caja(.032, .04, .012, mat('#1d2228', { metalness: .3, roughness: .3 }), codo, 0, -antebrazo + .035, -rBrazo * .75);
+    }
+    if (F.celular && s === -1) {
+      const c = caja(.06, .12, .01, mat('#0d0d0f', { metalness: .3, roughness: .25 }), mano, 0, -.07, -.035);
+      c.rotation.x = -.15;
+    }
+    return { hombro, codo, mano };
+  });
+
+  // --- piernas (cadera, rodilla y zapato)
+  const altoZapato = F.botas ? .11 : .085;
+  const muslo = (alturaCadera - altoZapato) * .52, pierna = (alturaCadera - altoZapato) * .48;
+  const rPierna = Math.min(.125, Math.max(.088, anchoCintura * .53));
+  const piernas = [-1, 1].map((s) => {
+    const cadera = new THREE.Group(); cadera.position.set(s * Math.max(rPierna * 1.02, anchoCintura - rPierna * 1.05), alturaCadera, 0); cuerpo.add(cadera);
+    tubo(rPierna, rPierna * .88, muslo, pantalon, cadera);
+    const rodilla = new THREE.Group(); rodilla.position.y = -muslo; cadera.add(rodilla);
+    bola(rPierna * .86, pantalon, rodilla, 0, 0, 0);
+    tubo(rPierna * .86, rPierna * .8, pierna, pantalon, rodilla);
+    // zapato: punta adelante (-z), suela plana
+    const z = new THREE.Group(); z.position.y = -pierna; rodilla.add(z);
+    if (F.botas) tubo(rPierna * .9, rPierna * .95, .09, zapato, z, 0, .03);
+    caja(rPierna * 2.05, altoZapato * .85, .25, zapato, z, 0, -altoZapato * .52, -.05);
+    bola(rPierna * 1.05, zapato, z, 0, -altoZapato * .45, -.155, 1, .62, .85, 6, 4);
+    caja(rPierna * 2.1, .018, .27, mat(new THREE.Color(F.zapatos).multiplyScalar(.55)), z, 0, -altoZapato + .006, -.055);
+    return { cadera, rodilla };
+  });
+
+  let capa = null;
+  if (L.capa) {
+    capa = new THREE.Group(); capa.position.set(0, menton - alturaCadera - .03, anchoHombro * .55); torso.add(capa);
+    const geo = new THREE.PlaneGeometry(anchoHombro * 2.4, .95, 6, 8);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i); pos.setZ(i, .03 * Math.cos(x * 24) + (.47 - y) * .12); pos.setX(i, x * (1 - y * .3)); }
+    geo.computeVertexNormals(); pieza(geo, mat(L.capa, { side: THREE.DoubleSide }), 0, -.47, 0, capa);
+  }
+  let aura = null;
+  if (L.dorado) {
+    aura = new THREE.Group(); grupo.add(aura);
+    for (let i = 0; i < 12; i++) {
+      const o = pieza(new THREE.OctahedronGeometry(.035), mat('#ffda5b', { emissive: '#c38b20', emissiveIntensity: .7 }), 0, 0, 0, aura);
+      o.userData.a = (i * Math.PI) / 6;
+    }
+  }
+  // sombra
+  const sombra = pieza(new THREE.CircleGeometry(.4, 24), new THREE.MeshBasicMaterial({ color: '#17191e', transparent: true, opacity: .17, depthWrite: false }), 0, .008, 0, grupo);
+  sombra.rotation.x = -Math.PI / 2; sombra.castShadow = false;
+
+  // piezas de la cara que el rig espera (en estos personajes la cara es la textura)
+  const nada = () => { const o = new THREE.Group(); o.visible = false; cabeza.add(o); return o; };
+  const boca = nada(), sonrisa = nada(), lengua = nada(), dientes = nada(), arruga = nada();
+  const cachetes = [nada(), nada()], cejas = [nada(), nada()], ojos = [nada(), nada()];
+  const seg = (n) => n;
+  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera, abrirBrazos: .17, poseQuieto: F.pose || null, alListo: Promise.all(cargas) }, opciones);
 }
 
 function compactar(THREE, raiz) {

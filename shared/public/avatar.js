@@ -161,7 +161,11 @@ if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
         let url = cache.get(key);
         if (!url) {
           const p = motor.crearPersona(motor.THREE, JSON.parse(decodeURIComponent(key)), { sombras: false });
-          motor.scene.add(p.grupo); p.animar('quieto', 0);
+          await p.listo; // los del elenco con modelo propio esperan sus texturas
+          motor.scene.add(p.grupo); p.animar('quieto', 0); p.grupo.updateMatrixWorld(true);
+          // encuadre centrado en la cabeza (cada modelo tiene la cabeza a su altura)
+          const c = new motor.THREE.Box3().setFromObject(p.cabeza).getCenter(new motor.THREE.Vector3());
+          motor.camara.position.set(c.x + 1.6, c.y + .29, c.z - 5); motor.camara.lookAt(c.x, c.y - .15, c.z);
           motor.renderer.render(motor.scene, motor.camara); url = motor.renderer.domElement.toDataURL('image/png');
           p.dispose(); cache.set(key, url);
           if (cache.size > 128) cache.delete(cache.keys().next().value);

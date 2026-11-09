@@ -11,7 +11,7 @@ export const NPCS = [
     id: 'glinsky',
     nombre: 'Glinsky',
     // foto: pelo corto canoso con entradas, flaco, camisa celeste, sonrisa
-    look: { piel: '#e9c2a2', pelo: { estilo: 'entradas', color: '#a9a49b' }, ojos: '#5a3a22', cuerpo: 'flaco', camisa: true, ropa: { remera: '#a9c4e8', pantalon: '#3a3f4a', bolso: false, zapatillas: '#3a2f28' }, genero: 'h' },
+    look: { foto: 'glinsky', piel: '#e9c2a2', pelo: { estilo: 'entradas', color: '#a9a49b' }, ojos: '#5a3a22', cuerpo: 'flaco', camisa: true, ropa: { remera: '#a9c4e8', pantalon: '#3a3f4a', bolso: false, zapatillas: '#3a2f28' }, genero: 'h' },
     frases: [
       '¡Qué grande que sos, Julo!',
       'Julo es el Momo de la informática.',
@@ -28,7 +28,7 @@ export const NPCS = [
     id: 'julo',
     nombre: 'Julo',
     // foto: rapado, barba corta colorada, remera negra, mochila y cámara de fotos colgada
-    look: { piel: '#efcfb6', pelo: { estilo: 'rapado', color: '#9a7350' }, ojos: '#4f8fc9', cuerpo: 'normal', barba: '#a16f45', barbaCorta: true, camara: true, mochila: '#6b6658', ropa: { remera: '#18181c', pantalon: '#2a2d36', bolso: false }, genero: 'h' },
+    look: { foto: 'julo', piel: '#efcfb6', pelo: { estilo: 'rapado', color: '#9a7350' }, ojos: '#4f8fc9', cuerpo: 'normal', barba: '#a16f45', barbaCorta: true, camara: true, mochila: '#6b6658', ropa: { remera: '#18181c', pantalon: '#2a2d36', bolso: false }, genero: 'h' },
     frases: [
       'Si cacheás el kernel en el ruteador, el JSON se desfragmenta solo.',
       'El puntero apunta a sí mismo. Eso es amor.',
@@ -46,7 +46,7 @@ export const NPCS = [
     id: 'faur',
     nombre: 'Faur',
     // foto: rapado, barba tupida oscura, anteojos rectangulares, camisa a cuadros y campera
-    look: { piel: '#e3b58f', pelo: { estilo: 'rapado', color: '#3b2a1e' }, ojos: '#3a2a1c', cuerpo: 'gordito', barba: '#2b1d14', lentes: '#26282d', lentesForma: 'cuadrada', kipa: '#1d2c5e', campera: '#8a9488', ropa: { remera: '#4f73b0', estampado: 'cuadros', pantalon: '#2b2b33' }, genero: 'h' },
+    look: { foto: 'faur', piel: '#e3b58f', pelo: { estilo: 'rapado', color: '#3b2a1e' }, ojos: '#3a2a1c', cuerpo: 'gordito', barba: '#2b1d14', lentes: '#26282d', lentesForma: 'cuadrada', kipa: '#1d2c5e', campera: '#8a9488', ropa: { remera: '#4f73b0', estampado: 'cuadros', pantalon: '#2b2b33' }, genero: 'h' },
     frases: [
       '¿Quién trajo las facturas?',
       'Esto lo charlamos después de clase.',
@@ -61,7 +61,7 @@ export const NPCS = [
     id: 'dobro',
     nombre: 'Dobro',
     // foto: buzo azul con la capucha puesta y anteojos de marco claro (de smoking en el casino)
-    look: { piel: '#e2b48f', pelo: { estilo: 'calvo', color: '#2a1d14' }, ojos: '#5a3a22', cuerpo: 'flaco', lentes: '#d9cfc2', lentesClaros: true, capucha: '#1f2a4d', ropa: { remera: '#1f2a4d', pantalon: '#15171c', bolso: false, zapatillas: '#e9e6e0' }, genero: 'h' },
+    look: { foto: 'dobro', piel: '#e2b48f', pelo: { estilo: 'calvo', color: '#2a1d14' }, ojos: '#5a3a22', cuerpo: 'flaco', lentes: '#d9cfc2', lentesClaros: true, capucha: '#1f2a4d', ropa: { remera: '#1f2a4d', pantalon: '#15171c', bolso: false, zapatillas: '#e9e6e0' }, genero: 'h' },
     // en el casino aparece de smoking (lo pone la mesa de blackjack); en el resto, con su buzo
     smoking: true,
     frases: [
@@ -78,13 +78,13 @@ export const NPCS = [
   {
     id: 'volcho',
     nombre: 'El volcho',
-    look: { piel: '#f2d2b8', pelo: { estilo: 'largo', color: '#7a4b2a' }, ojos: '#5b3b22', cuerpo: 'flaco', ropa: { remera: '#c084fc', pantalon: '#2f3a5c' }, genero: 'm' },
+    look: { estilo: 'meshy', piel: '#f2d2b8', pelo: { estilo: 'largo', color: '#7a4b2a' }, ojos: '#5b3b22', cuerpo: 'flaco', ropa: { remera: '#c084fc', pantalon: '#2f3a5c' }, genero: 'm' },
     frases: ['Soy el volcho.', 'Soy el volcho, che.', '¿Quién? El volcho.', 'Acá está el volcho.', 'El volcho no pierde.'],
   },
   {
     id: 'colon',
     nombre: 'Cristóbal Colón',
-    look: { piel: '#efcfb2', pelo: { estilo: 'largo', color: '#e8e4dc' }, ojos: '#4a5e7a', cuerpo: 'normal', sombrero: '#2b2018', ropa: { remera: '#7a1f2b', pantalon: '#2b2018' }, genero: 'h' },
+    look: { estilo: 'meshy', piel: '#efcfb2', pelo: { estilo: 'largo', color: '#e8e4dc' }, ojos: '#4a5e7a', cuerpo: 'normal', sombrero: '#2b2018', ropa: { remera: '#7a1f2b', pantalon: '#2b2018' }, genero: 'h' },
     frases: [
       '¡Tierra a la vista!',
       'Yo buscaba las Indias y terminé acá.',
@@ -97,7 +97,7 @@ export const NPCS = [
   {
     id: 'claude',
     nombre: 'Claude',
-    look: { piel: '#d97757', pelo: { estilo: 'calvo', color: '#d97757' }, ojos: '#2b1a12', cuerpo: 'normal', ropa: { remera: '#c4623f', pantalon: '#a84f30' }, genero: 'h', liso: true },
+    look: { estilo: 'meshy', piel: '#d97757', pelo: { estilo: 'calvo', color: '#d97757' }, ojos: '#2b1a12', cuerpo: 'normal', ropa: { remera: '#c4623f', pantalon: '#a84f30' }, genero: 'h', liso: true },
     frases: [
       'Yo armé este juego. Ahora solo miro cómo se divierten.',
       'Si encuentran un bug, era una función.',
@@ -110,13 +110,13 @@ export const NPCS = [
   {
     id: 'capitan',
     nombre: 'Capitán Mate',
-    look: { piel: '#e3b48f', pelo: { estilo: 'corto', color: '#2b1a10' }, ojos: '#3b6e3b', cuerpo: 'normal', capa: '#2f8f4e', antifaz: '#123d22', ropa: { remera: '#f2c94c', pantalon: '#2f8f4e' }, genero: 'h' },
+    look: { estilo: 'meshy', piel: '#e3b48f', pelo: { estilo: 'corto', color: '#2b1a10' }, ojos: '#3b6e3b', cuerpo: 'normal', capa: '#2f8f4e', antifaz: '#123d22', ropa: { remera: '#f2c94c', pantalon: '#2f8f4e' }, genero: 'h' },
     frases: ['¡El Capitán Mate llegó para salvar la ronda!', 'Con agua a 80 grados, ni un grado más.', '¡Ningún pibe se queda sin mate!', '¡Mi superpoder es cebar rápido!'],
   },
   {
     id: 'chapa',
     nombre: 'Chapa Max',
-    look: { piel: '#b9c2cc', pelo: { estilo: 'calvo', color: '#000' }, ojos: '#38d9e6', cuerpo: 'normal', robot: true, ropa: { remera: '#8a96a3', pantalon: '#5d6773' }, genero: 'h' },
+    look: { estilo: 'meshy', piel: '#b9c2cc', pelo: { estilo: 'calvo', color: '#000' }, ojos: '#38d9e6', cuerpo: 'normal', robot: true, ropa: { remera: '#8a96a3', pantalon: '#5d6773' }, genero: 'h' },
     frases: ['Soy Chapa Max. Hecho de chapa y ganas.', 'Bip bup. Calculando la victoria.', 'Necesito aceite. Y un abrazo.', 'Mi batería está al 3%. Igual corro.'],
   },
   {
@@ -124,7 +124,7 @@ export const NPCS = [
     nombre: 'Mati Nadeo',
     raro: true, // easter egg: aparece poco y con brillo dorado
     // foto: rulos cortos oscuros con los costados rebajados, chomba y pantalón negros, reloj
-    look: { piel: '#ecc5a5', pelo: { estilo: 'rulosCorto', color: '#1f1712' }, ojos: '#4a3424', cuerpo: 'gordito', dorado: true, polo: true, ropa: { remera: '#151518', pantalon: '#18181b', bolso: false, zapatillas: '#2a2a2e' }, genero: 'h' },
+    look: { foto: 'mati', piel: '#ecc5a5', pelo: { estilo: 'rulosCorto', color: '#1f1712' }, ojos: '#4a3424', cuerpo: 'gordito', dorado: true, polo: true, ropa: { remera: '#151518', pantalon: '#18181b', bolso: false, zapatillas: '#2a2a2e' }, genero: 'h' },
     frases: ['Queque.', 'Queque.', '¿Hay Queque?', 'A {jugador} le gusta el Queque.', 'Queque, queque.', 'Todo es Queque.'],
   },
 ];
