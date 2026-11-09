@@ -3,6 +3,7 @@ import { POR_ID, charlas, rngNpc } from '/comun/npcs.js';
 import { dicho } from '/comun/dichos.js';
 import { lookParaDibujo } from '/comun/look.js';
 import { GESTOS } from '/comun/gestos.js';
+import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { Escena } from './escena.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
 import { Red } from './red.js';
@@ -123,11 +124,7 @@ function abrirSala(code) {
     <div class="capa cuenta" data-cuenta></div>
     <div class="capa aviso" data-aviso></div>
     <div class="capa espectar hidden" data-espectar><button class="btn btn-chico" data-esp="-1" aria-label="Anterior">&lsaquo;</button><span>Mirando a <b data-esp-nombre></b></span><button class="btn btn-chico" data-esp="1" aria-label="Siguiente">&rsaquo;</button></div>
-    <div class="capa gestos-menu hidden" data-gestos style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;grid-template-columns:repeat(5,auto);gap:10px;background:rgba(20,20,19,.88);padding:18px;border-radius:18px;z-index:20">
-      ${GESTOS.map((g) => `<button class="btn" data-gesto="${g.id}" style="display:grid;gap:4px;min-width:96px"><kbd>${g.tecla}</kbd>${g.nombre}</button>`).join('')}
-      <span style="grid-column:1/-1;text-align:center;color:#ddd;font-size:13px">Elegí un gesto (B para cerrar)</span>
-    </div>
-    <div class="capa gestos-tip" style="position:absolute;right:16px;bottom:70px;color:#fff;font-size:12px;opacity:.75;z-index:5"><kbd>B</kbd> gestos</div>
+    <div class="capa gestos-tip" style="position:absolute;right:16px;bottom:70px;color:#fff;font-size:12px;opacity:.75;z-index:5">Mantené <kbd>B</kbd> para los gestos</div>
     <div class="capa pina-hud" data-pina><kbd>E</kbd><span>Piña</span><i><b></b></i></div>
     <div class="capa panel-flota podio-flota hidden" data-podio></div>
     <div class="capa chat-mini"><div class="log" data-log></div><form data-chat><input class="entrada" maxlength="200" placeholder="Chat…" autocomplete="off"></form></div>
@@ -338,14 +335,12 @@ function abrirSala(code) {
 
   // ---------------------------------------------------------------- controles
   const teclas = new Set();
-  // gestos tipo Fortnite: B abre el menú, 1-5 (o click) elige; viaja a los demás como animación
-  const menuGestos = (abrir) => app.querySelector('[data-gestos]').classList.toggle('hidden', abrir === undefined ? undefined : !abrir);
-  function hacerGesto(id) {
-    const g = GESTOS.find((x) => x.id === id);
-    if (g && jugador && !jugador.espectador) jugador.pedirGesto(g.id, g.dur);
-    menuGestos(false);
-  }
-  app.querySelector('[data-gestos]').addEventListener('click', (e) => { const b = e.target.closest('[data-gesto]'); if (b) hacerGesto(b.dataset.gesto); });
+  // gestos tipo Fortnite: mantenés la B, apuntás con el mouse y soltás; viaja a los demás como animación
+  const rueda = ruedaGestos({
+    puede: () => jugador && !jugador.espectador,
+    alElegir: (id) => { const g = GESTOS.find((x) => x.id === id); if (g) jugador.pedirGesto(g.id, g.dur); },
+  });
+  limpiar.push(() => rueda.destruir());
   const abajo = (e) => {
     if (e.target.closest('input, select, textarea')) return;
     const k = e.code;
@@ -354,9 +349,6 @@ function abrirSala(code) {
       if (k === 'Space') entrada.salto = true;
       if (k === 'ShiftLeft' || k === 'ShiftRight') entrada.buceo = true;
       if (k === 'KeyE') entrada.golpe = true;
-      if (k === 'KeyB') menuGestos();
-      const g = !app.querySelector('[data-gestos]').classList.contains('hidden') && GESTOS.find((x) => 'Digit' + x.tecla === k || 'Numpad' + x.tecla === k);
-      if (g) hacerGesto(g.id);
       if (mirando() && (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'KeyA' || k === 'KeyD')) espectando += k === 'ArrowLeft' || k === 'KeyA' ? -1 : 1;
     }
     teclas.add(k);

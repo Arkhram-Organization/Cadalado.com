@@ -28,7 +28,7 @@ export const NPCS = [
     id: 'julo',
     nombre: 'Julo',
     // foto: rapado, barba corta colorada, remera negra, mochila y cámara de fotos colgada
-    look: { foto: 'julo', piel: '#efcfb6', pelo: { estilo: 'rapado', color: '#9a7350' }, ojos: '#4f8fc9', cuerpo: 'normal', barba: '#a16f45', barbaCorta: true, camara: true, mochila: '#6b6658', ropa: { remera: '#18181c', pantalon: '#2a2d36', bolso: false }, genero: 'h' },
+    look: { modelo: 'julo', clips: { festeja: 'Hip_Hop_Dance_4', voltereta: 'Parkour_Vault_with_Roll', muerto: 'dying_backwards' }, travesuras: { quieto: ['flexiones', 'baila', 'habla', 'saluda'] }, foto: 'julo', piel: '#efcfb6', pelo: { estilo: 'rapado', color: '#9a7350' }, ojos: '#4f8fc9', cuerpo: 'normal', barba: '#a16f45', barbaCorta: true, camara: true, mochila: '#6b6658', ropa: { remera: '#18181c', pantalon: '#2a2d36', bolso: false }, genero: 'h' },
     frases: [
       'Si cacheás el kernel en el ruteador, el JSON se desfragmenta solo.',
       'El puntero apunta a sí mismo. Eso es amor.',
@@ -123,7 +123,7 @@ export const NPCS = [
     id: 'angeles',
     nombre: 'Ángeles Peña',
     // informática, danza artística y boludeces. Modelo de Meshy: shared/public/modelos/angeles.glb
-    look: { modelo: 'angeles', travesuras: { quieto: ['baila', 'baila', 'habla', 'festeja'], corre: 'voltereta' }, estilo: 'meshy', piel: '#efc6a8', pelo: { estilo: 'largo', color: '#141414' }, ojos: '#3a2618', cuerpo: 'normal', lentes: '#141414', ropa: { remera: '#c9cbcc', pantalon: '#3d6fae', zapatillas: '#8d93a8' }, genero: 'm' },
+    look: { modelo: 'angeles', clips: { festeja: 'All_Night_Dance', baila: 'All_Night_Dance' }, travesuras: { quieto: ['baila', 'baila', 'habla', 'festeja'], corre: 'voltereta' }, estilo: 'meshy', piel: '#efc6a8', pelo: { estilo: 'largo', color: '#141414' }, ojos: '#3a2618', cuerpo: 'normal', lentes: '#141414', ropa: { remera: '#c9cbcc', pantalon: '#3d6fae', zapatillas: '#8d93a8' }, genero: 'm' },
     frases: [
       'Un algoritmo es como una coreografía: pasos, pasos y error.',
       'Hoy hice un pas de bourrée y compilé a la primera.',

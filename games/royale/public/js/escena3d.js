@@ -84,7 +84,7 @@ export class Isla3D {
       let a=this.people.get(p.id);
       if(!a){const persona=crearPersona(THREE,p.look,{sombras:true});persona.grupo.scale.setScalar(10);this.scene.add(persona.grupo);const gun=new THREE.Group();this.mesh(new THREE.BoxGeometry(.09,.12,.38),'#333d3e',0,0,-.12,gun);this.mesh(new THREE.BoxGeometry(.08,.18,.09),'#555e4c',0,-.1,.01,gun);gun.position.set(.28,1.04,-.42);persona.grupo.add(gun);const flash=new THREE.Mesh(new THREE.IcosahedronGeometry(.14,0),new THREE.MeshBasicMaterial({color:'#ffe5a1'}));flash.position.z=-.38;gun.add(flash);a={persona,gun,flash,death:0,alive:true,health:p.vida};this.people.set(p.id,a);}
       a.persona.grupo.position.set(p.x,0,p.y);a.persona.grupo.rotation.y=-p.ang-Math.PI/2;
-      if(p.vivo){a.death=0;a.persona.grupo.rotation.z=0;a.persona.grupo.scale.setScalar(10);const fire=balas.some(b=>b.de===p.id&&Math.hypot(b.x-p.x,b.y-p.y)<30);a.persona.animar({mueve:p.mueve,corre:p.mueve,velocidad:p.mueve?1:0,apunta:true,dispara:fire,recargando:p.recargando>0,curando:!!p.usando,golpe:p.vida<a.health},dt);a.health=p.vida;a.gun.visible=!!ARMAS[p.arma];a.flash.visible=fire;a.gun.scale.z=p.arma==='pistola'?.7:1.2;}
+      if(p.vivo){a.death=0;a.persona.grupo.rotation.z=0;a.persona.grupo.scale.setScalar(10);const fire=balas.some(b=>b.de===p.id&&Math.hypot(b.x-p.x,b.y-p.y)<30);a.persona.animar(p.gesto?'g-'+p.gesto:{mueve:p.mueve,corre:p.mueve,velocidad:p.mueve?1:0,apunta:true,dispara:fire,recargando:p.recargando>0,curando:!!p.usando,golpe:p.vida<a.health},dt);a.health=p.vida;a.gun.visible=!!ARMAS[p.arma]&&!p.gesto;a.flash.visible=fire;a.gun.scale.z=p.arma==='pistola'?.7:1.2;}
       a.alive=p.vivo;
     }
     for(const [id,a] of this.people) {

@@ -10,34 +10,48 @@ const ALTO = 1.85; // misma altura que el resto del elenco
 const cache = new Map();
 let qMuslo = null, qRodilla = null; // giros para sentarse (sobre la pose de los huesos)
 
-// Qué animación usa cada estado de los juegos (con alternativas por si un modelo no la tiene).
+// Biblioteca común: las animaciones de cada modelo de Meshy sirven para todos (mismo esqueleto Mixamo).
+const BIBLIOTECA = ['anim-julo', 'anim-angeles'];
+let biblioteca = null;
+function cargarBiblioteca() {
+  biblioteca ??= Promise.all(BIBLIOTECA.map((n) => cargar(new URL(`./modelos/${n}.glb`, import.meta.url).href).catch(() => ({ animations: [] }))))
+    .then((gs) => { const m = new Map(); for (const g of gs) for (const a of g.animations) if (!m.has(a.name)) m.set(a.name, a); return m; });
+  return biblioteca;
+}
+
+// Qué animación usa cada estado de los juegos (con alternativas por si falta alguna).
+// Cada personaje puede elegir las suyas con look.clips = { estado: 'Nombre' }.
 const CLIPS = {
-  quieto: ['Short_Breathe_and_Look_Around', 'Idle'],
+  quieto: ['Short_Breathe_and_Look_Around', 'Long_Breathe_and_Look_Around', 'Idle'],
   habla: ['Talk_with_Hands_Open'],
   saluda: ['Waving', 'Wave', 'Talk_with_Hands_Open'],
   voltereta: ['Run_and_Jump', 'Hop_with_Arms_Raised'],
   camina: ['Walking'],
-  corre: ['Running'],
+  corre: ['RunFast', 'Running'], // la corrida de Julo
+  trota: ['Running'],
   atras: ['Walk_Backward'],
-  salto: ['Run_and_Jump', 'Hop_with_Arms_Raised'],
+  salto: ['Jump_Over_Obstacle_2', 'Run_and_Jump', 'Hop_with_Arms_Raised'],
   festeja: ['Hop_with_Arms_Raised', 'All_Night_Dance'],
-  baila: ['All_Night_Dance', 'Hop_with_Arms_Raised'],
-  muerto: ['Shot_and_Blown_Back'],
+  baila: ['Hip_Hop_Dance_4', 'All_Night_Dance', 'Hop_with_Arms_Raised'],
+  flexiones: ['push_up'],
+  parkour: ['Parkour_Vault_with_Roll'],
+  muerto: ['Shot_and_Blown_Back', 'dying_backwards'],
   golpe: ['Shot_and_Blown_Back'],
-  pina: ['Right_Hand_Sword_Slash'],
+  pina: ['Right_Hand_Sword_Slash', 'Step_in_High_Kick'],
+  patada: ['Step_in_High_Kick', 'Right_Hand_Sword_Slash'],
   dispara: ['Run_and_Shoot', 'Rifle_Charge_inplace'],
   apunta: ['Run_and_Shoot', 'Rifle_Charge_inplace'],
   recarga: ['Standing_Reload', 'Kneeling_Reload'],
   granada: ['Crouch_Pull_and_Throw'],
   armaCamina: ['Rifle_Charge_inplace', 'Walking'],
-  armaAtras: ['Walk_Backward_with_Gun_inplace', 'Walk_Backward'],
+  armaAtras: ['Walk_Backward_with_Gun_inplace', 'Walk_Backward_While_Shooting', 'Walk_Backward'],
   armaLado: ['Walk_Left_with_Gun_inplace'],
   agachadoLado: ['Crouch_Walk_Left_with_Gun_inplace'],
 };
 export const SENTADO = { muslo: -Math.PI / 2, rodilla: Math.PI / 2 };
-const UNA_VEZ = new Set(['muerto', 'golpe', 'pina', 'granada', 'recarga', 'salto', 'voltereta']);
+const UNA_VEZ = new Set(['muerto', 'golpe', 'pina', 'patada', 'granada', 'recarga', 'salto', 'voltereta', 'parkour']);
 const QUEDA = new Set(['muerto']); // se queda en el último cuadro
-const alias = { idle: 'quieto', caminar: 'camina', correr: 'corre', morir: 'muerto', muerte: 'muerto', celebrar: 'festeja', disparar: 'dispara', recargar: 'recarga', curar: 'recarga', cura: 'recarga', cae: 'golpe', patada: 'pina', buceo: 'salto' };
+const alias = { idle: 'quieto', caminar: 'camina', correr: 'corre', morir: 'muerto', muerte: 'muerto', celebrar: 'festeja', disparar: 'dispara', recargar: 'recarga', curar: 'recarga', cura: 'recarga', cae: 'golpe', buceo: 'parkour' };
 
 function cargar(url) {
   if (!cache.has(url)) {
@@ -74,7 +88,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
   let mixer = null, acciones = {}, actual = null, estadoActual = '', huesos = {}, alturaCadera = .95;
   let globo = null, globoHasta = 0, hablaHasta = 0, reloj = 0, transcurrido = 0;
   const trav = travieso(look);
-  const listo = cargar(url).then((g) => {
+  const listo = Promise.all([cargar(url), cargarBiblioteca()]).then(([g, lib]) => {
     const m = clonarEsqueleto(g.scene);
     const caja = new THREE.Box3().setFromObject(m);
     const k = ALTO / Math.max(.5, caja.max.y - caja.min.y);
@@ -85,8 +99,10 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
     });
     cuerpo.add(m);
     mixer = new THREE.AnimationMixer(m);
-    for (const [estado, nombres] of Object.entries(CLIPS)) {
-      const clip = nombres.map((n) => g.animations.find((a) => a.name === n)).find(Boolean);
+    const todas = new Map(lib); for (const a of g.animations) todas.set(a.name, a); // las propias primero
+    for (const [estado, lista] of Object.entries(CLIPS)) {
+      const nombres = look.clips?.[estado] ? [look.clips[estado], ...lista] : lista;
+      const clip = nombres.map((n) => todas.get(n)).find(Boolean);
       if (!clip) continue;
       const a = mixer.clipAction(clip);
       if (UNA_VEZ.has(estado)) { a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; }
@@ -150,7 +166,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
       cuerpo.position.y = sentado ? .43 - alturaCadera : 0;
       cuerpo.position.z = 0;
       if (tirado && !acciones.muerto) { cuerpo.rotation.x = Math.PI / 2; cuerpo.position.y = .17; } else cuerpo.rotation.x = 0;
-      if (estado === 'voltereta') voltereta(cuerpo, transcurrido / 1.05, .9, .75); // vuelta carnero encima del salto
+      if (estado === 'voltereta' && !/Roll|Flip/i.test(acciones.voltereta?.getClip().name || '')) voltereta(cuerpo, transcurrido / 1.05, .9, .75); // vuelta carnero encima del salto
       if (globo && reloj > globoHasta) { grupo.remove(globo); liberarSprite(globo); globo = null; }
     },
     dispose() {

@@ -4,6 +4,8 @@ import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNom
 import { POR_ID } from '/comun/npcs.js';
 import { avatarSvg, lookDeId, lookDeJugador } from '/comun/avatar.js';
 import { Red } from '/comun/red.js';
+import { GESTOS } from '/comun/gestos.js';
+import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { generarMapa, zona, ARMAS, VIDA, ESCUDO_MAX, LADO, rng } from './mundo.js';
 import { spritesPersona, spritesBotin, pintarMapa, copa, miniMapa, SP_W, SP_H } from './sprites.js';
 import { Peleador, CerebroBot, avanzarBala, nuevaBala, danoZona, CODIGO_ARMA, ARMA_DE_CODIGO } from './juego.js';
@@ -121,6 +123,9 @@ function abrirSala(code) {
   const lienzo = $('[data-lienzo]');
   const vista = new Isla3D(lienzo);
   limpiar.push(()=>vista.dispose());
+  // gestos tipo Fortnite: mantenés la B, movés el mouse y soltás
+  const rueda = ruedaGestos({ puede: () => !!yo?.vivo, alElegir: (id) => { const g = GESTOS.find((x) => x.id === id); if (g && yo?.vivo && !yo.mueve) { yo.gesto = g.id; yo.gestoT = g.dur; } } });
+  limpiar.push(() => rueda.destruir());
   const overlay = $('[data-overlay]');
   const ctx = overlay.getContext('2d');
   const bajo = document.createElement('canvas'); // el mundo se dibuja chico y se agranda (pixel art)
@@ -226,10 +231,10 @@ function abrirSala(code) {
   });
 
   // Estado compacto: yo (y, si soy anfitrión, los bots después de '#')
-  const codificarP = (p) => `${p.x | 0},${p.y | 0},${p.ang.toFixed(2)},${p.vida | 0},${p.escudo | 0},${CODIGO_ARMA[p.arma.tipo]},${p.mueve ? 1 : 0},${p.vivo ? 1 : 0}`;
+  const codificarP = (p) => `${p.x | 0},${p.y | 0},${p.ang.toFixed(2)},${p.vida | 0},${p.escudo | 0},${CODIGO_ARMA[p.arma.tipo]},${p.mueve ? 1 : 0},${p.vivo ? 1 : 0},${p.gesto ? GESTOS.findIndex((g) => g.id === p.gesto) + 1 : 0}`;
   const decodificarP = (s) => {
-    const [x, y, ang, vida, escudo, arma, mueve, vivo] = s.split(',');
-    return { x: +x, y: +y, ang: +ang, vida: +vida, escudo: +escudo, arma: ARMA_DE_CODIGO[arma] || 'pistola', mueve: mueve === '1', vivo: vivo === '1' };
+    const [x, y, ang, vida, escudo, arma, mueve, vivo, gesto] = s.split(',');
+    return { x: +x, y: +y, ang: +ang, vida: +vida, escudo: +escudo, arma: ARMA_DE_CODIGO[arma] || 'pistola', mueve: mueve === '1', vivo: vivo === '1', gesto: GESTOS[(+gesto || 0) - 1]?.id || null };
   };
   function recibir(id, s) {
     const [mio, botsTxt] = String(s).split('#');
@@ -544,7 +549,7 @@ function abrirSala(code) {
     }
 
     // yo
-    const puedoJugar = yo?.vivo && fase === 'partida' && t >= 0 && !document.querySelector('.cl-esc') && !document.activeElement?.matches('input,textarea');
+    const puedoJugar = yo?.vivo && fase === 'partida' && t >= 0 && !document.querySelector('.cl-esc') && !document.activeElement?.matches('input,textarea') && !rueda.abierta;
     if (yo) {
       yo.tiempo(dt);
       if (puedoJugar) {
@@ -555,6 +560,8 @@ function abrirSala(code) {
         if (Math.hypot(joys.tiro.x, joys.tiro.y) > 0.2) yo.ang = Math.atan2(joys.tiro.y, joys.tiro.x);
         else {const a=vista.apuntar(mouse.x,mouse.y);yo.ang=Math.atan2(a.y-yo.y,a.x-yo.x);}
         const disparo = mouse.abajo || Math.hypot(joys.tiro.x, joys.tiro.y) > 0.65;
+        // un gesto dura lo suyo; moverse o tirar lo corta
+        if (yo.gesto) { yo.gestoT -= dt; if (yo.gestoT <= 0 || yo.mueve || disparo) yo.gesto = null; }
         if (disparo && OBJETOS[yo.arma.tipo]) { if(!mouse.usado) usarObjeto();mouse.usado=true; } else if(!disparo) mouse.usado=false;
         if (disparo) {
           const nuevas = yo.disparar();
@@ -606,7 +613,7 @@ function abrirSala(code) {
       if (!vivosIds.has(id)) continue;
       const k = Math.min(1, dt * 12);
       for (const c of ['x', 'y']) r.obj[c] += (r.meta[c] - r.obj[c]) * (Math.abs(r.meta[c] - r.obj[c]) > 80 ? 1 : k);
-      Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, vivo: r.meta.vivo && vivosIds.has(id), id });
+      Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, gesto: r.meta.gesto, vivo: r.meta.vivo && vivosIds.has(id), id });
       if (r.obj.vivo) blancos.push(r.obj);
     }
     if (anfitrion) {
@@ -644,7 +651,7 @@ function abrirSala(code) {
       for (const [id, r] of botsVistos) {
         const k = Math.min(1, dt * 12);
         for (const c of ['x', 'y']) r.obj[c] += (r.meta[c] - r.obj[c]) * (Math.abs(r.meta[c] - r.obj[c]) > 80 ? 1 : k);
-        Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, vivo: r.meta.vivo && vivosIds.has(id), id });
+        Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, gesto: r.meta.gesto, vivo: r.meta.vivo && vivosIds.has(id), id });
         if (r.obj.vivo) {
           listaBots.push(r.obj);
           blancos.push(r.obj);
