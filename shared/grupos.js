@@ -111,8 +111,9 @@ export async function accionGrupo(yo, body) {
       break;
     case 'jugar': {
       if (!lider) throw err('Arranca el líder.', 403);
+      if (g.ir?.url === String(body.url || '')) break; // ya estaban yendo ahí
       const url = String(body.url || '');
-      if (!/^\/[a-z]{3,12}\/(sala\/[A-Z0-9-]{3,16})?$/.test(url)) throw err('Destino inválido.');
+      if (!/^\/[a-z]{3,12}\/((sala|mesa|game)\/[A-Za-z0-9-]{3,24})?$/.test(url)) throw err('Destino inválido.');
       g.ir = { url, ts: Date.now() };
       break;
     }

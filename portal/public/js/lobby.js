@@ -92,7 +92,7 @@ export async function montarLobby(raiz) {
   // en el celular, menos personajes y sin sombras (para que ande liviano)
   const chico = innerWidth < 860;
   if (chico) { renderer.shadowMap.enabled = false; renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25)); }
-  const elenco = NPCS.filter((n) => n.look.modelo).sort(() => Math.random() - .5).slice(0, chico ? 4 : 8);
+  const elenco = []; // el escenario es para vos y tu lobby (sin el elenco de fondo)
   const personas = [];
   elenco.forEach((n, i) => {
     const k = elenco.length === 1 ? .5 : i / (elenco.length - 1);

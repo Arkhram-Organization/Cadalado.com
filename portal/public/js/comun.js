@@ -180,6 +180,7 @@ export function revelar(raiz = document) {
 }
 
 export function iniciarPagina() {
+  import('/comun/seguir-grupo.js').then((m) => m.seguirGrupo()).catch(() => {});
   document.querySelector('#cabecera')?.insertAdjacentHTML('afterend', cabecera());
   document.querySelector('#cabecera')?.remove();
   document.querySelector('#pie')?.insertAdjacentHTML('afterend', pie());

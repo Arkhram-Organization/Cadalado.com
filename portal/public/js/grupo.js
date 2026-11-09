@@ -33,6 +33,7 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
   let grupo = null, listas = { abiertos: [], amigos: [] }, desde = Date.now() - 60_000, irVisto = null, abierto = false;
   const vistas = new Set();
 
+  window.__grupoLobby = true; // la portada sigue al grupo con su propio panel
   // ---------- panel
   const panel = document.createElement('aside');
   panel.className = 'gr-panel'; panel.hidden = true;
