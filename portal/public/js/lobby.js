@@ -1,10 +1,11 @@
-// Lobby de la portada (estilo Fortnite): tu personaje y un compañero del elenco en plataformas
-// luminosas, el muro a la izquierda, el selector de juego y el botón de jugar a la derecha.
+// Lobby de la portada: un escenario de noche con todo el elenco en semicírculo y vos adelante,
+// el muro a la izquierda, los juegos como entradas a la derecha y una cinta con el chat del club.
 import * as THREE from '/comun/vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
-import { NPCS, POR_ID } from '/comun/npcs.js';
+import { NPCS } from '/comun/npcs.js';
 import { lookParaDibujo, LOOK_BASE } from '/comun/look.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
+import { frase } from '/comun/npcs.js';
 import { JUEGOS } from './datos.js';
 import { yo, esc, api } from './comun.js';
 
@@ -14,97 +15,117 @@ const leer = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; 
 export async function montarLobby(raiz) {
   const u = await yo().catch(() => null);
   const miNombre = u?.nombre || localStorage.getItem('cadalado.nombre') || 'Vos';
-  const miLook = lookParaDibujo(u?.look || leer('cadalado.look', null) || LOOK_BASE);
-
-  // ---------------- cuenta, arriba a la derecha
+  const guardado = u?.look || leer('cadalado.look', null) || LOOK_BASE;
+  const miLook = lookParaDibujo(guardado);
   const cuenta = $('[data-cuenta]', raiz);
   if (u) { cuenta.textContent = u.nombre; cuenta.href = '/club'; }
 
-  // ---------------- selector de juego
+  // ---------------- entradas de los juegos
   let modo = Math.max(0, JUEGOS.findIndex((j) => j.id === (localStorage.getItem('cadalado.modo') || 'royale')));
-  const pintarModo = () => {
-    const j = JUEGOS[modo];
-    $('[data-modo-nombre]', raiz).textContent = j.nombre;
-    $('[data-modo-linea]', raiz).textContent = j.linea;
-    $('[data-jugar]', raiz).href = j.url;
-    raiz.style.setProperty('--modo', j.color || '#f9e53b');
+  const entradas = $('[data-entradas]', raiz);
+  entradas.innerHTML = JUEGOS.map((j, i) => `<button class="lb-entrada" data-i="${i}" style="--c:${j.color}">
+      <span class="lb-num">${String(i + 1).padStart(2, '0')}</span>
+      <span class="lb-txt"><b>${esc(j.nombre)}</b><small>${esc(j.linea)}</small></span>
+      <span class="lb-sala" data-sala="${j.id}"></span></button>`).join('');
+  const elegir = (i) => {
+    modo = i; localStorage.setItem('cadalado.modo', JUEGOS[i].id);
+    entradas.querySelectorAll('.lb-entrada').forEach((b, k) => b.classList.toggle('on', k === i));
+    $('[data-jugar]', raiz).href = JUEGOS[i].url;
+    $('[data-jugar-nombre]', raiz).textContent = JUEGOS[i].nombre;
   };
-  const lista = $('[data-modos]', raiz);
-  lista.innerHTML = JUEGOS.map((j, i) => `<button data-i="${i}"><i style="background:${j.color}"></i><b>${esc(j.nombre)}</b><span>${esc(j.linea)}</span></button>`).join('');
-  $('[data-cambiar]', raiz).onclick = () => (lista.hidden = !lista.hidden);
-  lista.onclick = (e) => {
-    const b = e.target.closest('[data-i]');
-    if (!b) return;
-    modo = +b.dataset.i; localStorage.setItem('cadalado.modo', JUEGOS[modo].id);
-    lista.hidden = true; pintarModo();
-  };
-  pintarModo();
+  entradas.onclick = (e) => { const b = e.target.closest('[data-i]'); if (b) elegir(+b.dataset.i); };
+  elegir(modo);
 
-  // ---------------- salas abiertas (arriba a la derecha) y chat del club (abajo a la izquierda)
+  // ---------------- salas abiertas y cinta con el chat del club
   async function salas() {
-    let n = 0;
-    await Promise.all(JUEGOS.map(async (j) => { try { const d = await (await fetch(j.lobby)).json(); n += (d.salas || d.open || []).length; } catch {} }));
-    $('[data-salas]', raiz).textContent = `${n} ${n === 1 ? 'sala abierta' : 'salas abiertas'}`;
+    let total = 0;
+    await Promise.all(JUEGOS.map(async (j) => {
+      try {
+        const d = await (await fetch(j.lobby)).json();
+        const n = (d.salas || d.open || []).length; total += n;
+        const el = entradas.querySelector(`[data-sala="${j.id}"]`);
+        if (el) el.textContent = n ? `${n} ${n === 1 ? 'sala' : 'salas'}` : '';
+      } catch {}
+    }));
+    $('[data-salas]', raiz).textContent = total ? `${total} ${total === 1 ? 'sala abierta' : 'salas abiertas'}` : 'Sin salas: armá una';
   }
-  const hora = (t) => new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-  async function chat() {
-    try {
-      const { mensajes } = await api('/api/club/chat?con=general');
-      const ult = mensajes.slice(-3);
-      $('[data-chat]', raiz).innerHTML = (ult.length ? ult : [{ ts: Date.now(), nombre: 'Club', texto: `${miNombre} entró al lobby.` }])
-        .map((m) => `<p><span>[${hora(m.ts || m.t || Date.now())}]</span> <b>${esc(m.nombre || m.de || 'Club')}:</b> ${esc(m.texto)}</p>`).join('');
-    } catch {}
+  async function cinta() {
+    let items = [];
+    try { items = (await api('/api/club/chat?con=general')).mensajes.slice(-8).map((m) => `<b>${esc(m.nombre || 'Club')}</b> ${esc(m.texto)}`); } catch {}
+    items.push(...NPCS.slice(0, 6).map((n) => `<b>${esc(n.nombre)}</b> ${esc(frase(n.id))}`));
+    const html = items.map((t) => `<span>${t}</span>`).join('<i>✦</i>');
+    $('[data-cinta]', raiz).innerHTML = `<div>${html}<i>✦</i>${html}<i>✦</i></div>`;
   }
-  salas(); chat();
-  setInterval(() => { if (!document.hidden) { salas(); chat(); } }, 20000);
+  salas(); cinta();
+  setInterval(() => { if (!document.hidden) salas(); }, 20000);
 
-  // ---------------- escena 3D
+  // ---------------- escenario 3D
   const canvas = $('[data-escena]', raiz);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const escena = new THREE.Scene();
-  escena.add(new THREE.HemisphereLight('#cfe3ff', '#1a2a55', 2.2));
-  const key = new THREE.DirectionalLight('#ffffff', 2.4); key.position.set(-2, 6, -5); key.castShadow = true; escena.add(key);
-  const rim = new THREE.DirectionalLight('#66d9ff', 2.2); rim.position.set(2, 3, 4); escena.add(rim);
-  const camara = new THREE.PerspectiveCamera(30, 1, .1, 100);
+  escena.fog = new THREE.Fog('#141413', 9, 22);
+  escena.add(new THREE.HemisphereLight('#e9f2d6', '#20241c', 1.6));
+  const foco = new THREE.SpotLight('#fff6e0', 60, 20, .55, .6, 1.4); foco.position.set(0, 7, -3.5); foco.target.position.set(0, 0, .6); foco.castShadow = true; foco.shadow.mapSize.set(1024, 1024); escena.add(foco, foco.target);
+  const lima = new THREE.PointLight('#c5f04a', 2.2, 3.5); lima.position.set(0, .15, -1.3); escena.add(lima);
+  const contra = new THREE.DirectionalLight('#9ec3ff', .8); contra.position.set(3, 4, 6); escena.add(contra);
+  // piso: oscuro, con anillos finos y un círculo lima para vos
+  const piso = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({ color: '#1b1f19', roughness: .9 }));
+  piso.rotation.x = -Math.PI / 2; piso.receiveShadow = true; escena.add(piso);
+  for (const r of [1.6, 3.2, 4.8]) {
+    const a = new THREE.Mesh(new THREE.RingGeometry(r, r + .012, 96), new THREE.MeshBasicMaterial({ color: '#c5f04a', transparent: true, opacity: .16 }));
+    a.rotation.x = -Math.PI / 2; a.position.set(0, .002, 1.2); escena.add(a);
+  }
+  const aro = new THREE.Mesh(new THREE.RingGeometry(.55, .62, 64), new THREE.MeshBasicMaterial({ color: '#c5f04a' }));
+  aro.rotation.x = -Math.PI / 2; aro.position.set(0, .004, -.9); escena.add(aro);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(.95, 48), new THREE.MeshBasicMaterial({ color: '#c5f04a', transparent: true, opacity: .14, depthWrite: false }));
+  halo.rotation.x = -Math.PI / 2; halo.position.set(0, .003, -.9); escena.add(halo);
+  const camara = new THREE.PerspectiveCamera(30, 1, .1, 60);
 
-  const plataforma = (x) => {
-    const g = new THREE.Group(); g.position.set(x, 0, 0); escena.add(g);
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(.95, 1.05, .16, 48), new THREE.MeshStandardMaterial({ color: '#16264f', roughness: .4, metalness: .3 }));
-    base.position.y = -.08; base.receiveShadow = true; g.add(base);
-    const aro = new THREE.Mesh(new THREE.TorusGeometry(.97, .035, 10, 64), new THREE.MeshBasicMaterial({ color: '#4fe6ff' }));
-    aro.rotation.x = Math.PI / 2; aro.position.y = .005; g.add(aro);
-    const luz = new THREE.Mesh(new THREE.CircleGeometry(1.6, 48), new THREE.MeshBasicMaterial({ color: '#39c8ff', transparent: true, opacity: .28, depthWrite: false, blending: THREE.AdditiveBlending }));
-    luz.rotation.x = -Math.PI / 2; luz.position.y = .01; g.add(luz);
-    const haz = new THREE.Mesh(new THREE.CylinderGeometry(.85, .95, 2.6, 40, 1, true), new THREE.MeshBasicMaterial({ color: '#5fe0ff', transparent: true, opacity: .07, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
-    haz.position.y = 1.3; g.add(haz);
-    return g;
-  };
-  // la cámara mira desde adelante: +x queda a la izquierda de la pantalla (vos a la izquierda, como en Fortnite)
-  const puestos = [{ x: 1.25, quien: 'yo' }, { x: -1.35, quien: 'npc' }];
-  for (const p of puestos) p.plat = plataforma(p.x);
+  // el elenco en semicírculo detrás tuyo; vos adelante, en el aro
+  // en el celular, menos personajes y sin sombras (para que ande liviano)
+  const chico = innerWidth < 860;
+  if (chico) { renderer.shadowMap.enabled = false; renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25)); }
+  const elenco = NPCS.filter((n) => n.look.modelo).sort(() => Math.random() - .5).slice(0, chico ? 4 : 8);
+  const personas = [];
+  elenco.forEach((n, i) => {
+    const k = elenco.length === 1 ? .5 : i / (elenco.length - 1);
+    const ang = (k - .5) * 2.3;
+    const p = crearPersona(THREE, { ...n.look }, { sombras: !chico, tamGlobo: .32 });
+    p.grupo.position.set(Math.sin(ang) * 2.9, 0, Math.cos(ang) * 2.2 + .9);
+    p.grupo.rotation.y = -ang * .35; // miran a cámara, un poco hacia el centro
+    p.npc = n; escena.add(p.grupo); personas.push(p);
+  });
+  const yoP = crearPersona(THREE, miLook, { sombras: true, tamGlobo: .4 });
+  yoP.grupo.position.set(0, 0, -.9); yoP.grupo.rotation.y = 0; escena.add(yoP.grupo);
+  $('[data-yo-nombre]', raiz).textContent = miNombre;
+  $('[data-yo-como]', raiz).textContent = guardado?.npc ? `Jugás como ${NPCS.find((n) => n.id === guardado.npc)?.nombre || ''}` : 'Tu personaje';
 
-  const companero = NPCS.filter((n) => n.look.modelo)[Math.floor(Math.random() * NPCS.filter((n) => n.look.modelo).length)] || NPCS[0];
-  const yoP = crearPersona(THREE, miLook, { sombras: true });
-  const npcP = crearPersona(THREE, { ...companero.look }, { sombras: true });
-  yoP.grupo.position.x = puestos[0].x; npcP.grupo.position.x = puestos[1].x;
-  yoP.grupo.rotation.y = .2; npcP.grupo.rotation.y = -.25;
-  escena.add(yoP.grupo, npcP.grupo);
+  // cada tanto alguien del elenco dice algo
+  setInterval(() => {
+    if (document.hidden || !personas.length) return;
+    const p = personas[Math.floor(Math.random() * personas.length)];
+    p.decir(frase(p.npc.id, Math.random, miNombre), 4);
+  }, 6500);
 
-  // carteles con nombre y estado arriba de cada uno, y lugares libres para invitar
-  const etiquetas = $('[data-etiquetas]', raiz);
-  etiquetas.innerHTML = `<div class="fn-tag" data-tag="yo"><b>${esc(miNombre)}</b><span class="no">En el lobby</span></div>
-    <div class="fn-tag" data-tag="npc"><b>${esc(companero.nombre)}</b><span class="si">Listo</span></div>
-    <a class="fn-mas" data-mas="0" href="/club#amigos" title="Invitar amigos">+</a><a class="fn-mas" data-mas="1" href="/club#amigos" title="Invitar amigos">+</a>`;
-  const proyectar = (v) => { const p = v.clone().project(camara); return [(p.x + 1) / 2 * canvas.clientWidth, (1 - p.y) / 2 * canvas.clientHeight]; };
-
-  // girar tu personaje arrastrando; gestos con la B
-  let giro = .2, arr = null;
-  canvas.addEventListener('pointerdown', (e) => { arr = e.clientX; canvas.setPointerCapture(e.pointerId); });
-  canvas.addEventListener('pointermove', (e) => { if (arr == null) return; giro += (e.clientX - arr) * .012; arr = e.clientX; });
-  addEventListener('pointerup', () => (arr = null));
+  // tocar a alguien: dice algo; arrastrar: girar tu personaje
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+  let giro = 0, arr = null, movio = false;
+  canvas.addEventListener('pointerdown', (e) => { arr = e.clientX; movio = false; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', (e) => { if (arr == null) return; if (Math.abs(e.clientX - arr) > 2) movio = true; giro += (e.clientX - arr) * .012; arr = e.clientX; });
+  canvas.addEventListener('pointerup', (e) => {
+    arr = null;
+    if (movio) return;
+    const r = canvas.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camara);
+    const toc = ray.intersectObjects(personas.map((p) => p.grupo), true)[0];
+    if (!toc) return;
+    const p = personas.find((x) => { let o = toc.object; while (o) { if (o === x.grupo) return true; o = o.parent; } return false; });
+    if (p) { p.decir(frase(p.npc.id, Math.random, miNombre), 4); p.gesto?.(['saluda', 'festeja', 'baila'][Math.floor(Math.random() * 3)]); }
+  });
   ruedaGestos({ alElegir: (id) => yoP.gesto?.(id) });
 
   let ultimo = performance.now();
@@ -112,24 +133,20 @@ export async function montarLobby(raiz) {
     requestAnimationFrame(cuadro);
     const dt = Math.min(.05, (ms - ultimo) / 1000); ultimo = ms;
     const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
     if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
       renderer.setSize(w, h, false); camara.aspect = w / h; camara.updateProjectionMatrix();
     }
-    // encuadre: en pantallas angostas la cámara se aleja
-    const angosto = w / h < 1;
-    const lejos = angosto ? 10.5 : 10.8, cx = angosto ? 0 : .55; // en compu, el grupo se corre a la derecha del muro
-    camara.position.set(cx, 1.8, -lejos); camara.lookAt(cx, 1.15, 0);
+    const angosto = w / h < 1.05;
+    const t = ms / 1000;
+    // la cámara respira despacito alrededor del escenario
+    camara.position.set(Math.sin(t * .08) * .6, angosto ? 2.6 : 2.2, angosto ? -10.5 : -8.4);
+    camara.lookAt(0, angosto ? 1.05 : 1.15, .7);
     yoP.grupo.rotation.y += (giro - yoP.grupo.rotation.y) * Math.min(1, dt * 8);
-    yoP.animar('quieto', dt); npcP.animar('quieto', dt);
+    halo.material.opacity = .12 + Math.sin(t * 2) * .04;
+    yoP.animar('quieto', dt);
+    for (const p of personas) p.animar('quieto', dt);
     renderer.render(escena, camara);
-    for (const [k, p] of [['yo', yoP], ['npc', npcP]]) {
-      const [x, y] = proyectar(new THREE.Vector3(p.grupo.position.x, 2.12, 0));
-      const t = etiquetas.querySelector(`[data-tag="${k}"]`); t.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
-    }
-    [2.95, -3.45].forEach((xx, i) => {
-      const [x, y] = proyectar(new THREE.Vector3(xx, 1.1, 0));
-      etiquetas.querySelector(`[data-mas="${i}"]`).style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
-    });
   }
   requestAnimationFrame(cuadro);
 }

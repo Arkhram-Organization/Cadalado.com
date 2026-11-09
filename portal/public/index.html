@@ -1,14 +1,18 @@
 <!doctype html>
 <html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>cadalado · Los de siempre, como nunca</title><meta name="description" content="Tu club de juegos con amigos. Conocé al nuevo elenco y jugá Último en pie en 3D, carreras, casino, memes, truco y ajedrez."><meta name="theme-color" content="#171a16"><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/css/nueva-isla.css"><link rel="stylesheet" href="/css/muro.css"><link rel="stylesheet" href="/css/lobby.css"></head>
-<body><section class="fn" id="lobby">
-<canvas class="fn-escena" data-escena aria-label="Tu personaje y un compañero del elenco. Arrastrá para girarlo."></canvas>
-<header class="fn-top"><a class="fn-logo" href="/">cadalado</a><nav class="fn-tabs" aria-label="Principal"><a class="on" href="#lobby">Lobby</a><a href="#juegos">Juegos</a><a href="/personaje">Casillero</a><a href="#personajes">Elenco</a><a href="/club">Club</a><a href="#sugerencias">Ideas</a></nav>
-<div class="fn-der"><span class="fn-chip"><i></i><span data-salas>…</span></span><a class="fn-chip" data-cuenta href="/entrar">Entrar</a></div></header>
-<aside class="fn-muro" id="muro" aria-label="El muro"><div class="fn-panel-t">El muro <small>Publicá sin cuenta</small></div><div class="fn-muro-c" data-muro></div></aside>
-<div class="fn-etiquetas" data-etiquetas></div>
-<div class="fn-modo"><div class="fn-modos" data-modos hidden></div><div class="fn-nuevo">¡Juegos nuevos en el club!</div><div class="fn-modo-c"><span>Modo de juego</span><b data-modo-nombre>Último en pie</b><small data-modo-linea></small><button data-cambiar>Cambiar modo</button></div><div class="fn-fila"><span>Jugadores</span><b>Amigos + bots</b></div><a class="fn-jugar" data-jugar href="/royale/">¡Jugar!</a></div>
-<div class="fn-chat" data-chat></div>
-<div class="fn-ayuda"><span>Arrastrá: girar</span><span>Mantené <kbd>B</kbd>: gestos</span></div>
+<body><section class="lb" id="lobby">
+<header class="lb-top"><a class="brand" href="/" aria-label="cadalado inicio"><span class="brand-mark">c</span>cadalado</a>
+<nav class="lb-nav" aria-label="Principal"><a class="on" href="#lobby">Lobby</a><a href="#juegos">Juegos</a><a href="/personaje">Casillero</a><a href="#personajes">Elenco</a><a href="/club">Club</a><a href="#sugerencias">Ideas</a></nav>
+<span class="lb-estado"><i></i><span data-salas>…</span></span><a class="button" data-cuenta href="/entrar">Entrar al club <span class="arrow">↗</span></a></header>
+<div class="lb-cuerpo">
+<canvas class="lb-escena" data-escena aria-label="El elenco del club en el escenario. Tocá a alguien para que hable; arrastrá para girar tu personaje."></canvas>
+<aside class="lb-col lb-muro" id="muro" aria-label="El muro"><h2>El muro</h2><div class="lb-muro-c" data-muro></div></aside>
+<div class="lb-centro"><div class="lb-titulo"><div class="eyebrow"><span class="dot"></span> Tu gente. Tu club. Tus juegos.</div><h1>Los de siempre.<br><em>Como nunca.</em></h1></div>
+<div><div class="lb-yo"><b data-yo-nombre>Vos</b><span data-yo-como>Tu personaje</span><a href="/personaje">cambiar</a></div><div class="lb-ayuda">Tocá a alguien · arrastrá para girar · mantené <kbd>B</kbd> para gestos</div></div></div>
+<aside class="lb-col lb-juegos" aria-label="Elegí el juego"><h2>¿A qué jugamos?</h2><div class="lb-entradas" data-entradas></div>
+<a class="lb-jugar" data-jugar href="/royale/"><span><small>Jugar a</small><span data-jugar-nombre>Último en pie</span></span><span>↗</span></a></aside>
+</div>
+<div class="lb-cinta" data-cinta aria-label="Lo último del chat del club"></div>
 </section>
 <div class="wrap"><main>
 <section class="section" id="juegos"><div class="section-head"><div><div class="eyebrow">01 / ELEGÍ TU PLAN</div><h2>¿A qué jugamos hoy?</h2></div><span class="muted">Armá una sala. Mandá el link. Se juega.</span></div><div class="games" id="games"></div><div class="feature"><div><div class="eyebrow" style="margin-bottom:12px">ÚLTIMO EN PIE / NUEVA VERSIÓN</div><h3>La isla cambió. La revancha, no.</h3><p>Ahora en 3D, con la cámara de siempre. Seis casilleros para tus armas, granadas, vendas, botiquines y escudos. Vos elegís qué llevar. Y cuándo usarlo.</p></div><a class="button" href="/royale/">Caer a la isla <span class="arrow">↗</span></a></div></section>

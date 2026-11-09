@@ -1,73 +1,89 @@
-/* Lobby de la portada, estilo Fortnite: pestañas arriba, muro a la izquierda, personajes en plataformas, jugar abajo a la derecha. */
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;0,900;1,800;1,900&display=swap');
-.fn{position:relative;height:100vh;min-height:620px;overflow:hidden;color:#fff;font-family:Barlow,Arial,sans-serif;--modo:#f9e53b;
-  background:radial-gradient(ellipse 70% 60% at 50% 58%,#3d8ff0 0%,#1f5bc4 35%,#123581 62%,#0a1a45 100%)}
-.fn::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 120px),radial-gradient(ellipse at 50% 100%,rgba(79,230,255,.25),transparent 55%);pointer-events:none}
-.fn-escena{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
-.fn-top{position:absolute;left:0;right:0;top:0;z-index:5;display:flex;align-items:center;gap:22px;padding:14px 26px;background:linear-gradient(#0a1838ee,#0a183800)}
-.fn-logo{font:italic 900 34px/1 'Barlow Condensed',sans-serif;letter-spacing:-.5px;text-transform:uppercase;color:#fff;text-decoration:none;text-shadow:0 3px 0 #0006}
-.fn-tabs{display:flex;gap:6px;flex-wrap:wrap}
-.fn-tabs a{font:italic 800 16px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.6px;color:#fff;text-decoration:none;padding:9px 18px;background:linear-gradient(#2f6fd6,#1d4aa3);border:1px solid #6aa3ff66;transform:skewX(-10deg);box-shadow:0 3px 0 #0b1f52}
-.fn-tabs a:hover{background:linear-gradient(#3d82ef,#2459bd)}
-.fn-tabs a.on{background:linear-gradient(#fff37a,#f9d71c);color:#1a1a1a;border-color:#fff7b0}
-.fn-der{margin-left:auto;display:flex;gap:8px}
-.fn-chip{display:flex;align-items:center;gap:6px;font:italic 800 15px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;padding:8px 14px;background:#0b1d4bcc;border:1px solid #6aa3ff55;color:#fff;text-decoration:none}
-.fn-chip i{width:8px;height:8px;border-radius:50%;background:#7dff6a;box-shadow:0 0 8px #7dff6a}
-/* panel del muro (en lugar del pase de batalla) */
-.fn-muro{position:absolute;left:24px;top:84px;bottom:80px;width:min(380px,30vw);z-index:4;display:flex;flex-direction:column;background:linear-gradient(#0e2a6ccc,#0a1d4fd9);border:1px solid #6aa3ff55;box-shadow:0 10px 40px #0007}
-.fn-panel-t{font:italic 900 22px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;padding:12px 16px;background:linear-gradient(90deg,#2f6fd6,#1d4aa300);display:flex;justify-content:space-between;align-items:center}
-.fn-panel-t small{font:600 12px Barlow,sans-serif;text-transform:none;opacity:.75}
-.fn-muro-c{overflow:auto;padding:12px;flex:1;scrollbar-width:thin}
-.fn-muro .mu-nuevo{background:#0b1d4b;border-color:#6aa3ff44;padding:10px;gap:8px;margin-bottom:12px}
-.fn-muro .mu-nuevo [data-yo-av]{display:none}
-.fn-muro .mu-input{background:#081537;border-color:#6aa3ff44;font-size:14px;padding:9px 11px}
-.fn-muro .mu-cuenta-letras{display:none}
-.fn-muro .mu-publicar{padding:8px 14px;font-size:13px}
-.fn-muro .mu-lista{columns:1}
-.fn-muro .mu-post{background:#0b1d4bcc;border-color:#6aa3ff33;padding:12px 12px 6px;gap:9px;margin-bottom:10px}
-.fn-muro .mu-texto{font-size:14px}
-.fn-muro .mu-av{width:32px;height:32px}
-.fn-muro .mu-foto img{max-height:220px}
-.fn-muro .mu-mas .button{padding:9px 14px;font-size:13px}
-/* nombres arriba de cada personaje e invitar */
-.fn-etiquetas{position:absolute;inset:0;pointer-events:none;z-index:3}
-.fn-tag{position:absolute;left:0;top:0;text-align:center;white-space:nowrap;font:italic 800 18px/1.1 'Barlow Condensed',sans-serif;text-shadow:0 2px 6px #000a}
-.fn-tag b{display:block;font-size:20px}
-.fn-tag .si{color:#7dff6a}.fn-tag .no{color:#ff6b6b}
-.fn-mas{position:absolute;left:0;top:0;pointer-events:auto;width:46px;height:46px;display:grid;place-items:center;border:2px solid #fff9;color:#fff;font:300 34px/1 Barlow,sans-serif;text-decoration:none;background:#ffffff14}
-.fn-mas:hover{background:#ffffff33}
-/* modo de juego y jugar */
-.fn-modo{position:absolute;right:24px;bottom:28px;z-index:5;width:min(340px,86vw)}
-.fn-nuevo{background:#f9e53b;color:#1a1a1a;font:italic 900 15px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;text-align:center;padding:6px;transform:skewX(-8deg)}
-.fn-modo-c{background:#0b1d4be6;border:1px solid #6aa3ff55;padding:12px 14px;display:grid;gap:6px}
-.fn-modo-c span{font:italic 800 13px 'Barlow Condensed',sans-serif;text-transform:uppercase;color:#9fc3ff;text-align:center}
-.fn-modo-c b{font:italic 900 32px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;text-align:center;color:var(--modo)}
-.fn-modo-c small{font-size:12px;color:#c8d8f5;text-align:center}
-.fn-modo-c button{font:italic 800 15px 'Barlow Condensed',sans-serif;text-transform:uppercase;color:#fff;background:linear-gradient(#2f6fd6,#1d4aa3);border:1px solid #9cc4ff;padding:7px;cursor:pointer}
-.fn-fila{display:flex;justify-content:space-between;align-items:center;background:#0b1d4bcc;border:1px solid #6aa3ff33;border-top:0;padding:8px 14px;font:italic 800 14px 'Barlow Condensed',sans-serif;text-transform:uppercase}
-.fn-fila b{background:#ffffff1a;padding:4px 10px}
-.fn-jugar{display:block;margin-top:10px;text-align:center;text-decoration:none;font:italic 900 46px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;color:#1a1a1a;padding:14px;background:linear-gradient(#fff37a,#f9d71c 55%,#e9b800);border:3px solid #fffbd0;transform:skewX(-8deg);box-shadow:0 6px 0 #a87b00,0 12px 30px #0008}
-.fn-jugar:hover{filter:brightness(1.08);transform:skewX(-8deg) translateY(-2px)}
-.fn-modos{position:absolute;right:0;bottom:calc(100% + 8px);width:100%;max-height:58vh;overflow:auto;background:#0a1a45f5;border:1px solid #6aa3ff66;display:grid}
-.fn-modos[hidden]{display:none}
-.fn-modos button{display:grid;grid-template-columns:10px 1fr;gap:2px 10px;text-align:left;background:none;border:0;border-bottom:1px solid #ffffff14;color:#fff;padding:10px 12px;cursor:pointer}
-.fn-modos button:hover{background:#2f6fd655}
-.fn-modos i{grid-row:span 2;border-radius:3px}
-.fn-modos b{font:italic 900 19px/1 'Barlow Condensed',sans-serif;text-transform:uppercase}
-.fn-modos span{font-size:12px;color:#c8d8f5}
-/* chat del club y ayudas */
-.fn-chat{position:absolute;left:24px;bottom:18px;z-index:5;width:min(380px,30vw);font-size:13px;line-height:1.35;text-shadow:0 1px 3px #000}
-.fn-chat p{margin:2px 0}.fn-chat span{opacity:.7}.fn-chat b{color:#7dff6a}
-.fn-ayuda{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:4;display:flex;gap:16px;font:italic 800 14px 'Barlow Condensed',sans-serif;text-transform:uppercase;opacity:.8}
-.fn-ayuda kbd{background:#ffffff26;border:1px solid #fff6;padding:1px 6px;font-style:normal}
-@media (max-width:900px){
-  .fn{height:auto;min-height:0;display:flex;flex-direction:column;padding-top:120px}
-  .fn-top{flex-wrap:wrap;padding:10px 14px;gap:10px}
-  .fn-tabs a{padding:7px 11px;font-size:14px}
-  .fn-escena{position:relative;height:62vh;order:1}
-  .fn-etiquetas{height:62vh;top:120px;bottom:auto}
-  .fn-modo{position:relative;right:auto;bottom:auto;order:2;margin:0 auto 16px}
-  .fn-muro{position:relative;left:auto;top:auto;bottom:auto;width:auto;margin:0 14px 16px;order:3;max-height:80vh}
-  .fn-chat{position:relative;left:auto;bottom:auto;width:auto;margin:0 16px 20px;order:4}
-  .fn-ayuda{display:none}
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap");
+/* Lobby de la portada: escenario de noche, muro a la izquierda, entradas de juego a la derecha, cinta abajo.
+   Paleta del sitio: carbón (#141413 / #171a16), lima (#c5f04a) y papel (#efede4). */
+.lb{position:relative;height:100vh;min-height:640px;display:grid;grid-template-rows:auto 1fr auto;grid-template-columns:minmax(0,1fr);color:var(--paper);background:#141413;overflow:hidden;font-family:Barlow,Arial,sans-serif}
+.lb::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 55% at 50% 62%,rgba(197,240,74,.10),transparent 70%),radial-gradient(ellipse 100% 60% at 50% 0%,#20251d,transparent 70%)}
+/* barra de arriba */
+.lb-top{position:relative;z-index:3;display:flex;align-items:center;gap:28px;padding:18px 32px;border-bottom:1px solid var(--line)}
+.lb-top .brand{font-size:27px}
+.lb-nav{display:flex;gap:22px;font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase}
+.lb-nav a{color:#b9bfae}.lb-nav a:hover,.lb-nav a.on{color:var(--lima)}
+.lb-estado{margin-left:auto;display:flex;align-items:center;gap:10px;font:600 12px/1 'JetBrains Mono',monospace;color:#b9bfae}
+.lb-estado i{width:8px;height:8px;border-radius:50%;background:var(--lima);box-shadow:0 0 0 4px rgba(197,240,74,.18);animation:lb-late 1.6s infinite}
+@keyframes lb-late{50%{box-shadow:0 0 0 8px rgba(197,240,74,0)}}
+/* cuerpo: muro | escenario | entradas */
+.lb-cuerpo{position:relative;display:grid;grid-template-columns:minmax(280px,340px) 1fr minmax(300px,360px);min-height:0}
+.lb-escena{position:absolute;inset:0;width:100%;height:100%;min-width:0;touch-action:none;cursor:grab;z-index:0}
+.lb-col{position:relative;z-index:2;display:flex;flex-direction:column;min-height:0;padding:22px}
+.lb-col h2{font:800 13px/1 Barlow,sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--lima);margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.lb-col h2::after{content:'';flex:1;height:1px;background:var(--line)}
+/* muro: una columna de papel oscuro */
+.lb-muro{background:linear-gradient(90deg,#141413 70%,rgba(20,20,19,0))}
+.lb-muro-c{overflow:auto;flex:1;padding-right:6px;scrollbar-width:thin;scrollbar-color:#3a4034 transparent}
+.lb-muro .mu-nuevo{padding:12px;gap:8px;margin-bottom:14px;background:#1d211b}
+.lb-muro .mu-nuevo [data-yo-av],.lb-muro .mu-cuenta-letras{display:none}
+.lb-muro .mu-input{font-size:14px;padding:9px 11px}
+.lb-muro .mu-publicar{padding:9px 16px;font-size:13px}
+.lb-muro .mu-lista{columns:1}
+.lb-muro .mu-post{padding:12px 12px 6px;gap:9px;margin-bottom:10px}
+.lb-muro .mu-texto{font-size:14px}
+.lb-muro .mu-av{width:32px;height:32px}
+.lb-muro .mu-foto img{max-height:240px}
+.lb-muro .mu-mas .button{padding:9px 14px;font-size:13px}
+/* centro: título sobre el escenario y tu cartel */
+.lb-centro{position:relative;z-index:1;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:26px 10px 22px}
+.lb-titulo{text-align:center}
+.lb-titulo .eyebrow{justify-content:center;color:#a7ad9e}
+.lb-titulo h1{font:800 clamp(46px,5.6vw,92px)/.86 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:-1.5px;margin:12px 0 0;text-shadow:0 8px 40px rgba(0,0,0,.6)}
+.lb-titulo h1 em{font-style:normal;color:var(--lima)}
+.lb-yo{align-self:center;width:max-content;margin:0 auto;text-align:center;background:rgba(20,20,19,.72);border:1px solid var(--line);border-radius:100px;padding:8px 18px;backdrop-filter:blur(6px)}
+.lb-yo b{display:block;font:800 18px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase}
+.lb-yo span{font-size:11px;color:#a7ad9e;letter-spacing:.5px}
+.lb-yo a{pointer-events:auto;color:var(--lima);font-size:11px;margin-left:6px}
+.lb-ayuda{text-align:center;margin-top:8px;font:600 11px 'JetBrains Mono',monospace;color:#8d9483;letter-spacing:.5px}
+.lb-ayuda kbd{border:1px solid #4a5143;border-radius:4px;padding:1px 6px;color:var(--paper)}
+/* entradas de los juegos */
+.lb-juegos{background:linear-gradient(270deg,#141413 70%,rgba(20,20,19,0))}
+.lb-entradas{display:grid;gap:8px;overflow:auto;flex:1;align-content:start;padding-right:4px;scrollbar-width:thin;scrollbar-color:#3a4034 transparent}
+.lb-entrada{position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;text-align:left;color:var(--paper);background:#1d211b;border:1px solid var(--line);border-radius:6px;padding:12px 14px 12px 18px;cursor:pointer;transition:transform .15s,background .15s,border-color .15s;overflow:hidden}
+.lb-entrada::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.lb-entrada::after{content:'';position:absolute;right:62px;top:-6px;bottom:-6px;border-left:2px dashed #ffffff14}
+.lb-entrada:hover{transform:translateX(-3px);border-color:#c5f04a66}
+.lb-entrada.on{background:var(--lima);color:#1b2213;border-color:var(--lima)}
+.lb-entrada.on::after{border-color:#1b221333}
+.lb-num{font:700 13px 'JetBrains Mono',monospace;opacity:.6}
+.lb-txt{display:grid;gap:3px;min-width:0}
+.lb-txt b{font:800 22px/1 'Barlow Condensed',sans-serif;text-transform:uppercase}
+.lb-txt small{font-size:12px;line-height:1.35;opacity:.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lb-sala{font:700 10px 'JetBrains Mono',monospace;text-transform:uppercase;width:48px;text-align:center;opacity:.8}
+.lb-jugar{margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--lima);color:#1b2213;border-radius:6px;padding:16px 20px;font:800 34px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;box-shadow:0 0 0 0 rgba(197,240,74,.5);animation:lb-pulso 2.4s infinite}
+.lb-jugar small{display:block;font:700 11px Barlow,sans-serif;letter-spacing:1.4px;opacity:.7}
+.lb-jugar span:last-child{font-size:40px}
+.lb-jugar:hover{filter:brightness(1.06)}
+@keyframes lb-pulso{60%{box-shadow:0 0 0 14px rgba(197,240,74,0)}}
+/* cinta de abajo */
+.lb-cinta{position:relative;z-index:3;border-top:1px solid var(--line);overflow:hidden;white-space:nowrap;padding:11px 0;font-size:13px;color:#b9bfae;background:#141413}
+.lb-cinta div{display:inline-block;animation:lb-cinta 70s linear infinite;padding-left:20px}
+.lb-cinta b{color:var(--lima);margin-right:4px}
+.lb-cinta i{font-style:normal;color:#4a5143;margin:0 18px}
+@keyframes lb-cinta{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.lb-cinta div,.lb-jugar,.lb-estado i{animation:none}}
+@media (max-width:1100px){
+  .lb-cuerpo{grid-template-columns:minmax(250px,300px) 1fr minmax(270px,310px)}
+  .lb-nav{gap:14px}
+}
+@media (max-width:860px){
+  .lb{height:auto;min-height:0}
+  .lb-top{padding:14px 18px;gap:12px;flex-wrap:wrap}
+  .lb-top .button{padding:10px 14px;font-size:12px;gap:10px}
+  .lb-estado span{display:none}
+  .lb-col{padding:18px 16px}
+  .lb-titulo h1{font-size:44px}
+  .lb-nav{order:3;width:100%;overflow:auto;gap:18px}
+  .lb-cuerpo{display:flex;flex-direction:column}
+  .lb-escena{position:relative;height:62vh;order:1}
+  .lb-centro{position:absolute;left:0;right:0;top:0;height:62vh;order:1}
+  .lb-juegos{order:2;background:none}
+  .lb-muro{order:3;background:none;max-height:90vh}
+  .lb-ayuda{display:none}
 }
