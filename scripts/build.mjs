@@ -9,6 +9,7 @@ export const JUEGOS = [
   { carpeta: 'games/chessort', ruta: 'ajedrez' },
   { carpeta: 'games/truco', ruta: 'truco' },
   { carpeta: 'games/memes', ruta: 'memes' },
+  { carpeta: 'games/haxball', ruta: 'haxball' },
   { carpeta: 'games/casino', ruta: 'casino' },
   { carpeta: 'games/carrera', ruta: 'carrera' },
   { carpeta: 'games/royale', ruta: 'royale' },

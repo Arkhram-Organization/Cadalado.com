@@ -31,6 +31,10 @@
       "destination": "/api/juegos/casino?ruta=:ruta*"
     },
     {
+      "source": "/api/haxball/:ruta*",
+      "destination": "/api/juegos/haxball?ruta=:ruta*"
+    },
+    {
       "source": "/api/memes/:ruta*",
       "destination": "/api/juegos/memes?ruta=:ruta*"
     },
@@ -45,6 +49,10 @@
     {
       "source": "/truco/sala/:code",
       "destination": "/truco/index.html"
+    },
+    {
+      "source": "/haxball/sala/:code",
+      "destination": "/haxball/index.html"
     },
     {
       "source": "/memes/sala/:code",

@@ -24,14 +24,14 @@ const API = [
   ['/ajedrez/api/', ajedrez.handle],
   ['/api/truco/', truco.handle],
   ['/api/club/', club.handle],
-  ...['memes', 'casino', 'carrera', 'royale'].map((j) => [`/api/${j}/`, async (req) => (await import(`./games/${j}/api.js`)).handle(req)]),
+  ...['memes', 'casino', 'carrera', 'royale', 'haxball'].map((j) => [`/api/${j}/`, async (req) => (await import(`./games/${j}/api.js`)).handle(req)]),
 ];
 
 // Juegos: ruta → carpeta y páginas que abren la app
 const JUEGOS = [
   { ruta: 'ajedrez', publico: join(ROOT, 'games/chessort/public'), paginas: [/^\/?$/, /^\/game\/[^/]+$/, /^\/local$/] },
   { ruta: 'truco', publico: join(ROOT, 'games/truco/public'), paginas: [/^\/?$/, /^\/sala\/[^/]+$/] },
-  ...['memes', 'casino', 'carrera', 'royale'].map((j) => ({ ruta: j, publico: join(ROOT, `games/${j}/public`), paginas: [/^\/?$/, /^\/sala\/[^/]+$/, /^\/mesa\/[^/]+$/] })),
+  ...['memes', 'casino', 'carrera', 'royale', 'haxball'].map((j) => ({ ruta: j, publico: join(ROOT, `games/${j}/public`), paginas: [/^\/?$/, /^\/sala\/[^/]+$/, /^\/mesa\/[^/]+$/] })),
   { ruta: 'comun', publico: join(ROOT, 'shared/public'), paginas: [] },
 ];
 

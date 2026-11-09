@@ -1,0 +1,47 @@
+/* Haxball: cancha 2D a pantalla completa con marcador arriba, panel de equipos y chat. */
+body.en-cancha{overflow:hidden}
+.hx{position:fixed;inset:56px 0 0 0;background:#141413;display:grid;place-items:center}
+.hx canvas{display:block;max-width:100%;max-height:100%;touch-action:none}
+.hx .capa{position:absolute;z-index:3}
+.hx-marcador{top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px #0008;font:800 30px/1 'Barlow Condensed',sans-serif}
+.hx-marcador span{display:grid;place-items:center;min-width:64px;padding:8px 14px}
+.hx-marcador .rojo{background:#e5484d;color:#fff}.hx-marcador .azul{background:#3e7bfa;color:#fff}
+.hx-marcador .reloj{background:#1d211b;color:#efede4;font:700 18px 'JetBrains Mono',monospace;min-width:86px}
+.hx-sala{top:12px;left:14px}
+.hx-red{top:12px;right:14px}
+.hx-gol{top:38%;left:50%;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;font:900 clamp(60px,12vw,150px)/1 'Barlow Condensed',sans-serif;text-transform:uppercase;color:#c5f04a;text-shadow:0 8px 0 #0006,0 0 60px #c5f04a88;transition:transform .25s,opacity .25s;text-align:center}
+.hx-gol small{display:block;font-size:.22em;color:#efede4;letter-spacing:2px}
+.hx-gol.ver{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.hx-panel{left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,94vw);background:#1d211bf2;border:1px solid #ffffff21;border-radius:14px;padding:22px;box-shadow:0 20px 60px #000a;max-height:calc(100% - 30px);overflow:auto}
+.hx-panel h2{font:800 30px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0 0 4px}
+.hx-panel p{color:#a7ad9e;margin:0 0 16px}
+.hx-equipos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.hx-eq{border-radius:10px;padding:12px;background:#141413;border:2px solid transparent;min-height:120px}
+.hx-eq h3{margin:0 0 10px;font:800 20px 'Barlow Condensed',sans-serif;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.hx-eq.rojo{border-color:#e5484d55}.hx-eq.rojo h3{color:#ff7377}
+.hx-eq.azul{border-color:#3e7bfa55}.hx-eq.azul h3{color:#7aa2ff}
+.hx-eq.afuera h3{color:#a7ad9e}
+.hx-eq ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.hx-eq li{display:flex;align-items:center;gap:8px;font-weight:600}
+.hx-eq li img,.hx-eq li canvas{width:30px;height:30px;border-radius:50%;flex:none}
+.hx-eq li small{color:#a7ad9e;font-weight:500;margin-left:auto}
+.hx-conf{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:16px}
+.hx-conf label{display:grid;gap:4px;font-size:12px;color:#a7ad9e}
+.hx-conf select{min-width:90px}
+.hx-conf .btn-lima{margin-left:auto}
+.hx-chat{left:14px;bottom:14px;width:min(340px,70vw)}
+.hx-chat .log{max-height:150px;overflow:auto;font-size:13px;line-height:1.35;text-shadow:0 1px 2px #000;margin-bottom:6px}
+.hx-chat .log .sis{color:#c5f04a}.hx-chat .log .bot b{color:#f2c94c}
+.hx-chat input{width:100%}
+.hx-ayuda{right:14px;bottom:14px;font:600 12px 'JetBrains Mono',monospace;color:#a7ad9e;text-align:right;line-height:1.7}
+.hx-ayuda kbd{border:1px solid #4a5143;border-radius:4px;padding:1px 6px;color:#efede4}
+.hx-tactil{display:none}
+@media (pointer:coarse){
+  .hx-ayuda{display:none}
+  .hx-tactil{display:block;position:absolute;inset:0;z-index:2;pointer-events:none}
+  .hx-joy{position:absolute;left:24px;bottom:30px;width:130px;height:130px;border-radius:50%;background:#ffffff14;border:2px solid #ffffff33;pointer-events:auto;touch-action:none}
+  .hx-joy i{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;background:#efede4cc}
+  .hx-patear{position:absolute;right:28px;bottom:40px;width:96px;height:96px;border-radius:50%;background:#c5f04a;color:#1b2213;font:800 18px 'Barlow Condensed',sans-serif;border:0;pointer-events:auto;touch-action:none}
+  .hx-chat{display:none}
+}
+@media (max-width:700px){.hx-equipos{grid-template-columns:1fr}}
