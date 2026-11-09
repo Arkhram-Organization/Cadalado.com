@@ -12,13 +12,17 @@ const colorDe = (id) => AV[parseInt(String(id).slice(0, 6), 36) % AV.length];
 const PUBLICAS = [
   { code: 'RULETA', tipo: 'ruleta' },
   { code: 'RULETA-2', tipo: 'ruleta' },
+  { code: 'RULETA-3', tipo: 'ruleta' },
   { code: 'BLACKJACK-1', tipo: 'blackjack' },
   { code: 'BLACKJACK-2', tipo: 'blackjack' },
+  { code: 'BLACKJACK-3', tipo: 'blackjack' },
+  { code: 'BLACKJACK-4', tipo: 'blackjack' },
   { code: 'SLOTS', tipo: 'slots' },
+  { code: 'SLOTS-2', tipo: 'slots' },
 ];
 const TIPO = {
   ruleta: { nombre: 'Ruleta', clase: '', texto: 'Europea, un solo cero. Todos apuestan en el mismo paño y la bola decide.', montar: montarRuleta },
-  blackjack: { nombre: 'Blackjack', clase: 'bj', texto: 'Cinco lugares contra la banca. Pedí, plantate o doblá. Blackjack paga 3 a 2.', montar: montarBlackjack },
+  blackjack: { nombre: 'Blackjack', clase: 'bj', texto: 'Siete lugares contra la banca. Pedí, plantate o doblá. Blackjack paga 3 a 2.', montar: montarBlackjack },
   slots: { nombre: 'Tragamonedas', clase: 'slots', texto: 'Tres rodillos, cinco líneas y un pozo que crece con cada tirada de todo el salón.', montar: montarSlots },
 };
 
@@ -67,14 +71,15 @@ async function salon() {
     <div class="mesas-grid">
       ${Object.entries(TIPO).map(([tipo, t]) => {
         const mesas = PUBLICAS.filter((m) => m.tipo === tipo);
-        return `<a class="mesa-card ${t.clase}" href="/casino/mesa/${mesas[0].code}" data-ir>
+        return `<a class="mesa-card ${t.clase}" href="/casino/mesa/${mesas[0].code}" data-ir data-card="${tipo}">
           <div class="arte">${arte[tipo]}</div>
           <h2>${t.nombre}</h2><p>${t.texto}</p>
           <div class="pie"><span class="chip" data-gente="${tipo}">Mesa abierta</span><span class="btn btn-lima">Jugar</span></div>
         </a>`;
       }).join('')}
     </div>
-    <div class="mesas-chicas">${PUBLICAS.map((m) => `<a class="chip" href="/casino/mesa/${m.code}" data-ir data-mesa="${m.code}">${esc(m.code.replace('-', ' ').toLowerCase())}</a>`).join('')}</div>
+    <h2 class="etq" style="margin:26px 0 10px;color:#fff">Todas las mesas · elegí la que tenga lugar</h2>
+    <div class="mesas-chicas">${PUBLICAS.map((m) => `<a class="chip" href="/casino/mesa/${m.code}" data-ir data-mesa="${m.code}">${esc(m.code.replace('-', ' ').toLowerCase())} <b data-mesa-n="${m.code}"></b></a>`).join('')}</div>
     <div class="privada">
       <section class="panel">
         <h2 style="font-size:22px;margin-bottom:12px">Mesa privada con amigos</h2>
@@ -127,10 +132,23 @@ async function salon() {
   const gente = async () => {
     try {
       const { salas } = await api('/api/casino/lobby');
+      const enMesa = (code) => salas.find((s) => s.code === code)?.online || 0;
+      const LUGARES = { blackjack: 7 };
+      for (const m of PUBLICAS) {
+        const el = app.querySelector(`[data-mesa-n="${m.code}"]`);
+        const n = enMesa(m.code), lleno = LUGARES[m.tipo] && n >= LUGARES[m.tipo];
+        if (el) el.textContent = lleno ? '· llena' : n ? `· ${n}` : '';
+      }
       for (const tipo of Object.keys(TIPO)) {
-        const n = salas.filter((s) => s.tipo === tipo).reduce((a, s) => a + (s.online || 0), 0);
+        const mesas = PUBLICAS.filter((m) => m.tipo === tipo);
+        const n = mesas.reduce((a, m) => a + enMesa(m.code), 0);
         const el = app.querySelector(`[data-gente="${tipo}"]`);
-        if (el) el.textContent = n ? `${n} ${n === 1 ? 'persona jugando' : 'personas jugando'}` : 'Mesa abierta';
+        if (el) el.textContent = n ? `${n} ${n === 1 ? 'persona jugando' : 'personas jugando'}` : `${mesas.length} mesas abiertas`;
+        // la tarjeta te lleva a la mesa con gente pero con lugar (o a la más vacía)
+        const cap = LUGARES[tipo] || 99;
+        const mejor = [...mesas].sort((a, b) => { const na = enMesa(a.code), nb = enMesa(b.code); return (na >= cap) - (nb >= cap) || nb - na; })[0];
+        const card = app.querySelector(`[data-card="${tipo}"]`);
+        if (card && mejor) card.href = `/casino/mesa/${mejor.code}`;
       }
     } catch {}
   };

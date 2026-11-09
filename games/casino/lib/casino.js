@@ -246,7 +246,9 @@ function ruletaVista(r, { pid }) {
 // ============================================================ BLACKJACK
 const PALOS = ['P', 'C', 'D', 'T']; // picas, corazones, diamantes, tréboles
 const VALORES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const ASIENTOS = 5;
+const ASIENTOS = 7;
+// las mesas viejas tenían 5 lugares: se agrandan al usarlas
+const agrandar = (r) => { while (r.asientos && r.asientos.length < ASIENTOS) r.asientos.push(null); };
 const BJ_APUESTAS_MS = 15_000;
 const TURNO_MS = 20_000;
 const BANCA_PASO_MS = 950;
@@ -285,6 +287,7 @@ function sacar(r) {
 }
 
 function bjSiguienteTurno(r, ctx) {
+  agrandar(r);
   for (let i = r.turno + 1; i < ASIENTOS; i++) {
     const a = r.asientos[i];
     if (a?.estado === 'jugando') {
@@ -333,6 +336,7 @@ async function bjLiquidar(r, ctx) {
 }
 
 async function bjAccion(r, msg, ctx) {
+  agrandar(r);
   const dres = await desafioAccion(r, msg, ctx, r.fase === 'apuestas');
   if (dres) return dres;
   const { pid, jugador } = ctx;
@@ -444,6 +448,7 @@ function decisionBot(r, a) {
 }
 
 async function bjTick(r, ctx) {
+  agrandar(r);
   if (r.fase === 'espera' || ctx.now < r.fin) return;
   if (r.fase === 'apuestas') {
     // se van los que se desconectaron sin apostar
@@ -513,6 +518,7 @@ async function bjTick(r, ctx) {
 }
 
 function bjVista(r, { pid }) {
+  agrandar(r);
   return {
     fase: r.fase,
     fin: r.fin,
@@ -625,8 +631,12 @@ export const NOMBRES = { ruleta: 'Ruleta', blackjack: 'Blackjack', slots: 'Traga
 export const MESAS_PUBLICAS = {
   RULETA: { tipo: 'ruleta', nombre: 'Ruleta principal' },
   'RULETA-2': { tipo: 'ruleta', nombre: 'Ruleta 2' },
+  'RULETA-3': { tipo: 'ruleta', nombre: 'Ruleta 3' },
   'BLACKJACK-1': { tipo: 'blackjack', nombre: 'Blackjack 1' },
   'BLACKJACK-2': { tipo: 'blackjack', nombre: 'Blackjack 2' },
+  'BLACKJACK-3': { tipo: 'blackjack', nombre: 'Blackjack 3' },
+  'BLACKJACK-4': { tipo: 'blackjack', nombre: 'Blackjack 4' },
+  'SLOTS-2': { tipo: 'slots', nombre: 'Salón de tragamonedas 2' },
   SLOTS: { tipo: 'slots', nombre: 'Salón de tragamonedas' },
 };
 

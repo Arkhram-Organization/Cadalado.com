@@ -5,16 +5,18 @@ import { crearPersona } from '/comun/persona3d.js';
 import { POR_ID, rngNpc } from '/comun/npcs.js';
 import { enFichas } from './piezas.js';
 
-const ASIENTOS = 5;
+const ASIENTOS = 7;
+const ESCALA = 1.25; // mesa más grande para 7
 const CENTRO_Z = -1.0; // borde recto de la mesa (lado de la banca)
 const MESA_Y = 0.93;
 const COLOR_FICHA = { 10: '#2f6fd6', 50: '#d63a3a', 100: '#1b1b1b', 500: '#7b3fd6', 1000: '#e0a91a', 5000: '#ff7a1a' };
 const PALO = { P: '♠', C: '♥', D: '♦', T: '♣' };
 
 // ángulo de cada lugar alrededor de la mesa (de izquierda a derecha visto desde la banca)
-const anguloAsiento = (i) => ((i - (ASIENTOS - 1) / 2) * 30 * Math.PI) / 180;
+const anguloAsiento = (i) => ((i - (ASIENTOS - 1) / 2) * 24 * Math.PI) / 180;
 const puntoArco = (i, r) => {
   const a = anguloAsiento(i);
+  r *= ESCALA;
   return new THREE.Vector3(-Math.sin(a) * r, MESA_Y, CENTRO_Z + Math.cos(a) * r);
 };
 
@@ -202,7 +204,7 @@ export class MesaBJ {
     this.personas = []; // por asiento: { persona, id }
     this.carteles = [];
     this.primera = -1;
-    this.vista = { yaw: 0, pitch: 0.88, dist: 6.8, yawObj: 0, pitchObj: 0.88, distObj: 6.8 };
+    this.vista = { yaw: 0, pitch: 0.88, dist: 8.2, yawObj: 0, pitchObj: 0.88, distObj: 8.2 };
     this.reloj = 0;
 
     // luces: lámpara colgante sobre la mesa y ambiente cálido
@@ -236,23 +238,23 @@ export class MesaBJ {
 
     // la mesa: media luna de madera con paño verde
     const madera = new THREE.MeshStandardMaterial({ color: 0x5a3820, roughness: 0.45, metalness: 0.1 });
-    const borde = new THREE.Mesh(new THREE.CylinderGeometry(2.85, 2.85, 0.14, 64, 1, false, -Math.PI / 2, Math.PI), madera);
+    const borde = new THREE.Mesh(new THREE.CylinderGeometry(2.85 * ESCALA, 2.85 * ESCALA, 0.14, 64, 1, false, -Math.PI / 2, Math.PI), madera);
     borde.position.set(0, MESA_Y - 0.07, CENTRO_Z); // la parte de arriba queda justo en MESA_Y
     borde.castShadow = borde.receiveShadow = true;
     this.scene.add(borde);
-    const acolchado = new THREE.Mesh(new THREE.TorusGeometry(2.78, 0.08, 10, 64, Math.PI), new THREE.MeshStandardMaterial({ color: 0x2a160b, roughness: 0.4 }));
+    const acolchado = new THREE.Mesh(new THREE.TorusGeometry(2.78 * ESCALA, 0.08, 10, 64, Math.PI), new THREE.MeshStandardMaterial({ color: 0x2a160b, roughness: 0.4 }));
     acolchado.rotation.set(-Math.PI / 2, 0, Math.PI);
     acolchado.position.set(0, MESA_Y + 0.03, CENTRO_Z);
     this.scene.add(acolchado);
-    const pano = new THREE.Mesh(new THREE.CircleGeometry(2.7, 64, Math.PI, Math.PI), new THREE.MeshStandardMaterial({ map: texPano(), roughness: 0.95 }));
+    const pano = new THREE.Mesh(new THREE.CircleGeometry(2.7 * ESCALA, 64, Math.PI, Math.PI), new THREE.MeshStandardMaterial({ map: texPano(), roughness: 0.95 }));
     pano.rotation.x = -Math.PI / 2;
     pano.position.set(0, MESA_Y + 0.002, CENTRO_Z);
     pano.receiveShadow = true;
     this.scene.add(pano);
-    const base = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.85, 1.6), new THREE.MeshStandardMaterial({ color: 0x24150a }));
+    const base = new THREE.Mesh(new THREE.BoxGeometry(3.4 * ESCALA, 0.85, 1.6 * ESCALA), new THREE.MeshStandardMaterial({ color: 0x24150a }));
     base.position.set(0, 0.43, CENTRO_Z + 0.9);
     this.scene.add(base);
-    const fondoBanca = new THREE.Mesh(new THREE.BoxGeometry(5.7, 0.14, 0.4), madera);
+    const fondoBanca = new THREE.Mesh(new THREE.BoxGeometry(5.7 * ESCALA, 0.14, 0.4), madera);
     fondoBanca.position.set(0, MESA_Y - 0.07, CENTRO_Z - 0.2);
     this.scene.add(fondoBanca);
     // zapato y bandeja de fichas de la banca
@@ -357,7 +359,7 @@ export class MesaBJ {
         this.camara.fov = Math.max(38, Math.min(75, this.camara.fov + e.deltaY * 0.02));
         return this.camara.updateProjectionMatrix();
       }
-      this.vista.distObj = Math.max(3.5, Math.min(10, this.vista.distObj + e.deltaY * 0.004));
+      this.vista.distObj = Math.max(3.5, Math.min(12, this.vista.distObj + e.deltaY * 0.004));
     }, { passive: false });
   }
 
@@ -371,7 +373,7 @@ export class MesaBJ {
     } else {
       this.vista.yawObj = 0;
       this.vista.pitchObj = 0.88;
-      this.vista.distObj = 6.8;
+      this.vista.distObj = 8.2;
       this.camara.fov = 42;
     }
     this.camara.updateProjectionMatrix();
@@ -546,8 +548,8 @@ export class MesaBJ {
     v.dist += (v.distObj - v.dist) * k;
     if (this.primera >= 0) {
       // ojos de mi personaje sentado, mirando hacia Dobro (más lo que gire la cabeza)
-      const ojo = puntoArco(this.primera, 3.05);
-      ojo.y = 1.4;
+      const ojo = puntoArco(this.primera, 2.72); // un poco adelante: con 7 lugares los vecinos quedan cerca
+      ojo.y = 1.45;
       const base = Math.atan2(0 - ojo.x, CENTRO_Z - 0.3 - ojo.z);
       const yaw = base + v.yaw;
       this.camara.position.copy(ojo);
