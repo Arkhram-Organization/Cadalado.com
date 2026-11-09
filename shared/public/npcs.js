@@ -11,7 +11,7 @@ export const NPCS = [
     id: 'glinsky',
     nombre: 'Glinsky',
     // foto: pelo corto canoso con entradas, flaco, camisa celeste, sonrisa
-    look: { foto: 'glinsky', piel: '#e9c2a2', pelo: { estilo: 'entradas', color: '#a9a49b' }, ojos: '#5a3a22', cuerpo: 'flaco', camisa: true, ropa: { remera: '#a9c4e8', pantalon: '#3a3f4a', bolso: false, zapatillas: '#3a2f28' }, genero: 'h' },
+    look: { modelo: 'glinsky', clips: { habla: 'Stand_Talking_Angry', baila: 'Cardio_Dance' }, foto: 'glinsky', piel: '#e9c2a2', pelo: { estilo: 'entradas', color: '#a9a49b' }, ojos: '#5a3a22', cuerpo: 'flaco', camisa: true, ropa: { remera: '#a9c4e8', pantalon: '#3a3f4a', bolso: false, zapatillas: '#3a2f28' }, genero: 'h' },
     frases: [
       '¡Qué grande que sos, Julo!',
       'Julo es el Momo de la informática.',
@@ -46,7 +46,7 @@ export const NPCS = [
     id: 'faur',
     nombre: 'Faur',
     // foto: rapado, barba tupida oscura, anteojos rectangulares, camisa a cuadros y campera
-    look: { foto: 'faur', piel: '#e3b58f', pelo: { estilo: 'rapado', color: '#3b2a1e' }, ojos: '#3a2a1c', cuerpo: 'gordito', barba: '#2b1d14', lentes: '#26282d', lentesForma: 'cuadrada', kipa: '#1d2c5e', campera: '#8a9488', ropa: { remera: '#4f73b0', estampado: 'cuadros', pantalon: '#2b2b33' }, genero: 'h' },
+    look: { modelo: 'faur', clips: { baila: 'ymca_dance', festeja: 'ymca_dance', habla: 'Talk_with_Left_Hand_Raised' }, foto: 'faur', piel: '#e3b58f', pelo: { estilo: 'rapado', color: '#3b2a1e' }, ojos: '#3a2a1c', cuerpo: 'gordito', barba: '#2b1d14', lentes: '#26282d', lentesForma: 'cuadrada', kipa: '#141414', campera: '#8a9488', ropa: { remera: '#4f73b0', estampado: 'cuadros', pantalon: '#2b2b33' }, genero: 'h' },
     frases: [
       '¿Quién trajo las facturas?',
       'Esto lo charlamos después de clase.',
@@ -78,7 +78,7 @@ export const NPCS = [
   {
     id: 'volcho',
     nombre: 'El volcho',
-    look: { estilo: 'meshy', piel: '#f2d2b8', pelo: { estilo: 'largo', color: '#7a4b2a' }, ojos: '#5b3b22', cuerpo: 'flaco', ropa: { remera: '#c084fc', pantalon: '#2f3a5c' }, genero: 'm' },
+    look: { modelo: 'volcho', clips: { baila: 'Shake_It_Off_Dance', festeja: 'Shake_It_Off_Dance' }, estilo: 'meshy', piel: '#f2d2b8', pelo: { estilo: 'largo', color: '#7a4b2a' }, ojos: '#5b3b22', cuerpo: 'flaco', ropa: { remera: '#c084fc', pantalon: '#2f3a5c' }, genero: 'm' },
     frases: ['Soy el volcho.', 'Soy el volcho, che.', '¿Quién? El volcho.', 'Acá está el volcho.', 'El volcho no pierde.'],
   },
   {
@@ -169,7 +169,7 @@ export const NPCS = [
     nombre: 'Mati Nadeo',
     raro: true, // easter egg: aparece poco y con brillo dorado
     // foto: rulos cortos oscuros con los costados rebajados, chomba y pantalón negros, reloj
-    look: { foto: 'mati', piel: '#ecc5a5', pelo: { estilo: 'rulosCorto', color: '#1f1712' }, ojos: '#4a3424', cuerpo: 'gordito', dorado: true, polo: true, ropa: { remera: '#151518', pantalon: '#18181b', bolso: false, zapatillas: '#2a2a2e' }, genero: 'h' },
+    look: { modelo: 'mati', clips: { baila: 'FunnyDancing_02' }, travesuras: { quieto: ['duerme', 'duerme', 'baila', 'habla', 'saluda'], corre: ['voltereta', 'festeja'] }, foto: 'mati', piel: '#ecc5a5', pelo: { estilo: 'rulosCorto', color: '#1f1712' }, ojos: '#4a3424', cuerpo: 'gordito', dorado: true, polo: true, ropa: { remera: '#151518', pantalon: '#18181b', bolso: false, zapatillas: '#2a2a2e' }, genero: 'h' },
     frases: ['Queque.', 'Queque.', '¿Hay Queque?', 'A {jugador} le gusta el Queque.', 'Queque, queque.', 'Todo es Queque.'],
   },
 ];

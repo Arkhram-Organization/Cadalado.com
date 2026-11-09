@@ -468,12 +468,38 @@ function abrirSala(code) {
     for (const b of botsRonda) if (alcance(posBot(mapa, b.ruta, t, semilla))) golpeados.set('bot' + b.i, performance.now() + 1500);
     if (fase === 'lobby') charlasLobby.forEach((_, i) => alcance(posLobby(i)) && golpeados.set('bot' + i, performance.now() + 1500));
   }
+  // Los bots también pegan: si pasás cerca, cada tanto te tiran una piña o una patada.
+  // Sus posiciones son las mismas en todos los navegadores, así que cada uno resuelve si le pegan a él.
+  function botPega(b, e, ahora) {
+    if (b.pegaHasta > ahora) {
+      e.a = b.pegaTipo;
+      e.ry = b.pegaRy;
+      return;
+    }
+    if (jugador.espectador || jugador.llego || jugador.aturdido > 0 || ahora < (b.proxPega || 0)) return;
+    const dx = jugador.x - e.x, dz = jugador.z - e.z, d = Math.hypot(dx, dz);
+    if (d > 1.5 || Math.abs(jugador.y - e.y) > 1.2) return;
+    b.proxPega = ahora + 4500 + Math.random() * 5000;
+    if (Math.random() > 0.65) return; // no siempre
+    b.pegaTipo = Math.random() < 0.5 ? 'pina' : 'patada';
+    b.pegaRy = Math.atan2(-dx, -dz);
+    b.pegaHasta = ahora + 750;
+    e.a = b.pegaTipo; e.ry = b.pegaRy;
+    setTimeout(() => {
+      const ahoraD = Math.hypot(jugador.x - e.x, jugador.z - e.z);
+      if (ahoraD < 2 && !jugador.llego && !jugador.espectador) {
+        jugador.recibirGolpe(dx, dz);
+        sonar('pina');
+        if (Math.random() < 0.5) botDice('bot' + b.i, nombreBot(b.i), ['¡Tomá!', '¡Fuera de mi camino!', '¡Paso!', 'Perdón, fue sin querer. Mentira.'][Math.floor(Math.random() * 4)]);
+      }
+    }, 280);
+  }
   const posLobby = (i) => ({ x: ((i % 6) - 2.5) * 2.2, y: 0, z: -10 - Math.floor(i / 6) * 2.2, ry: Math.PI });
   const enJuego = (id) => (fase === 'lobby' || fase === 'podio' ? true : est.vivos.includes(id));
 
   // ---------------------------------------------------------------- bucle
   // para pruebas automáticas (no cambia nada del juego)
-  window.__carrera = { get jugador() { return jugador; }, get remotos() { return remotos; }, get estado() { return est; }, get bots() { return botsRonda; }, get mirando() { return mirando(); } };
+  window.__carrera = { get jugador() { return jugador; }, get remotos() { return remotos; }, get estado() { return est; }, get bots() { return botsRonda; }, get mirando() { return mirando(); }, posBot: (k) => { const b = botsRonda[k]; return b && posBot(mapa, b.ruta, Math.max(0, (sala.ahora() - est.inicio) / 1000), semilla); } };
   let raf;
   let ultimo = performance.now();
   let acumulado = 0;
@@ -581,6 +607,7 @@ function abrirSala(code) {
         escena.personaje(id, lookBot(b.npc), nombreBot(b.i));
         const e = posBot(mapa, b.ruta, tp, semilla);
         if ((golpeados.get(id) || 0) > ahora) e.a = (golpeados.get(id) - ahora > 1250 ? 'golpe' : 'tirado');
+        else if (enRonda) botPega(b, e, ahora);
         escena.mover(id, e, dt);
         // cuando llega a la meta, festeja (o se queja si no clasificó)
         if (!b.llego && tp >= b.ruta.fin) {

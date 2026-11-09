@@ -468,6 +468,10 @@ function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 
       } else if (estado === 'habla') {
         brazos.forEach((b, i) => { b.hombro.rotation.x = .45 + Math.sin(reloj * 4 + i * 2) * .25; b.codo.rotation.x = 1 + Math.sin(reloj * 5 + i) * .3; b.hombro.rotation.z = (i ? 1 : -1) * .25; });
         cabeza.rotation.y = Math.sin(reloj * 2) * .2; boca.scale.y = 1 + Math.abs(Math.sin(reloj * 14)) * .8;
+      } else if (estado === 'duerme') {
+        cuerpo.rotation.x = 1.5; cuerpo.position.set(0, .17, .35);
+        brazos[0].hombro.rotation.z = -.4; brazos[1].hombro.rotation.z = .4;
+        if (transcurrido < dt * 1.5) api.decir('Zzz… zzz…', 6.5);
       } else if (estado === 'flexiones') {
         const b = Math.abs(Math.sin(reloj * 3.2));
         cuerpo.rotation.x = -1.32; cuerpo.position.set(0, .26 + b * .14, .35);
