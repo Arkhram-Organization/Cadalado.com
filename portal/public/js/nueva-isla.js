@@ -2,8 +2,8 @@ import {JUEGOS} from './datos.js';
 import {NPCS} from '/comun/npcs.js';
 import {montarElenco} from './elenco.js';
 import {montarMuro,montarSugerencias} from './muro.js';
+import {montarLobby} from './lobby.js';
 const $=s=>document.querySelector(s);
-const hero=montarElenco($('#hero-personajes'),{grupo:true});
 const elenco=montarElenco($('#elenco'));
 const perfiles={glinsky:'El de las tecnologías exponenciales.',julo:'Compila código. Descompila rivales.',faur:'Una más y se va. Mentira, se queda.',dobro:'La casa siempre gana. La casa es él.',volcho:'No necesita presentación. Es el volcho.',colon:'Descubrió la isla. Ahora falta sobrevivir.',claude:'Armó el juego. También quiere ganar.',mate:'Siempre hay tiempo para otro mate.',chapa:'Corazón de metal. Espíritu de club.',mati:'Una aparición que vale oro.',angeles:'Informática, danza artística y boludeces. En ese orden.',angie:'Solo habla de Nacho. Y de Chicha.'};
 function ficha(){const n=elenco.npc;$('#npc-name').textContent=n.nombre;$('#npc-desc').textContent=perfiles[n.id]||'Uno de los nuestros.';$('#npc-quote').textContent='“'+n.frases[0]+'”';$('#npc-index').textContent=String(NPCS.indexOf(n)+1).padStart(2,'0')+' / '+NPCS.length;document.querySelectorAll('[data-npc]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.npc===NPCS.indexOf(n))));}
@@ -18,3 +18,4 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)cargar();}
 // Muro de publicaciones (arriba) y sugerencias (abajo de todo).
 montarMuro($('[data-muro]'));
 montarSugerencias($('[data-sugerencias]'));
+montarLobby(document.querySelector('#lobby'));
