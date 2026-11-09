@@ -8,10 +8,10 @@ import { dicho } from '../../../shared/public/dichos.js';
 
 const CUENTA_MS = 3500;
 const FIN_MS = 15_000;
-const MAX_POR_EQUIPO = 6;
+const MAX_POR_EQUIPO = 10;
 const MAX_BOTS = 8;
-const MINUTOS = [2, 3, 5];
-const GOLES = [3, 5, 7];
+const ESTADIOS = ['classic', 'easy', 'small', 'big', 'rounded', 'bigEasy', 'bigRounded', 'huge'];
+const entero = (v, max) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= max ? n : null; };
 
 const nombreBot = (r, i) => {
   const id = r.botNpc[i];
@@ -39,8 +39,9 @@ export const haxball = crearJuego({
     const r = {
       fase: 'lobby',
       bots: Number.isInteger(n) && n >= 0 && n <= MAX_BOTS ? n : 3,
-      minutos: MINUTOS.includes(Number(opts.minutos)) ? Number(opts.minutos) : 3,
-      golesMax: GOLES.includes(Number(opts.goles)) ? Number(opts.goles) : 5,
+      minutos: entero(opts.minutos, 30) ?? 3, // 0 = sin límite
+      golesMax: entero(opts.goles, 30) ?? 3, // 0 = sin límite
+      estadio: ESTADIOS.includes(opts.estadio) ? opts.estadio : 'classic',
       semillaSala: crypto.getRandomValues(new Uint32Array(1))[0],
       botNpc: [],
       equipos: {}, // pid → 'rojo' | 'azul' | 'afuera'
@@ -79,8 +80,9 @@ export const haxball = crearJuego({
         if (!ctx.esHost || r.fase === 'partida' || r.fase === 'cuenta') return {};
         const n = Number(msg.bots);
         if (Number.isInteger(n) && n >= 0 && n <= MAX_BOTS) { r.bots = n; r.botNpc = elegirNpcs(n, r.semillaSala + r.partidas); }
-        if (MINUTOS.includes(Number(msg.minutos))) r.minutos = Number(msg.minutos);
-        if (GOLES.includes(Number(msg.goles))) r.golesMax = Number(msg.goles);
+        if (entero(msg.minutos, 30) !== null) r.minutos = entero(msg.minutos, 30);
+        if (entero(msg.goles, 30) !== null) r.golesMax = entero(msg.goles, 30);
+        if (ESTADIOS.includes(msg.estadio)) r.estadio = msg.estadio;
         return {};
       }
       case 'empezar': {
@@ -99,7 +101,7 @@ export const haxball = crearJuego({
         r.inicio = ctx.now + CUENTA_MS;
         r.fase = 'cuenta';
         r.partidas += 1;
-        ctx.sistema(`¡Arranca el partido! ${r.minutos} minutos o ${r.golesMax} goles.`);
+        ctx.sistema(`¡Arranca el partido! ${r.minutos ? `${r.minutos} minutos` : 'Sin límite de tiempo'}${r.golesMax ? ` · a ${r.golesMax} goles` : ''}.`);
         return {};
       }
       case 'gol': {
@@ -115,7 +117,12 @@ export const haxball = crearJuego({
         // un bot del equipo que hizo el gol lo festeja en el chat
         const i = r.botEquipo.findIndex((e, k) => e === msg.e && ctx.now - (r.habla['bot' + k] || 0) > 6000);
         if (i >= 0) { r.habla['bot' + i] = ctx.now; ctx.evento({ k: 'chat', de: 'bot' + i, nombre: nombreBot(r, i), npc: r.botNpc[i], bot: true, texto: dicho(r.botNpc[i], 'gana', ctx.jugador?.nombre || 'alguien') }); }
-        if (r.marcador[msg.e] >= r.golesMax) terminar(r, ctx);
+        if (r.golesMax && r.marcador[msg.e] >= r.golesMax) terminar(r, ctx);
+        return {};
+      }
+      case 'terminar': {
+        if (!ctx.esHost || r.fase !== 'partida') return {};
+        terminar(r, ctx);
         return {};
       }
       case 'mensaje': {
@@ -134,10 +141,10 @@ export const haxball = crearJuego({
         return { error: 'Acción desconocida' };
     }
   },
-  proximo: (r) => (r.fase === 'cuenta' ? r.inicio : r.fase === 'partida' ? r.inicio + r.minutos * 60_000 : r.fase === 'fin' ? r.fin : Infinity),
+  proximo: (r) => (r.fase === 'cuenta' ? r.inicio : r.fase === 'partida' ? (r.minutos ? r.inicio + r.minutos * 60_000 : Infinity) : r.fase === 'fin' ? r.fin : Infinity),
   tick(r, ctx) {
     if (r.fase === 'cuenta' && ctx.now >= r.inicio) r.fase = 'partida';
-    else if (r.fase === 'partida' && ctx.now >= r.inicio + r.minutos * 60_000) terminar(r, ctx);
+    else if (r.fase === 'partida' && r.minutos && ctx.now >= r.inicio + r.minutos * 60_000) terminar(r, ctx);
     else if (r.fase === 'fin' && ctx.now >= r.fin) { r.fase = 'lobby'; r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas); }
   },
   vista(r) {
@@ -147,6 +154,7 @@ export const haxball = crearJuego({
       fin: r.fin,
       minutos: r.minutos,
       golesMax: r.golesMax,
+      estadio: r.estadio || 'classic',
       bots: r.bots,
       botNpc: r.botNpc.slice(0, r.bots),
       botNombres: r.botNpc.slice(0, r.bots).map((_, i) => nombreBot(r, i)),

@@ -1,145 +1,215 @@
-// Física del haxball: discos que chocan (jugadores y pelota), paredes, arcos con postes, patadas y goles.
+// Física del haxball, igual a la del HaxBall original: discos (jugadores y pelota) con masa y rebote,
+// estadios con planos, segmentos (redes curvas), postes, y el saque con barrera en el medio.
 // Pura (sin navegador): la usa el anfitrión para simular, y los tests. Paso fijo de 1/60 s.
 
-export const CANCHA = { ancho: 760, alto: 360, arco: 140, fondo: 34, borde: 46 };
-export const R_JUG = 16;
-export const R_PEL = 10;
-const ACEL = 0.11, ACEL_PATEANDO = 0.075, FRENO_JUG = 0.96, FRENO_PEL = 0.99;
-const FUERZA_PATADA = 5.6, REBOTE_PARED = 0.5, REBOTE_DISCO = 0.5;
-const M = { jug: 1, pel: 1 / 0.6 }; // inversa de la masa: la pelota es más liviana
+export const JUG = { radio: 15, rebote: 0.5, invMasa: 0.5, freno: 0.96, acel: 0.1, acelPateando: 0.07, frenoPateando: 0.96, patada: 5 };
+export const PEL = { radio: 10, rebote: 0.5, invMasa: 1, freno: 0.99 };
+export const R_JUG = JUG.radio;
+export const R_PEL = PEL.radio;
+export const COLOR = { rojo: '#E56E56', azul: '#5689E5' };
 
-const W = CANCHA.ancho / 2, H = CANCHA.alto / 2, A = CANCHA.arco / 2;
-export const POSTES = [[-W, -A], [-W, A], [W, -A], [W, A]];
+export const ESTADIOS = [
+  { id: 'classic', nombre: 'Classic', ancho: 420, alto: 200, campoW: 370, campoH: 170, arco: 64, saque: 75, esquina: 0 },
+  { id: 'easy', nombre: 'Easy', ancho: 420, alto: 200, campoW: 370, campoH: 170, arco: 90, saque: 75, esquina: 0 },
+  { id: 'small', nombre: 'Small', ancho: 420, alto: 200, campoW: 320, campoH: 130, arco: 55, saque: 70, esquina: 0 },
+  { id: 'big', nombre: 'Big', ancho: 600, alto: 270, campoW: 550, campoH: 240, arco: 80, saque: 80, esquina: 0 },
+  { id: 'rounded', nombre: 'Rounded', ancho: 420, alto: 200, campoW: 370, campoH: 170, arco: 64, saque: 75, esquina: 75 },
+  { id: 'bigEasy', nombre: 'Big Easy', ancho: 600, alto: 270, campoW: 550, campoH: 240, arco: 95, saque: 80, esquina: 0 },
+  { id: 'bigRounded', nombre: 'Big Rounded', ancho: 600, alto: 270, campoW: 550, campoH: 240, arco: 80, saque: 75, esquina: 100 },
+  { id: 'huge', nombre: 'Huge', ancho: 750, alto: 350, campoW: 700, campoH: 320, arco: 100, saque: 80, esquina: 0 },
+];
 
-// Mundo: { pelota: {x,y,vx,vy}, jug: Map(id → {x,y,vx,vy,equipo,patea,pateo}) }
-export function nuevoMundo() {
-  return { pelota: { x: 0, y: 0, vx: 0, vy: 0 }, jug: new Map(), pausa: 0 };
+// Un arco de círculo se aproxima con tramos rectos (suficiente para chocar y para dibujar).
+function arcoTramos(x0, y0, x1, y1, grados, n = 10) {
+  const a = (grados * Math.PI) / 180;
+  const f = 1 / Math.tan(a / 2);
+  const tx = (x1 - x0) / 2, ty = (y1 - y0) / 2;
+  const cx = x0 + tx - ty * f, cy = y0 + ty + tx * f;
+  const r = Math.hypot(x0 - cx, y0 - cy);
+  let a0 = Math.atan2(y0 - cy, x0 - cx), a1 = Math.atan2(y1 - cy, x1 - cx);
+  let d = a1 - a0;
+  while (d > Math.PI) d -= 2 * Math.PI;
+  while (d < -Math.PI) d += 2 * Math.PI;
+  const pts = [];
+  for (let i = 0; i <= n; i++) { const t = a0 + (d * i) / n; pts.push([cx + Math.cos(t) * r, cy + Math.sin(t) * r]); }
+  return pts;
 }
 
-// Formación de salida: cada equipo en su mitad, repartidos en dos líneas.
+const cache = new Map();
+export function estadio(id) {
+  const e = ESTADIOS.find((x) => x.id === id) || ESTADIOS[0];
+  if (cache.has(e.id)) return cache.get(e.id);
+  const { ancho, alto, campoW: W, campoH: H, arco: A, esquina: C } = e;
+  const est = { ...e, segPelota: [], redes: [], postes: [], dibujo: [], salida: Math.min(0.75 * W, 400) };
+  const seg = (pts, lista, vis = true) => { for (let i = 0; i < pts.length - 1; i++) lista.push({ x0: pts[i][0], y0: pts[i][1], x1: pts[i + 1][0], y1: pts[i + 1][1] }); if (vis) est.dibujo.push(pts); };
+  // redes de los dos arcos (como HaxBall: curva, fondo recto, curva)
+  for (const [x, t, color] of [[W, 1, '#CCCCFF'], [-W, -1, '#FFCCCC']]) {
+    const a = [x + 8 * t, -A], s = [x + 8 * t, A], c = [x + 30 * t, -A + 22], f = [x + 30 * t, A - 22];
+    seg([...arcoTramos(a[0], a[1], c[0], c[1], 90 * t)], est.redes);
+    seg([f, c], est.redes, false); est.dibujo.push([f, c]);
+    seg([...arcoTramos(f[0], f[1], s[0], s[1], 90 * t)], est.redes);
+    est.postes.push({ x, y: -A, r: 8, color }, { x, y: A, r: 8, color });
+  }
+  // la pelota no sale de la cancha (salvo por la boca de los arcos)
+  seg([[W, -H], [W, -A]], est.segPelota, false); seg([[W, A], [W, H]], est.segPelota, false);
+  seg([[-W, H], [-W, A]], est.segPelota, false); seg([[-W, -A], [-W, -H]], est.segPelota, false);
+  if (C > 0) {
+    seg(arcoTramos(-W + C, -H, -W, -H + C, -90), est.segPelota, false);
+    seg(arcoTramos(-W + C, H, -W, H - C, 90), est.segPelota, false);
+    seg(arcoTramos(W - C, H, W, H - C, -90), est.segPelota, false);
+    seg(arcoTramos(W - C, -H, W, -H + C, 90), est.segPelota, false);
+  }
+  est.limiteJug = { x: ancho, y: alto };
+  cache.set(e.id, est);
+  return est;
+}
+
+// Mundo: { est, pelota, jug: Map(id → {x,y,vx,vy,equipo,patea,pateo}), saque: 'rojo'|'azul'|null, pausa }
+export function nuevoMundo(idEstadio = 'classic') {
+  return { est: estadio(idEstadio), pelota: { x: 0, y: 0, vx: 0, vy: 0 }, jug: new Map(), saque: 'rojo', pausa: 0, gol: null };
+}
+
+// Salida como HaxBall: cada equipo en su mitad, uno al medio y los demás alternando arriba y abajo.
 export function acomodar(mundo, saca = 'rojo') {
-  const por = { rojo: [], azul: [] };
-  for (const [id, j] of mundo.jug) if (por[j.equipo]) por[j.equipo].push(id);
-  for (const eq of ['rojo', 'azul']) {
-    const lado = eq === 'rojo' ? -1 : 1;
-    por[eq].sort().forEach((id, i, l) => {
-      const j = mundo.jug.get(id);
-      const fila = i % 2, n = l.length;
-      j.x = lado * (fila ? 260 : 120 + (eq === saca ? 0 : 30));
-      j.y = n === 1 ? 0 : (i - (n - 1) / 2) * (H * 1.5 / Math.max(1, n - 1));
-      j.vx = j.vy = 0;
-    });
+  const n = { rojo: 0, azul: 0 };
+  const ids = [...mundo.jug.keys()].sort();
+  for (const id of ids) {
+    const j = mundo.jug.get(id);
+    const k = n[j.equipo]++;
+    let r = (k + 1) >> 1; if (!(k & 1)) r = -r;
+    j.x = mundo.est.salida * (j.equipo === 'rojo' ? -1 : 1);
+    j.y = 55 * r;
+    j.vx = j.vy = 0;
   }
   Object.assign(mundo.pelota, { x: 0, y: 0, vx: 0, vy: 0 });
+  mundo.saque = saca;
 }
 
-function chocarDiscos(a, ra, ma, b, rb, mb) {
-  const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = ra + rb;
-  if (d >= min || d === 0) return;
-  const nx = dx / d, ny = dy / d, solap = min - d, mt = ma + mb;
-  a.x -= nx * solap * (ma / mt); a.y -= ny * solap * (ma / mt);
-  b.x += nx * solap * (mb / mt); b.y += ny * solap * (mb / mt);
-  const vrel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-  if (vrel > 0) return;
-  const j = -(1 + REBOTE_DISCO) * vrel / mt;
-  a.vx -= j * ma * nx; a.vy -= j * ma * ny;
-  b.vx += j * mb * nx; b.vy += j * mb * ny;
-}
-
-// Pelota contra los bordes de la cancha (con la boca de los arcos abierta) y contra el fondo de los arcos.
-function paredesPelota(p) {
-  const enBoca = Math.abs(p.y) < A - 2;
-  if (!enBoca || Math.abs(p.x) < W) {
-    if (p.y - R_PEL < -H) { p.y = -H + R_PEL; p.vy = -p.vy * REBOTE_PARED; }
-    if (p.y + R_PEL > H) { p.y = H - R_PEL; p.vy = -p.vy * REBOTE_PARED; }
+// choque disco-disco (HaxBall): reparte la separación por masa y rebota con el producto de los coeficientes
+function discos(a, b, ra, rb, ia, ib, ba, bb) {
+  const dx = a.x - b.x, dy = a.y - b.y, d2 = dx * dx + dy * dy, r = ra + rb;
+  if (!(d2 > 0 && d2 <= r * r)) return false;
+  const im = ia + ib;
+  if (im === 0) return false;
+  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, ka = ia / im;
+  let sol = r - d;
+  const fa = sol * ka;
+  a.x += nx * fa; a.y += ny * fa; sol -= fa; b.x -= nx * sol; b.y -= ny * sol;
+  let p = nx * (a.vx - b.vx) + ny * (a.vy - b.vy);
+  if (p < 0) {
+    p *= ba * bb + 1;
+    const pa = ka * p;
+    a.vx -= nx * pa; a.vy -= ny * pa;
+    const pb = p - pa;
+    b.vx += nx * pb; b.vy += ny * pb;
   }
-  if (!enBoca) {
-    if (p.x - R_PEL < -W) { p.x = -W + R_PEL; p.vx = -p.vx * REBOTE_PARED; }
-    if (p.x + R_PEL > W) { p.x = W - R_PEL; p.vx = -p.vx * REBOTE_PARED; }
-  } else {
-    // adentro del arco: techo, piso y fondo de la red
-    const fondo = W + CANCHA.fondo;
-    if (Math.abs(p.x) > W) {
-      if (p.y - R_PEL < -A) { p.y = -A + R_PEL; p.vy = -p.vy * .3; }
-      if (p.y + R_PEL > A) { p.y = A - R_PEL; p.vy = -p.vy * .3; }
-    }
-    if (Math.abs(p.x) + R_PEL > fondo) { p.x = Math.sign(p.x) * (fondo - R_PEL); p.vx = -p.vx * .2; }
-  }
+  return true;
 }
-
-function paredesJugador(j) {
-  const mx = W + CANCHA.borde - R_JUG, my = H + CANCHA.borde - R_JUG;
-  if (j.x < -mx) { j.x = -mx; j.vx = 0; } if (j.x > mx) { j.x = mx; j.vx = 0; }
-  if (j.y < -my) { j.y = -my; j.vy = 0; } if (j.y > my) { j.y = my; j.vy = 0; }
+// disco contra un tramo fijo (de los dos lados; las puntas son vértices)
+function tramo(d, r, s, rebote) {
+  const ex = s.x1 - s.x0, ey = s.y1 - s.y0, l2 = ex * ex + ey * ey;
+  let t = l2 ? ((d.x - s.x0) * ex + (d.y - s.y0) * ey) / l2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const px = s.x0 + ex * t, py = s.y0 + ey * t, dx = d.x - px, dy = d.y - py, dist = Math.hypot(dx, dy);
+  if (dist >= r || dist === 0) return;
+  const nx = dx / dist, ny = dy / dist;
+  d.x += nx * (r - dist); d.y += ny * (r - dist);
+  const v = d.vx * nx + d.vy * ny;
+  if (v < 0) { d.vx -= nx * v * (1 + rebote); d.vy -= ny * v * (1 + rebote); }
+}
+function planos(d, r, lx, ly, rebote) {
+  if (d.x - r < -lx) { d.x = -lx + r; if (d.vx < 0) d.vx = -d.vx * rebote; }
+  if (d.x + r > lx) { d.x = lx - r; if (d.vx > 0) d.vx = -d.vx * rebote; }
+  if (d.y - r < -ly) { d.y = -ly + r; if (d.vy < 0) d.vy = -d.vy * rebote; }
+  if (d.y + r > ly) { d.y = ly - r; if (d.vy > 0) d.vy = -d.vy * rebote; }
 }
 
 // entradas: Map(id → { x, y, patea }) con x,y en -1..1. Devuelve 'rojo' | 'azul' si alguien hizo un gol.
 export function paso(mundo, entradas) {
-  const p = mundo.pelota;
-  if (mundo.pausa > 0) { mundo.pausa--; return null; }
-  for (const [id, j] of mundo.jug) {
+  const p = mundo.pelota, est = mundo.est;
+  const js = [...mundo.jug.entries()];
+  for (const [id, j] of js) {
     const e = entradas.get(id) || { x: 0, y: 0, patea: false };
-    let ix = e.x || 0, iy = e.y || 0;
+    let ix = Math.sign(e.x || 0) * Math.min(1, Math.abs(e.x || 0)), iy = Math.sign(e.y || 0) * Math.min(1, Math.abs(e.y || 0));
     const l = Math.hypot(ix, iy); if (l > 1) { ix /= l; iy /= l; }
-    const ac = e.patea ? ACEL_PATEANDO : ACEL;
-    j.vx = (j.vx + ix * ac) * FRENO_JUG; j.vy = (j.vy + iy * ac) * FRENO_JUG;
-    j.x += j.vx; j.y += j.vy;
+    const ac = e.patea ? JUG.acelPateando : JUG.acel;
+    j.vx += ix * ac; j.vy += iy * ac;
     j.patea = !!e.patea;
-    // patada: una por apretada, si la pelota está pegada
+    // patada: una por apretada, si la pelota está a menos de 4 del borde
     if (e.patea && !j.pateo) {
       const dx = p.x - j.x, dy = p.y - j.y, d = Math.hypot(dx, dy);
-      if (d < R_JUG + R_PEL + 4) { p.vx += (dx / d) * FUERZA_PATADA; p.vy += (dy / d) * FUERZA_PATADA; j.pateo = true; j.ultimaPatada = Date.now(); mundo.ultimoToque = id; }
+      if (d - R_JUG - R_PEL < 4) {
+        p.vx += (dx / d) * JUG.patada * PEL.invMasa; p.vy += (dy / d) * JUG.patada * PEL.invMasa;
+        j.pateo = true; mundo.ultimoToque = id;
+        if (mundo.saque) mundo.saque = null;
+      }
     }
     if (!e.patea) j.pateo = false;
   }
-  p.vx *= FRENO_PEL; p.vy *= FRENO_PEL; p.x += p.vx; p.y += p.vy;
-  // choques
-  const js = [...mundo.jug.entries()];
+  // mover y frenar
+  for (const [, j] of js) { j.x += j.vx; j.y += j.vy; const f = j.patea ? JUG.frenoPateando : JUG.freno; j.vx *= f; j.vy *= f; }
+  p.x += p.vx; p.y += p.vy; p.vx *= PEL.freno; p.vy *= PEL.freno;
+  // choques entre discos
   for (let i = 0; i < js.length; i++) {
-    for (let k = i + 1; k < js.length; k++) chocarDiscos(js[i][1], R_JUG, M.jug, js[k][1], R_JUG, M.jug);
-    const antes = Math.hypot(p.x - js[i][1].x, p.y - js[i][1].y);
-    chocarDiscos(js[i][1], R_JUG, M.jug, p, R_PEL, M.pel);
-    if (antes < R_JUG + R_PEL + 0.5) mundo.ultimoToque = js[i][0];
+    for (let k = i + 1; k < js.length; k++) discos(js[i][1], js[k][1], R_JUG, R_JUG, JUG.invMasa, JUG.invMasa, JUG.rebote, JUG.rebote);
+    if (discos(js[i][1], p, R_JUG, R_PEL, JUG.invMasa, PEL.invMasa, JUG.rebote, PEL.rebote)) { mundo.ultimoToque = js[i][0]; if (mundo.saque) mundo.saque = null; }
   }
-  for (const [px, py] of POSTES) {
-    const poste = { x: px, y: py, vx: 0, vy: 0 };
-    chocarDiscos(poste, 6, 0, p, R_PEL, 1);
-    for (const [, j] of js) chocarDiscos({ x: px, y: py, vx: 0, vy: 0 }, 6, 0, j, R_JUG, 1);
+  // postes (masa infinita)
+  for (const q of est.postes) {
+    const poste = { x: q.x, y: q.y, vx: 0, vy: 0 };
+    discos(p, poste, R_PEL, q.r, PEL.invMasa, 0, PEL.rebote, 0.5);
+    for (const [, j] of js) discos(j, { x: q.x, y: q.y, vx: 0, vy: 0 }, R_JUG, q.r, JUG.invMasa, 0, JUG.rebote, 0.5);
   }
-  paredesPelota(p);
-  for (const [, j] of js) paredesJugador(j);
-  // gol: la pelota cruzó entera la línea, entre los postes
-  if (Math.abs(p.y) < A && Math.abs(p.x) > W + R_PEL) return p.x < 0 ? 'azul' : 'rojo';
+  // redes (solo la pelota) y bordes de la cancha para la pelota
+  for (const s of est.redes) tramo(p, R_PEL, s, PEL.rebote * 0.1);
+  for (const s of est.segPelota) tramo(p, R_PEL, s, PEL.rebote * 1);
+  // planos de arriba y abajo para la pelota (rebote como las paredes de HaxBall)
+  if (p.y - R_PEL < -est.campoH) { p.y = -est.campoH + R_PEL; if (p.vy < 0) p.vy = -p.vy * PEL.rebote; }
+  if (p.y + R_PEL > est.campoH) { p.y = est.campoH - R_PEL; if (p.vy > 0) p.vy = -p.vy * PEL.rebote; }
+  planos(p, R_PEL, est.ancho, est.alto, 0);
+  for (const [, j] of js) {
+    planos(j, R_JUG, est.ancho, est.alto, 0);
+    // saque: nadie pasa a la otra mitad; el que no saca tampoco entra al círculo
+    if (mundo.saque) {
+      const lado = j.equipo === 'rojo' ? -1 : 1;
+      const dentro = Math.hypot(j.x, j.y) < est.saque + R_JUG;
+      if (j.equipo !== mundo.saque) {
+        if (dentro) { const d = Math.hypot(j.x, j.y) || 1; j.x = (j.x / d) * (est.saque + R_JUG); j.y = (j.y / d) * (est.saque + R_JUG); }
+        if (j.x * lado < R_JUG) { j.x = lado * R_JUG; if (j.vx * lado < 0) j.vx = 0; }
+      } else if (!(Math.hypot(j.x, j.y) < est.saque) && j.x * lado < R_JUG) { j.x = lado * R_JUG; if (j.vx * lado < 0) j.vx = 0; }
+    }
+  }
+  // gol: la pelota cruza la línea entre los postes
+  if (!mundo.gol && Math.abs(p.y) < est.arco && Math.abs(p.x) > est.campoW) { mundo.gol = p.x < 0 ? 'azul' : 'rojo'; return mundo.gol; }
   return null;
 }
 
-// Bot simple: el más cercano de su equipo va a la pelota y patea hacia el arco rival; el resto se para atrás.
+// Bot: el más cercano de su equipo va a la pelota y patea hacia el arco rival; el resto se para atrás.
 export function pensarBot(mundo, id, t = 0) {
-  const j = mundo.jug.get(id), p = mundo.pelota;
+  const j = mundo.jug.get(id), p = mundo.pelota, est = mundo.est;
   if (!j) return { x: 0, y: 0, patea: false };
   const ataque = j.equipo === 'rojo' ? 1 : -1;
-  const arcoRival = { x: ataque * (W + 10), y: 0 }, arcoPropio = { x: -ataque * W, y: 0 };
+  const arcoRival = { x: ataque * (est.campoW + 10), y: 0 }, arcoPropio = { x: -ataque * est.campoW, y: 0 };
   const compas = [...mundo.jug.entries()].filter(([, o]) => o.equipo === j.equipo);
   const dist = (o) => Math.hypot(o.x - p.x, o.y - p.y);
   const yoVoy = compas.sort((a, b) => dist(a[1]) - dist(b[1]))[0]?.[0] === id;
+  // en el saque, el que no saca espera
+  if (mundo.saque && mundo.saque !== j.equipo) return { x: 0, y: 0, patea: false };
   let tx, ty, patea = false;
   if (yoVoy) {
-    // ponerse detrás de la pelota mirando al arco rival
     const ax = arcoRival.x - p.x, ay = arcoRival.y - p.y, al = Math.hypot(ax, ay) || 1;
     const bx = p.x - (ax / al) * (R_JUG + R_PEL + 6), by = p.y - (ay / al) * (R_JUG + R_PEL + 6);
     const detras = ((j.x - p.x) * ax + (j.y - p.y) * ay) / al < 0;
     if (detras) { tx = p.x; ty = p.y; } else { tx = bx; ty = by + (j.y < p.y ? -24 : 24); }
-    const d = dist(j);
-    patea = d < R_JUG + R_PEL + 3 && detras && (al < 330 || Math.sin(t * 7 + id.length) > .6);
+    patea = dist(j) < R_JUG + R_PEL + 3 && detras && (al < est.campoW * 0.9 || Math.sin(t * 7 + id.length) > 0.6);
   } else {
-    // defensa: entre la pelota y el arco propio
-    tx = arcoPropio.x * .55 + p.x * .45; ty = p.y * .6;
+    tx = arcoPropio.x * 0.55 + p.x * 0.45; ty = p.y * 0.6;
   }
   const dx = tx - j.x, dy = ty - j.y, d = Math.hypot(dx, dy);
   return d < 3 ? { x: 0, y: 0, patea } : { x: dx / d, y: dy / d, patea };
 }
 
-// Estado compacto para mandar por la red: pelota y cada jugador (enteros por décimas).
+// Estado compacto para la red (enteros por décimas). extra: datos sueltos (saque, gol…).
 const n1 = (v) => Math.round(v * 10);
 export function codificar(mundo, extra = '') {
   const p = mundo.pelota;
