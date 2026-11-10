@@ -314,7 +314,7 @@ function abrirSala(code) {
         aviso(mio.paso ? '¡CLASIFICASTE!' : 'Quedaste afuera', !mio.paso);
       }
     }
-    if (nueva === 'podio') { const g = est.resultados[0]; show.armar('podio', est.resultados.slice(0, 12).map((x) => ({ id: x.id, nombre: x.nombre, paso: true, look: x.bot ? lookBot(x.npc) : lookDe(x.id) })), { titulo: g?.paso ? `¡GANÓ ${g.nombre.toUpperCase()}!` : 'FIN' }); sonar('gana'); }
+    if (nueva === 'podio') { const g = est.resultados[0]; show.armar('podio', est.resultados.slice(0, 12).map((x) => ({ id: x.id, puesto: x.puesto, nombre: x.nombre, paso: x.paso, look: x.bot ? lookBot(x.npc) : lookDe(x.id) })), { titulo: g?.paso ? `¡GANÓ ${g.nombre.toUpperCase()}!` : 'FIN' }); sonar('gana'); }
     if (nueva === 'cuenta' || nueva === 'lobby') { $('[data-eliminacion]').classList.add('hidden'); eliminadoYa = false; }
     $('.juego').classList.toggle('en-show', nueva === 'ronda' || nueva === 'podio');
     $('[data-hud]').classList.toggle('hidden', !(nueva === 'carrera' || nueva === 'cuenta'));
@@ -632,7 +632,7 @@ function abrirSala(code) {
             sonar('gana');
             escena.confeti(jugador.x, jugador.y, jugador.z);
             aviso('¡LLEGASTE!');
-            sala.enviar({ t: 'meta' });
+            sala.enviar({ t: 'meta', tiempo: Math.max(0, sala.ahora() - est.inicio) });
           }
         }
       }

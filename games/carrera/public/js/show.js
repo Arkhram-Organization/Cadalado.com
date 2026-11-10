@@ -76,6 +76,7 @@ export class Show {
     this.modo = modo; this.t = 0;
     this.cartel.userData.poner(titulo, modo === 'podio' ? '#ffd23f' : '#ffffff');
     this.cartel.visible = modo !== 'podio'; // el título del podio vive en el HUD, sin tapar las caras
+    if (modo === 'podio') lista = [...lista].sort((a, b) => (a.puesto || 99) - (b.puesto || 99));
     const n = lista.length;
     if (modo === 'ronda') {
       // en arco: los que pasan y los que no, mezclados como llegaron
@@ -99,7 +100,7 @@ export class Show {
       }
       lista.slice(3).forEach((x, j) => {
         const a = (j / Math.max(1, n - 3)) * Math.PI - Math.PI / 2, r = 7.5;
-        this.sumar(x, Math.sin(a) * r * 1.2, 0, 5.5 - Math.cos(a) * 1.5 + 2, Math.PI - a * 0.35, j + 3);
+        this.sumar(x, Math.sin(a) * r * 1.2, 0, -5.5 - Math.cos(a) * 1.5, Math.PI - a * 0.35, j + 3);
       });
     }
   }

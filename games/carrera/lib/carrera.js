@@ -13,7 +13,7 @@ const CUENTA_MS = 5000;
 const RONDA_MS = 13000; // pantalla de "clasificados" entre rondas
 const PODIO_MS = 22_000;
 const MINIMO_MS = 18_000; // nadie puede terminar un mapa más rápido que esto
-const CIERRE_MS = 1200; // cuando se llena el cupo, la ronda termina un toque después
+const CIERRE_MS = 2000; // cuando se llena el cupo, la ronda termina un toque después
 const MAX_BOTS = 11;
 
 const nombreBot = (r, i) => {
@@ -92,6 +92,8 @@ function cerrarRonda(r, ctx) {
   const final = r.ronda >= r.rondas.length || pasan.length === 0 || (pasan.length === 1 && lista.length > 1);
   if (final) {
     r.resultados = [...r.clasificacion.filter((x) => x.paso).map((x) => ({ ...x, ronda: r.ronda })), ...r.eliminados];
+    r.ganador = r.resultados.find(x => x.paso)?.id || null;
+    r.resultados = r.resultados.map((x, i) => ({ ...x, puesto: i + 1 }));
     r.fase = 'podio';
     r.fin = ctx.now + PODIO_MS;
     const g = r.resultados[0];
@@ -168,6 +170,7 @@ export const carrera = crearJuego({
         r.ronda = 1;
         r.eliminados = [];
         r.resultados = [];
+        r.ganador = null;
         r.clasificacion = [];
         r.carreras += 1;
         ctx.sistema(`¡A la largada! ${r.participantes.length} ${r.participantes.length === 1 ? 'jugador' : 'jugadores'}${nBots ? ` y ${nBots} bots` : ''}, ${r.rondas.length} ${r.rondas.length === 1 ? 'ronda' : 'rondas'}.`);
@@ -176,7 +179,10 @@ export const carrera = crearJuego({
       }
       case 'meta': {
         if (r.fase !== 'carrera' || !r.vivos.includes(pid) || r.llegadas[pid] != null) return {};
-        const tiempo = ctx.now - r.inicio;
+        const recibido = ctx.now - r.inicio;
+        const cruce = Number(msg.tiempo);
+        // El cruce usa el reloj compartido; una demora de red no cambia al ganador.
+        const tiempo = Number.isFinite(cruce) && cruce >= MINIMO_MS && cruce <= recibido + 150 && cruce >= recibido - 1500 ? Math.min(recibido, Math.round(cruce)) : recibido;
         if (tiempo < MINIMO_MS) return { error: 'Llegada inválida' };
         r.llegadas[pid] = tiempo;
         const puesto = llegadasRonda(r).findIndex((x) => x.pid === pid) + 1;
@@ -250,6 +256,7 @@ export const carrera = crearJuego({
       llegadas: Object.fromEntries(Object.entries(r.llegadas).map(([p, t]) => [id(p), t])),
       clasificacion: r.clasificacion,
       resultados: r.resultados,
+      ganador: r.ganador || null,
       carreras: r.carreras,
     };
   },

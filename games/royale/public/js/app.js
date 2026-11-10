@@ -97,7 +97,7 @@ function menu() {
       </section>
       <section class="bs-panel" data-panel="como" hidden>
         <div class="bs-teclas">
-          ${[['Espacio', 'Saltá del colectivo · abrí el planeador'], ['W A S D', 'Movete y dirigí la caída'], ['Mouse', 'Apuntá y dispará · clic derecho: mira'], ['E', 'Agarrá (si estás lleno, cambia) · mantené para abrir cofres'], ['1 – 5', 'Elegí casillero · rueda para pasar'], ['C', 'Sacá el pico y juntá materiales'], ['Q', 'Modo construcción · F pieza · R rotar'], ['F', 'Usá vendas, botiquín o escudos'], ['M', 'Mapa: marcá a dónde ir'], ['Tab', 'Inventario completo'], ['B', 'Gestos'], ['T', 'Chat'], ['Esc', 'Pausa']].map(([k, d]) => `<kbd>${k}</kbd><span>${d}</span>`).join('')}
+          ${[['Espacio', 'Saltá del colectivo · abrí el planeador'], ['W A S D', 'Movete y dirigí la caída'], ['Mouse', 'Apuntá y dispará · clic derecho: mira'], ['E', 'Agarrá (si estás lleno, cambia) · abrí cofres con un toque'], ['1 – 5', 'Elegí casillero · rueda para pasar'], ['C', 'Sacá el pico y juntá materiales'], ['Q', 'Modo construcción · F pieza · R rotar'], ['F', 'Usá vendas, botiquín o escudos'], ['M', 'Mapa: marcá a dónde ir'], ['Tab', 'Inventario completo'], ['B', 'Gestos'], ['T', 'Chat'], ['Esc', 'Pausa']].map(([k, d]) => `<kbd>${k}</kbd><span>${d}</span>`).join('')}
         </div>
       </section>
     </div>
@@ -248,6 +248,7 @@ function abrirSala(code) {
   let fuegoT = 0;
   let bajasPartida = null;
   const bajasVistas = new Set();
+  const bajasAnunciadas = new Set();
   const tiroFuente = new Map();
   let espectando = 0;
   let muertePor = null;
@@ -272,7 +273,7 @@ function abrirSala(code) {
     intervalo: (e) => (e?.fase === 'partida' ? 1000 : 900),
     onEstado: (e) => {
       est = e;
-      if (bajasPartida !== e.partidas) { bajasPartida = e.partidas; bajasVistas.clear(); for (const b of e.bajas || []) bajasVistas.add(`${b.id}:${b.t}`); }
+      if (bajasPartida !== e.partidas) { bajasPartida = e.partidas; bajasVistas.clear(); bajasAnunciadas.clear(); for (const b of e.bajas || []) bajasVistas.add(`${b.id}:${b.t}`); }
       else for (const b of e.bajas || []) {
         const clave = `${b.id}:${b.t}`;
         if (bajasVistas.has(clave)) continue;
@@ -367,7 +368,8 @@ function abrirSala(code) {
     const clave = `${de}:${m.n}`;
     if (m.n !== undefined && vistos.has(clave)) return;
     vistos.add(clave);
-    if (m.k === 'tiro') {
+    if (m.k === 'bajaConfirmada' && m.por === yoId() && (de === m.id || (String(m.id).startsWith('bot') && de === est.host))) { mostrarBaja({ id: m.id, nombre: nombreDe(m.id) }, (est.kills?.[yoId()] || 0) + 1); }
+    else if (m.k === 'tiro') {
       // disparo de otro: solo se ve (el daño lo calcula quien dispara)
       const d = ARMAS[m.arma] || ARMAS.pistola;
       const r = rng(Math.floor(m.s * 1e6));
@@ -507,6 +509,8 @@ function abrirSala(code) {
     aviso.t = setTimeout(() => ($('[data-aviso]').innerHTML = ''), 1900);
   }
   function mostrarBaja(b, total) {
+    if (bajasAnunciadas.has(b.id)) return;
+    bajasAnunciadas.add(b.id);
     const el = $('[data-baja]');
     el.innerHTML = `<div class="bs-baja-cinta"><small>Battle Shmitz · baja confirmada</small><strong>¡ELIMINASTE A ${esc(b.nombre).toUpperCase()}!</strong><span>${total} ${total === 1 ? 'eliminación' : 'eliminaciones'} en esta partida</span></div>`;
     el.classList.remove('hidden');
@@ -531,6 +535,7 @@ function abrirSala(code) {
     if (reportado) return;
     reportado = true;
     muertePor = por;
+    red.actual?.todos({ k: 'bajaConfirmada', id: yoId(), por });
     sala.enviar({ t: 'muerte', victima: yoId(), por });
     aviso(por === 'zona' ? 'Te agarró la tormenta' : `Te eliminó ${nombreDe(por)}`, true);
   }
@@ -546,6 +551,8 @@ function abrirSala(code) {
       if (validarPieza(mundo, mundo.construcciones || [], pieza, b.p.materiales)) sala.enviar({ t: 'construir', bot: b.p.id, pieza });
     }
     if (murio) {
+      if (por === yoId()) mostrarBaja({ id: b.p.id, nombre: nombreDe(b.p.id) }, (est.kills?.[yoId()] || 0) + 1);
+      red.actual?.todos({ k: 'bajaConfirmada', id: b.p.id, por });
       sala.enviar({ t: 'muerte', victima: b.p.id, por });
       if (Math.random() < 0.35) sala.enviar({ t: 'botdice', bot: b.p.id, situacion: 'pierde' });
       if (String(por).startsWith('bot') && Math.random() < 0.45) setTimeout(() => sala.enviar({ t: 'botdice', bot: por, situacion: 'gana' }), 700);
@@ -637,7 +644,7 @@ function abrirSala(code) {
   lienzo.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button === 0) mouse.abajo = true;
     if (e.button === 0 && modoConstruccion) pedirColocar = true;
-    if (e.button === 2) { if (vista.modoCamara === 'tercera') giro = { x: e.clientX, y: e.clientY }; else mira = true; }
+    if (e.button === 2) { e.preventDefault(); lienzo.setPointerCapture(e.pointerId); if (vista.modoCamara === 'tercera') giro = { x: e.clientX, y: e.clientY }; else mira = true; }
   });
   const moverGiro = (e) => { if (!giro) return; vista.yaw = (vista.yaw || 0) - (e.clientX - giro.x) * 0.008; vista.inclina = Math.max(0.35, Math.min(1.6, (vista.inclina ?? 1) + (e.clientY - giro.y) * 0.004)); giro = { x: e.clientX, y: e.clientY }; };
   addEventListener('pointermove', moverGiro);
@@ -648,7 +655,9 @@ function abrirSala(code) {
     try { localStorage.setItem('cadalado.royale.camara', modo); } catch {}
     aviso(modo === 'tercera' ? 'Tercera persona · clic derecho y arrastrá para girar' : 'Vista desde arriba');
   }
-  lienzo.addEventListener('contextmenu', (e) => e.preventDefault());
+  const sinMenuContextual = (e) => { if (e.target.closest('[data-isla]')) { e.preventDefault(); e.stopPropagation(); } };
+  document.addEventListener('contextmenu', sinMenuContextual, true);
+  limpiar.push(() => document.removeEventListener('contextmenu', sinMenuContextual, true));
   const soltar = () => { mouse.abajo = false; mira = false; giro = null; };
   addEventListener('pointerup', soltar);
   lienzo.addEventListener('wheel', (e) => { if (modoConstruccion) materialPieza = ['madera', 'piedra', 'metal'][(['madera', 'piedra', 'metal'].indexOf(materialPieza) + (e.deltaY > 0 ? 1 : 2)) % 3]; else { yo?.cambiar(); picoActivo = false; } }, { passive: true });
@@ -941,26 +950,14 @@ function abrirSala(code) {
           sala.enviar({ t: 'agarrar', id: b.id }).then((r) => { if (r?.error) { tomados.delete(b.id); if (c) yo.municion[c.municion] = Math.max(0, yo.municion[c.municion] - c.cantidad); } });
         }
         const cercaCofre = mundo.botin.find((b) => b.tipo === 'cofre' && !abiertos.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 22);
-        if (cercaCofre && (teclas.has('KeyE') || tactilE)) {
-          if (cofreActual?.id !== cercaCofre.id) {
-            const apertura = { id: cercaCofre.id, desde: ms, confirmado: false, abriendo: false, reintento: 0 };
-            cofreActual = apertura;
-            sala.enviar({ t: 'iniciarCofre', id: apertura.id }).then((r) => {
-              if (cofreActual !== apertura) return;
-              if (r?.error) { apertura.bloqueado = true; aviso(r.error, true); }
-              else apertura.confirmado = true;
-            }).catch(() => { if (cofreActual === apertura) apertura.bloqueado = true; });
-          }
-          const a = cofreActual;
-          if (a.confirmado && !a.bloqueado && !a.abriendo && ms - a.desde >= 1050 && ms >= a.reintento) {
-            a.abriendo = true;
-            sala.enviar({ t: 'abrirCofre', id: a.id }).then((r) => {
-              if (cofreActual !== a) return;
-              if (r?.error) { a.abriendo = false; a.reintento = performance.now() + 220; }
-              else { abiertos.add(a.id); cofreActual = null; aviso('¡Abriste un cofre!'); }
-            }).catch(() => { if (cofreActual === a) { a.abriendo = false; a.reintento = performance.now() + 350; } });
-          }
-        } else cofreActual = null;
+        if (cercaCofre && (pedirAgarrar || tactilE) && !cofreActual) {
+          const apertura = { id: cercaCofre.id, desde: ms };
+          cofreActual = apertura;
+          sala.enviar({ t: 'abrirCofre', id: apertura.id }).then((r) => {
+            if (r && !r.error) { abiertos.add(apertura.id); aviso('¡Abriste un cofre!'); }
+            else aviso(r?.error || 'No llegó la respuesta. Pulsá E para reintentar.', true);
+          }).finally(() => { if (cofreActual === apertura) cofreActual = null; });
+        }
         // Los objetos de inventario se agarran con E (el más cercano). Si estás lleno, cambia el de la mano.
         if ((pedirAgarrar || ((teclas.has('KeyE') || tactilE) && ms - ultimoAgarre > 200)) && !cercaCofre) {
           const b = mundo.botin.filter((b) => !tomados.has(b.id) && b.tipo !== 'cofre' && !CAJAS[b.tipo] && !MATERIALES[b.tipo] && (b.cofre === undefined || abiertos.has(b.cofre)) && Math.hypot(b.x - yo.x, b.y - yo.y) < 30).sort((a, c) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(c.x - yo.x, c.y - yo.y))[0];
@@ -1219,7 +1216,7 @@ function abrirSala(code) {
     }
     // pista de la acción (abajo, al centro)
     const cercaCofre = yo?.vivo && mundo.botin.find((b) => b.tipo === 'cofre' && !abiertos.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 22);
-    const pista = !yo?.vivo || fase !== 'partida' ? '' : yo.enColectivo ? '' : yo.altura > 0 ? (yo.paracaidas ? 'Dirigí el planeador con <kbd>W A S D</kbd>' : '<kbd>Espacio</kbd> abrí el planeador') : cercaCofre ? `<kbd>E</kbd> Mantené para abrir el cofre` : '';
+    const pista = !yo?.vivo || fase !== 'partida' ? '' : yo.enColectivo ? '' : yo.altura > 0 ? (yo.paracaidas ? 'Dirigí el planeador con <kbd>W A S D</kbd>' : '<kbd>Espacio</kbd> abrí el planeador') : cercaCofre ? `<kbd>E</kbd> Pulsá para abrir el cofre` : '';
     poner('[data-pista]', pista); ver('[data-pista]', !!pista);
     pintarHud(t, z, ms, colectivo);
     // minimapa y mapa grande

@@ -392,3 +392,10 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .bs-baja-cinta span { color: #d6e8cc; font-weight: 800; }
 .bs-baja.entra .bs-baja-cinta { animation: baja-entra 3.15s cubic-bezier(.18,1.5,.4,1) both; }
 @keyframes baja-entra { 0% { opacity: 0; transform: translateX(-110vw) skewY(-2deg) scale(.8); } 15%, 76% { opacity: 1; transform: translateX(0) skewY(-2deg) scale(1); } 100% { opacity: 0; transform: translateX(110vw) skewY(-2deg) scale(.95); } }
+
+/* La confirmación deja libre la mira y nunca captura el mouse. */
+.bs-baja { top: auto; bottom: 23%; pointer-events: none; }
+.bs-baja-cinta { width: min(380px, 85vw); padding: 8px 14px; border-width: 2px; box-shadow: 0 4px 18px #0005; }
+.bs-baja-cinta strong { font-size: clamp(18px, 2.3vw, 26px); text-shadow: 1px 2px #000; }
+.bs-baja-cinta small { font-size: 9px; letter-spacing: .05em; }
+.bs-baja-cinta span { font-size: 11px; }
