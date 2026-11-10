@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { carrera } from '../lib/carrera.js';
 import { Jugador } from '../public/js/fisica.js';
-import { rutaBot, posBot, moviles, estaticos, MAPAS } from '../public/js/pista.js';
+import { rutaBot, posBot, moviles, estaticos, MAPAS, ordenLargada, posLargada } from '../public/js/pista.js';
 import { NPCS, POR_ID, elegirNpcs, charlas } from '../../../shared/public/npcs.js';
 import { getStore } from '../../../shared/store.js';
 
@@ -33,13 +33,30 @@ test('NPC: todos tienen look y frases; Mati aparece poco; las charlas son espaci
 });
 
 test('mapas: iguales para todos, sin puertas, y los bots tardan más que una persona', () => {
-  for (const id of [1, 2, 3]) {
+  for (const id of [1, 2, 3, 4, 5]) {
     assert.deepEqual(moviles(id, 12.3, 99), moviles(id, 12.3, 99));
     assert.ok(estaticos(id).carteles.some((c) => c.texto === 'DOBLE SALTO'), `mapa ${id} tiene hueco de doble salto`);
     for (let i = 0; i < 11; i++) {
       const r = rutaBot(id, 4242, i);
       assert.ok(r.fin > 28 && r.fin < 80, `mapa ${id} bot ${i}: ${r.fin}`);
       assert.ok(posBot(id, r, r.fin + 1, 4242).z <= MAPAS[id].META_Z);
+    }
+  }
+});
+
+test('largada compartida y rutas sin atravesar columnas', () => {
+  const orden = ordenLargada(['ana', 'beto'], [0, 1]);
+  assert.deepEqual(orden, ['ana', 'bot0', 'beto', 'bot1']);
+  assert.deepEqual(posLargada(0, 4), { x: -2.7, y: 0, z: -3 });
+  assert.deepEqual(posLargada(1, 4), { x: -0.9, y: 0, z: -3 });
+  for (const mapa of [1, 2, 3, 4, 5]) {
+    const muros = estaticos(mapa).cajas.filter(c => c.y + c.h / 2 > 0.7 && c.y - c.h / 2 < 1.8 && c.w < 10);
+    for (let i = 0; i < 11; i++) {
+      const ruta = rutaBot(mapa, 1234, i);
+      for (let t = 0; t < ruta.fin; t += 0.2) {
+        const p = posBot(mapa, ruta, t, 1234);
+        assert.ok(!muros.some(c => p.y < c.y + c.h / 2 && p.y + 1.6 > c.y - c.h / 2 && Math.abs(p.x - c.x) < c.w / 2 + 0.25 && Math.abs(p.z - c.z) < c.d / 2 + 0.25), `mapa ${mapa}, bot ${i}, t ${t.toFixed(1)}`);
+      }
     }
   }
 });
@@ -119,7 +136,7 @@ test('sala: rondas con eliminación, NPC como bots, piñas solo al destinatario 
   v = (await accion(code, A, { t: 'empezar' })).data;
   assert.equal(v.estado.fase, 'cuenta');
   assert.equal(v.estado.rondas.length, 3);
-  assert.equal(v.estado.rondas[2], 3, 'la final es el mapa de baldosas');
+  assert.ok(MAPAS[v.estado.rondas[2]], 'la final tiene un mapa válido');
   assert.equal(v.estado.cupo, 5); // ceil(8 * .55)
   assert.equal(v.estado.vivos.length, 3);
   await tocar(code, { inicio: Date.now() - 1000 });
@@ -179,7 +196,9 @@ test('jugando solo se juegan los tres mapas', async () => {
   const { code } = (await req('POST', '/crear', { pid: A, nombre: 'Sola', opciones: { bots: 0 } })).data;
   await accion(code, A, { t: 'join', nombre: 'Sola' });
   let v = (await accion(code, A, { t: 'empezar' })).data;
-  assert.deepEqual(v.estado.rondas, [1, 2, 3]);
+  assert.equal(v.estado.rondas.length, 3);
+  assert.equal(new Set(v.estado.rondas).size, 3);
+  assert.ok(v.estado.rondas.every(id => MAPAS[id]));
   for (let ronda = 1; ronda <= 3; ronda++) {
     await tocar(code, { inicio: Date.now() - 30_000, fase: 'carrera' });
     await accion(code, A, { t: 'meta' });

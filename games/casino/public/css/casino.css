@@ -297,3 +297,7 @@ body.casino-full { overflow: hidden; }
 .mesa-bj .banner { top: 42%; }
 @media (max-width: 900px) { .mesa-bj .chat { display: none; } .mesa-bj [data-desafio] { top: auto; bottom: 150px; } }
 .mesa-bj .chat { bottom: auto; height: min(300px, calc(100% - 220px)); width: 270px; }
+.casino-cargando { min-height: 420px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(circle at 50% 35%, #3d3120, #170f10 70%); color: #f5e9d2; }
+.casino-cargando-ficha { display: grid; place-items: center; width: 72px; height: 72px; border: 5px dashed #f2c94c; border-radius: 50%; color: #f2c94c; font: 900 34px var(--titulo); animation: gira-ficha 2s linear infinite; }
+.casino-cargando small { color: #d8c9ac; }
+@keyframes gira-ficha { to { transform: rotate(360deg); } }

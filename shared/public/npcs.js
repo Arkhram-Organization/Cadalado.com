@@ -145,8 +145,8 @@ export const NPCS = [
   {
     id: 'angie',
     nombre: 'Angie',
-    // solo habla de Nacho y de Chicha (modelo provisorio hasta tener el de Meshy)
-    look: { estilo: 'meshy', piel: '#f2d0b5', pelo: { estilo: 'largo', color: '#a8743f' }, ojos: '#5a3a22', cuerpo: 'normal', ropa: { remera: '#ffd6e5', pantalon: '#4a5a8a', zapatillas: '#f4f1ea' }, genero: 'm' },
+    // Modelo propio de Angie, con movimientos y gestos incluidos en su GLB.
+    look: { modelo: 'angie', estilo: 'meshy', piel: '#f2d0b5', pelo: { estilo: 'largo', color: '#a8743f' }, ojos: '#5a3a22', cuerpo: 'normal', ropa: { remera: '#ffd6e5', pantalon: '#4a5a8a', zapatillas: '#f4f1ea' }, genero: 'm', clips: { quieto: 'Axe_Breathe_and_Look_Around', corre: 'Running', salto: 'Jump_Over_Obstacle', festeja: 'Joyful_Dance_with_Hand_Sway', baila: 'Hip_Hop_Dance_3', pina: 'Left_Hook_from_Guard', patada: 'Roundhouse_Kick', recarga: 'Running_Reload_inplace' } },
     frases: [
       'Nacho me mandó un audio de cuatro minutos. Lo escuché doce veces.',
       '¿Vieron a Nacho? Qué lindo que es Nacho.',

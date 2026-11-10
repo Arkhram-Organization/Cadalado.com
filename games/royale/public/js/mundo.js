@@ -1,8 +1,8 @@
-// Mundo de "Último en pie": isla generada con una semilla (todos ven la misma), botín, armas y la zona.
+// Mundo de Battle Shmitz: geografía fija, botín y zona por semilla.
 // Unidades: píxeles del juego (1 baldosa = 16 px). El mapa mide TAM x TAM baldosas.
 export const BALDOSA = 16;
-export const TAM = 96;
-export const LADO = TAM * BALDOSA; // 1536 px
+export const TAM = 160;
+export const LADO = TAM * BALDOSA; // 2560 px
 export const T = { AGUA: 0, ARENA: 1, PASTO: 2, PISO: 3, PARED: 4, CAMINO: 5 };
 export const SOLIDO = (t) => t === T.PARED;
 
@@ -35,132 +35,200 @@ function ruido(r, n = 8) {
 }
 
 export const ARMAS = {
-  pistola: { nombre: 'Pistola', dano: 17, cadencia: 0.32, cargador: 12, recarga: 1.1, vel: 520, dispersion: 0.05, alcance: 330, perdigones: 1, color: '#c9c9c9' },
-  subfusil: { nombre: 'Subfusil', dano: 10, cadencia: 0.09, cargador: 30, recarga: 1.6, vel: 560, dispersion: 0.12, alcance: 300, perdigones: 1, color: '#7aa2ff' },
-  escopeta: { nombre: 'Escopeta', dano: 9, cadencia: 0.85, cargador: 5, recarga: 2.0, vel: 480, dispersion: 0.28, alcance: 170, perdigones: 7, color: '#ff7a45' },
-  rifle: { nombre: 'Rifle', dano: 42, cadencia: 1.05, cargador: 5, recarga: 2.2, vel: 820, dispersion: 0.012, alcance: 620, perdigones: 1, color: '#c084fc' },
+  pistola: { nombre: 'Pistola', dano: 24, cadencia: .4, cargador: 12, recarga: 1.4, vel: 520, dispersion: .05, alcance: 340, perdigones: 1, municion: 'livianas', color: '#c9c9c9' },
+  subfusil: { nombre: 'Subfusil', dano: 14, cadencia: 1 / 7, cargador: 30, recarga: 1.9, vel: 560, dispersion: .12, alcance: 320, perdigones: 1, municion: 'livianas', color: '#7aa2ff' },
+  escopeta: { nombre: 'Escopeta', dano: 11, cadencia: 1.1, cargador: 5, recarga: 2.2, vel: 480, dispersion: .28, alcance: 170, perdigones: 8, municion: 'cartuchos', color: '#ff7a45' },
+  rifle: { nombre: 'Rifle de asalto', dano: 30, cadencia: .25, cargador: 30, recarga: 2.1, vel: 820, dispersion: .025, alcance: 620, perdigones: 1, municion: 'medianas', color: '#c084fc' },
+  francotirador: { nombre: 'Francotirador', dano: 100, cadencia: 2.8, cargador: 1, recarga: 2.8, vel: 1500, dispersion: .003, alcance: 1000, perdigones: 1, municion: 'pesadas', color: '#9d8af2' },
+  rpg: { nombre: 'Lanzacohetes', dano: 70, cadencia: 3, cargador: 1, recarga: 3, vel: 210, dispersion: .012, alcance: 520, perdigones: 1, municion: 'cohetes', color: '#e5ab55' },
 };
+export const RAREZAS = Object.freeze({
+  comun: { nombre: 'Común', color: '#b9b9b9', dano: 1, recarga: 1 },
+  poco_comun: { nombre: 'Poco común', color: '#77dc74', dano: 1.08, recarga: .95 },
+  rara: { nombre: 'Rara', color: '#6aa7ff', dano: 1.16, recarga: .9 },
+  epica: { nombre: 'Épica', color: '#c58aff', dano: 1.25, recarga: .85 },
+  legendaria: { nombre: 'Legendaria', color: '#ffc75c', dano: 1.35, recarga: .8 },
+});
+export const danoRareza = (dano, rareza = 'comun') => dano * (RAREZAS[rareza]?.dano || 1);
+export const danoArea = (dano, radio, distancia) => distancia >= radio ? 0 : dano * (1 - distancia / radio);
+export const CAJAS = Object.freeze({
+  'balas-livianas': { nombre: 'Balas livianas', municion: 'livianas', cantidad: 30 },
+  'balas-medianas': { nombre: 'Balas medianas', municion: 'medianas', cantidad: 25 },
+  'balas-pesadas': { nombre: 'Balas pesadas', municion: 'pesadas', cantidad: 6 },
+  'balas-cartuchos': { nombre: 'Cartuchos', municion: 'cartuchos', cantidad: 12 },
+  'balas-cohetes': { nombre: 'Cohetes', municion: 'cohetes', cantidad: 3 },
+});
+export const MATERIALES = Object.freeze({ madera: { nombre: 'Madera', color: '#b78357' }, piedra: { nombre: 'Piedra', color: '#aeb7af' }, metal: { nombre: 'Metal', color: '#91afbb' } });
 export const VIDA = 100;
 export const ESCUDO_MAX = 100;
 
-// Arma el mapa: baldosas, árboles, rocas, casas y botín. Siempre igual para la misma semilla.
+// Los rectángulos no se pisan. Coordenadas en baldosas; la geografía no depende de la semilla.
+export const LUGARES = Object.freeze([
+  { id: 'queque', nombre: 'El reino del Queque', corto: 'Queque', x: 65, y: 64, w: 30, h: 30, estilo: 'ciudad', botin: 5 },
+  { id: 'asman', nombre: 'El despacho de Asman', corto: 'Asman', x: 107, y: 43, w: 22, h: 22, estilo: 'oficinas', botin: 3 },
+  { id: 'angeles', nombre: 'Ángeles angieados', corto: 'Ángeles', x: 27, y: 43, w: 27, h: 24, estilo: 'barrio', botin: 3 },
+  { id: 'kiwi', nombre: 'Kiwi', corto: 'Kiwi', x: 33, y: 109, w: 27, h: 24, estilo: 'granja', botin: 2 },
+  { id: 'fondeana', nombre: 'Ciudad Fondeana', corto: 'Fondeana', x: 112, y: 105, w: 28, h: 23, estilo: 'puerto', botin: 3 },
+  { id: 'templo', nombre: 'El templo', corto: 'Templo', x: 68, y: 24, w: 24, h: 22, estilo: 'templo', botin: 3 },
+  { id: 'macabies', nombre: 'Macabíes macabros', corto: 'Macabíes', x: 73, y: 116, w: 29, h: 25, estilo: 'estadio', botin: 3 },
+  { id: 'vasquito', nombre: 'El Vasquito', corto: 'Vasquito', x: 17, y: 80, w: 23, h: 20, estilo: 'ruta', botin: 2 },
+]);
+export function lugarEn(px, py) {
+  const x = px / BALDOSA, y = py / BALDOSA;
+  return LUGARES.find(l => x >= l.x && y >= l.y && x < l.x + l.w && y < l.y + l.h) || null;
+}
+
 const cache = new Map();
 export function generarMapa(semilla) {
   if (cache.has(semilla)) return cache.get(semilla);
-  const r = rng(semilla ^ 0x15a1a);
-  const n1 = ruido(r, 6);
-  const n2 = ruido(r, 14);
+  const terreno = rng(0x5b17cafe);
+  const botines = rng(semilla ^ 0x15a1a);
+  const costa = ruido(terreno, 12);
   const t = new Uint8Array(TAM * TAM);
   const idx = (x, y) => y * TAM + x;
-  // costa: distancia al centro + ruido
   for (let y = 0; y < TAM; y++) for (let x = 0; x < TAM; x++) {
-    const dx = x / TAM - 0.5;
-    const dy = y / TAM - 0.5;
-    const d = Math.hypot(dx, dy) * 2 + (n1(x / TAM, y / TAM) - 0.5) * 0.35 + (n2(x / TAM, y / TAM) - 0.5) * 0.12;
-    t[idx(x, y)] = d > 0.92 ? T.AGUA : d > 0.84 ? T.ARENA : T.PASTO;
+    const ang = Math.atan2(y - 80, x - 80);
+    const radio = 71 + 4 * Math.sin(5 * ang) + 2 * Math.cos(9 * ang) + (costa(x / TAM, y / TAM) - .5) * 5;
+    const d = Math.hypot(x - 80, y - 80);
+    t[idx(x, y)] = d > radio ? T.AGUA : d > radio - 4 ? T.ARENA : T.PASTO;
   }
-  // un lago adentro
-  const lx = 0.3 + r() * 0.4;
-  const ly = 0.3 + r() * 0.4;
-  for (let y = 0; y < TAM; y++) for (let x = 0; x < TAM; x++) {
-    const d = Math.hypot(x / TAM - lx, (y / TAM - ly) * 1.3) + (n2(x / TAM, y / TAM) - 0.5) * 0.04;
-    if (d < 0.05) t[idx(x, y)] = T.AGUA;
-    else if (d < 0.065 && t[idx(x, y)] === T.PASTO) t[idx(x, y)] = T.ARENA;
-  }
-  const libre = (x, y, w, h) => {
-    for (let j = y - 1; j <= y + h; j++) for (let i = x - 1; i <= x + w; i++) {
-      if (i < 0 || j < 0 || i >= TAM || j >= TAM || t[idx(i, j)] !== T.PASTO) return false;
+  // Caminos anchos desde la ciudad central. Se dibujan antes de las construcciones.
+  const pintarCamino = (ax, ay, bx, by) => {
+    const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2);
+    for (let k = 0; k <= n; k++) {
+      const x = Math.round(ax + (bx - ax) * k / n), y = Math.round(ay + (by - ay) * k / n);
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const xx = x + i, yy = y + j;
+        if (xx >= 0 && yy >= 0 && xx < TAM && yy < TAM && t[idx(xx, yy)] === T.PASTO) t[idx(xx, yy)] = T.CAMINO;
+      }
     }
-    return true;
   };
-  // casas: rectángulo de paredes con una o dos puertas, piso adentro
+  for (const l of LUGARES.slice(1)) pintarCamino(80, 79, l.x + l.w / 2, l.y + l.h / 2);
+  pintarCamino(20, 90, 135, 114);
   const casas = [];
-  for (let k = 0; k < 140 && casas.length < 14; k++) {
-    const w = 6 + Math.floor(r() * 5);
-    const h = 5 + Math.floor(r() * 4);
-    const x = 4 + Math.floor(r() * (TAM - w - 8));
-    const y = 4 + Math.floor(r() * (TAM - h - 8));
-    if (!libre(x, y, w, h) || casas.some((c) => x < c.x + c.w + 4 && c.x < x + w + 4 && y < c.y + c.h + 4 && c.y < y + h + 4)) continue;
+  const alturas = new Uint8Array(TAM * TAM);
+  const casa = (l, x, y, w, h, color, altura = 1) => {
+    if (x < 2 || y < 2 || x + w >= TAM - 2 || y + h >= TAM - 2) return;
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) {
       const borde = i === x || j === y || i === x + w - 1 || j === y + h - 1;
       t[idx(i, j)] = borde ? T.PARED : T.PISO;
+      alturas[idx(i, j)] = altura;
     }
-    // puertas
-    const puertas = [[x + 1 + Math.floor(r() * (w - 2)), y + h - 1], [x + 1 + Math.floor(r() * (w - 2)), y]];
-    puertas.slice(0, r() < 0.5 ? 1 : 2).forEach(([i, j]) => (t[idx(i, j)] = T.PISO));
-    // una pared interna con hueco a veces
-    if (w >= 9 && r() < 0.6) {
-      const ix = x + Math.floor(w / 2);
-      const hueco = y + 1 + Math.floor(r() * (h - 2));
-      for (let j = y + 1; j < y + h - 1; j++) if (j !== hueco) t[idx(ix, j)] = T.PARED;
+    // Dos puertas enfrentadas mantienen comunicados los interiores y el resto de la isla.
+    const puerta = x + Math.floor(w / 2);
+    t[idx(puerta, y)] = T.PISO;
+    t[idx(puerta, y + h - 1)] = T.PISO;
+    casas.push({ x, y, w, h, color, altura, lugar: l.id });
+  };
+  for (const l of LUGARES) {
+    for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) {
+      if (t[idx(x, y)] === T.PASTO) t[idx(x, y)] = l.estilo === 'templo' || l.estilo === 'ciudad' || l.estilo === 'oficinas' ? T.PISO : T.CAMINO;
     }
-    casas.push({ x, y, w, h, color: ['#b5654a', '#8a5a44', '#6a7fa0', '#a07a50', '#7a8a5a'][Math.floor(r() * 5)] });
+    if (l.id === 'templo') {
+      casa(l, l.x + 5, l.y + 5, 14, 10, '#d6c5a3', 2);
+    } else if (l.id === 'macabies') {
+      casa(l, l.x + 4, l.y + 5, 21, 13, '#665965', 2);
+      for (let yy = l.y + 6; yy < l.y + 17; yy++) for (let xx = l.x + 5; xx < l.x + 24; xx++) if (t[idx(xx,yy)] === T.PISO) t[idx(xx,yy)] = T.PASTO;
+    } else if (l.id === 'vasquito') {
+      casa(l, l.x + 6, l.y + 5, 10, 8, '#ab7051');
+    } else {
+      const paso = l.id === 'queque' ? 9 : l.id === 'kiwi' ? 12 : 10;
+      const ancho = l.id === 'kiwi' ? 9 : l.id === 'queque' ? 7 : 7;
+      const alto = l.id === 'kiwi' ? 7 : 6;
+      for (let y = l.y + 2; y + alto < l.y + l.h - 1; y += paso)
+        for (let x = l.x + 2; x + ancho < l.x + l.w - 1; x += paso) {
+          const colores = { ciudad: '#9b8170', oficinas: '#708ba0', barrio: '#b57b62', granja: '#aa8655', puerto: '#7f9192' };
+          casa(l, x, y, ancho, alto, colores[l.estilo], l.id === 'queque' ? 2 + (casas.length % 3) : l.id === 'asman' ? 3 : 1);
+        }
+    }
   }
-  // caminos de tierra entre casas
-  for (let k = 1; k < casas.length; k++) {
-    const a = casas[k - 1];
-    const b = casas[k];
-    let x = Math.floor(a.x + a.w / 2);
-    let y = a.y + a.h + 1;
-    const bx = Math.floor(b.x + b.w / 2);
-    const by = b.y - 2;
-    for (let pasos = 0; pasos < 400 && (x !== bx || y !== by); pasos++) {
-      if (x >= 0 && y >= 0 && x < TAM && y < TAM && t[idx(x, y)] === T.PASTO) t[idx(x, y)] = T.CAMINO;
-      if (r() < 0.5 && x !== bx) x += Math.sign(bx - x);
-      else if (y !== by) y += Math.sign(by - y);
-      else x += Math.sign(bx - x);
-    }
-  }
-  // árboles y rocas (obstáculos redondos) sobre pasto
+  // El puerto tiene muelles que llegan al mar; la huerta y el templo tienen siluetas propias.
+  for (let x = 137; x <= 153; x++) for (const y of [111, 119]) t[idx(x,y)] = T.CAMINO;
+  const decoraciones = [];
+  const templo = LUGARES.find(l => l.id === 'templo');
+  for (const x of [templo.x + 2, templo.x + 21]) for (let y = templo.y + 3; y < templo.y + 19; y += 4) decoraciones.push({tipo:'columna',x:(x+.5)*BALDOSA,y:(y+.5)*BALDOSA});
+  const kiwi = LUGARES.find(l => l.id === 'kiwi');
+  for (let y = kiwi.y + 4; y < kiwi.y + 20; y += 4) for (let x = kiwi.x + 3; x < kiwi.x + 23; x += 3) if (t[idx(x,y)] !== T.PARED) decoraciones.push({tipo:'cultivo',x:(x+.5)*BALDOSA,y:(y+.5)*BALDOSA});
   const obstaculos = [];
-  for (let k = 0; k < 900 && obstaculos.length < 230; k++) {
-    const x = Math.floor(r() * TAM);
-    const y = Math.floor(r() * TAM);
-    if (t[idx(x, y)] !== T.PASTO) continue;
-    const px = (x + 0.5) * BALDOSA + (r() - 0.5) * 6;
-    const py = (y + 0.5) * BALDOSA + (r() - 0.5) * 6;
-    if (obstaculos.some((o) => Math.hypot(o.x - px, o.y - py) < 26)) continue;
-    const roca = r() < 0.22;
-    obstaculos.push({ x: px, y: py, r: roca ? 7 + r() * 3 : 6, tipo: roca ? 'roca' : 'arbol', copa: 12 + r() * 5, tono: r() });
+  for (let k = 0; k < 1800 && obstaculos.length < 370; k++) {
+    const x = 5 + Math.floor(terreno() * (TAM - 10));
+    const y = 5 + Math.floor(terreno() * (TAM - 10));
+    if (t[idx(x, y)] !== T.PASTO || LUGARES.some(l => x >= l.x - 2 && x < l.x + l.w + 2 && y >= l.y - 2 && y < l.y + l.h + 2)) continue;
+    const px = (x + .5) * BALDOSA, py = (y + .5) * BALDOSA;
+    if (obstaculos.some(o => Math.hypot(o.x - px, o.y - py) < 30)) continue;
+    const roca = terreno() < .23;
+    obstaculos.push({ id: 'o' + obstaculos.length, x: px, y: py, r: roca ? 7 + terreno() * 3 : 6, tipo: roca ? 'roca' : 'arbol', material: roca ? 'piedra' : 'madera', vida: roca ? 110 : 80, copa: 12 + terreno() * 5, tono: terreno() });
   }
-  // botín: en cada casa varias cosas, y algunas sueltas
+  for (let k = 0; k < 20; k++) {
+    const x = 15 + Math.floor(terreno() * 130), y = 15 + Math.floor(terreno() * 130);
+    if (t[idx(x, y)] !== T.CAMINO) continue;
+    obstaculos.push({ id: 'o' + obstaculos.length, x: (x + .5) * BALDOSA, y: (y + .5) * BALDOSA, r: 9, tipo: 'auto', material: 'metal', vida: 160, tono: terreno() });
+  }
   const botin = [];
-  const tipos = ['pistola', 'subfusil', 'escopeta', 'rifle', 'botiquin', 'venda', 'mini', 'escudo', 'granada'];
+  const tipos = ['pistola', 'subfusil', 'escopeta', 'rifle', 'francotirador', 'botiquin', 'venda', 'mini', 'escudo', 'granada'];
+  const rarezaAleatoria = (mejor = false) => {
+    const n = botines();
+    if (mejor) return n < .08 ? 'legendaria' : n < .38 ? 'epica' : n < .78 ? 'rara' : 'poco_comun';
+    return n < .5 ? 'comun' : n < .78 ? 'poco_comun' : n < .93 ? 'rara' : n < .985 ? 'epica' : 'legendaria';
+  };
+  const agregarBotin = (x, y, tipo, cofre = null, mejor = false) => {
+    const rareza = tipo === 'rpg' ? (botines() < .22 ? 'legendaria' : 'epica') : ARMAS[tipo] ? rarezaAleatoria(mejor) : 'comun';
+    const b = { id: botin.length, x, y, tipo, rareza };
+    if (cofre !== null) b.cofre = cofre;
+    botin.push(b);
+    return b;
+  };
   for (const c of casas) {
-    const nItems = 2 + Math.floor(r() * 3);
-    for (let k = 0; k < nItems; k++) {
-      const x = (c.x + 1.5 + r() * (c.w - 3)) * BALDOSA;
-      const y = (c.y + 1.5 + r() * (c.h - 3)) * BALDOSA;
-      if (SOLIDO(t[idx(Math.floor(x / BALDOSA), Math.floor(y / BALDOSA))])) continue;
-      botin.push({ id: botin.length, x, y, tipo: tipos[Math.floor(r() * tipos.length)] });
+    const l = LUGARES.find(l => l.id === c.lugar);
+    const n = l.botin + Math.floor(botines() * 2);
+    for (let k = 0; k < n; k++) {
+      const x = (c.x + 1.5 + botines() * (c.w - 3)) * BALDOSA;
+      const y = (c.y + 1.5 + botines() * (c.h - 3)) * BALDOSA;
+      agregarBotin(x, y, tipos[Math.floor(botines() * tipos.length)]);
     }
   }
-  for (let k = 0; k < 400 && botin.length < 90; k++) {
-    const x = Math.floor(r() * TAM);
-    const y = Math.floor(r() * TAM);
+  for (let k = 0; k < 450 && botin.length < 190; k++) {
+    const x = Math.floor(botines() * TAM), y = Math.floor(botines() * TAM);
     if (t[idx(x, y)] !== T.PASTO && t[idx(x, y)] !== T.CAMINO) continue;
-    botin.push({ id: botin.length, x: (x + 0.5) * BALDOSA, y: (y + 0.5) * BALDOSA, tipo: tipos[Math.floor(r() * tipos.length)] });
+    agregarBotin((x + .5) * BALDOSA, (y + .5) * BALDOSA, tipos[Math.floor(botines() * tipos.length)]);
   }
-  // lugares para aparecer: pasto, lejos entre sí
   const salidas = [];
-  for (let k = 0; k < 2000 && salidas.length < 24; k++) {
-    const x = 6 + Math.floor(r() * (TAM - 12));
-    const y = 6 + Math.floor(r() * (TAM - 12));
-    if (t[idx(x, y)] !== T.PASTO) continue;
-    const px = (x + 0.5) * BALDOSA;
-    const py = (y + 0.5) * BALDOSA;
-    if (obstaculos.some((o) => Math.hypot(o.x - px, o.y - py) < o.r + 10)) continue;
-    if (salidas.some((s) => Math.hypot(s.x - px, s.y - py) < 180)) continue;
+  for (let k = 0; k < 5000 && salidas.length < 24; k++) {
+    const x = 6 + Math.floor(terreno() * (TAM - 12));
+    const y = 6 + Math.floor(terreno() * (TAM - 12));
+    if (t[idx(x, y)] !== T.PASTO && t[idx(x, y)] !== T.CAMINO) continue;
+    const px = (x + .5) * BALDOSA, py = (y + .5) * BALDOSA;
+    if (obstaculos.some(o => Math.hypot(o.x - px, o.y - py) < o.r + 10)) continue;
+    if (salidas.some(s => Math.hypot(s.x - px, s.y - py) < 170)) continue;
     salidas.push({ x: px, y: py });
   }
-  // Un pequeño botín cerca de cada llegada permite elegir el equipo antes de explorar.
-  for(const s of salidas) for(let i=0;i<3;i++) {
-    const x=s.x+Math.cos(i*2.1)*22,y=s.y+Math.sin(i*2.1)*22;
-    if(t[idx(Math.floor(x/BALDOSA),Math.floor(y/BALDOSA))]!==T.PASTO)continue;
-    if(obstaculos.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+6))continue;
-    botin.push({id:botin.length,x,y,tipo:['mini','venda','granada'][i]});
+  for (const s of salidas) for (let i = 0; i < 3; i++) {
+    const x = s.x + Math.cos(i * 2.1) * 22, y = s.y + Math.sin(i * 2.1) * 22;
+    const tx = Math.floor(x / BALDOSA), ty = Math.floor(y / BALDOSA);
+    if (t[idx(tx, ty)] !== T.PASTO && t[idx(tx, ty)] !== T.CAMINO) continue;
+    if (obstaculos.some(o => Math.hypot(o.x - x, o.y - y) < o.r + 6)) continue;
+    agregarBotin(x, y, ['mini', 'venda', 'granada'][i]);
   }
-  const m = { semilla, t, casas, obstaculos, botin, salidas };
+  // Los cofres y su contenido ya tienen ids fijos; el contenido se ve al abrirlos.
+  for (const l of LUGARES) for (let i = 0; i < (l.id === 'queque' ? 7 : 2); i++) {
+    const libres = [];
+    for (let yy = l.y + 2; yy < l.y + l.h - 2; yy++) for (let xx = l.x + 2; xx < l.x + l.w - 2; xx++) if (!SOLIDO(t[idx(xx, yy)])) libres.push([xx, yy]);
+    const [tx, ty] = libres[Math.floor((i + .5) * libres.length / (l.id === 'queque' ? 7 : 2))];
+    const x = (tx + .5) * BALDOSA, y = (ty + .5) * BALDOSA;
+    const cofre = agregarBotin(x, y, 'cofre');
+    const arma = botines() < .1 ? 'rpg' : tipos[Math.floor(botines() * 5)];
+    agregarBotin(x + 14, y, arma, cofre.id, true);
+    agregarBotin(x - 12, y + 9, botines() < .5 ? 'botiquin' : 'escudo', cofre.id);
+    const municion = ARMAS[arma].municion;
+    agregarBotin(x, y - 15, 'balas-' + municion, cofre.id);
+    agregarBotin(x + 12, y + 14, ['madera', 'piedra', 'metal'][i % 3], cofre.id);
+  }
+  for (let i = 0; i < 95; i++) {
+    const x = 8 + Math.floor(botines() * (TAM - 16)), y = 8 + Math.floor(botines() * (TAM - 16));
+    if (t[idx(x, y)] !== T.PASTO && t[idx(x, y)] !== T.CAMINO) continue;
+    agregarBotin((x + .5) * BALDOSA, (y + .5) * BALDOSA, ['balas-livianas', 'balas-medianas', 'balas-cartuchos', 'balas-pesadas', 'balas-cohetes'][Math.floor(botines() * 5)]);
+  }
+  const m = { semilla, t, casas, alturas, obstaculos, decoraciones, botin, salidas, lugares: LUGARES };
   cache.set(semilla, m);
   return m;
 }
@@ -200,6 +268,7 @@ export function moverCirculo(m, x, y, dx, dy, radio) {
     }
   }
   for (const o of m.obstaculos) {
+    if (o.roto) continue;
     const ddx = nx - o.x;
     const ddy = ny - o.y;
     if (Math.abs(ddx) > 30 || Math.abs(ddy) > 30) continue;
@@ -210,11 +279,22 @@ export function moverCirculo(m, x, y, dx, dy, radio) {
       ny = o.y + (ddy / d) * min;
     }
   }
+  for (const p of m.construcciones || []) {
+    if (p.vida <= 0 || p.tipo !== 'pared') continue;
+    const ancho = p.rotacion % 2 ? 3 : 16, alto = p.rotacion % 2 ? 16 : 3;
+    const cx = Math.max(p.x - ancho, Math.min(nx, p.x + ancho));
+    const cy = Math.max(p.y - alto, Math.min(ny, p.y + alto));
+    const dx = nx - cx, dy = ny - cy, d = Math.hypot(dx, dy);
+    if (d < radio) {
+      if (d > 0.001) { nx = cx + dx / d * radio; ny = cy + dy / d * radio; }
+      else ny += radio;
+    }
+  }
   return { x: nx, y: ny };
 }
 
 // ¿Una bala que va de (x0,y0) a (x1,y1) choca con algo del mapa? Devuelve la fracción (0..1) o null.
-export function choqueBala(m, x0, y0, x1, y1) {
+export function choqueBala(m, x0, y0, x1, y1, altura = 0) {
   const largo = Math.hypot(x1 - x0, y1 - y0);
   const pasos = Math.max(1, Math.ceil(largo / 4));
   for (let k = 1; k <= pasos; k++) {
@@ -222,8 +302,10 @@ export function choqueBala(m, x0, y0, x1, y1) {
     const x = x0 + (x1 - x0) * f;
     const y = y0 + (y1 - y0) * f;
     if (SOLIDO(tipoEn(m, x, y))) return f;
+    if (altura < 1 && (m.construcciones || []).some(p => p.vida > 0 && p.tipo === 'pared' && Math.abs(p.x - x) < (p.rotacion % 2 ? 4 : 17) && Math.abs(p.y - y) < (p.rotacion % 2 ? 17 : 4))) return f;
   }
   for (const o of m.obstaculos) {
+    if (o.roto) continue;
     // distancia del centro del obstáculo al segmento
     const vx = x1 - x0;
     const vy = y1 - y0;

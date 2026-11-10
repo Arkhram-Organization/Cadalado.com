@@ -1,4 +1,4 @@
-:root { --juego: #ff4fa3; }
+:root { --juego: #c5f04a; }
 /* ---------- meme (plantilla + textos) ---------- */
 .meme { position: relative; width: 100%; container-type: inline-size; border-radius: 14px; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
 .meme img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; }
@@ -176,3 +176,70 @@ body.memes-sala {
 .globo-jug { position: absolute; left: 54px; bottom: calc(100% - 8px); z-index: 5; max-width: 200px; width: max-content; padding: 6px 10px; border-radius: 12px; background: #fff; color: #1a1030; font-size: 12px; font-weight: 700; border: 2px solid #1a1030; box-shadow: 3px 3px 0 #1a1030; animation: globo .3s cubic-bezier(.2,1.5,.4,1); }
 @keyframes globo { from { transform: scale(.5); opacity: 0; } }
 .memes-sala .chat-log .bot b { color: #ff2d8a; }
+
+/* Make it Meme usa la misma paleta carbón, papel y lima del lobby. */
+body.memes-sala, body:has(.menu) { --juego: #c5f04a; background: radial-gradient(ellipse at 50% 25%, #26301d 0, #171b15 48%, #141413 100%); }
+.memes-sala .sala { --tinta: #efede4; --papel: #1d211b; --borde: #414b38; }
+.memes-sala .sala .panel, .memes-sala .cabeza-fase { background: #1d211b; color: #efede4; border: 1px solid #414b38; border-radius: 12px; box-shadow: 0 14px 35px #0003; }
+.memes-sala .sala h2, .memes-sala .sala h3, .memes-sala .cabeza-fase h2 { color: #efede4; }
+.memes-sala .sala .etq, .memes-sala .cabeza-fase .etq, .memes-sala .chat .sis { color: #c5f04a; }
+.memes-sala .codigo b { color: #c5f04a; text-shadow: none; }
+.memes-sala .jug, .memes-sala .texto-fila, .memes-sala .reglas div, .memes-sala .res, .memes-sala .podio div { background: #252b22 !important; border: 1px solid #414b38; border-radius: 10px; box-shadow: none; color: #efede4; transform: none; }
+.memes-sala .jug .n small, .memes-sala .chat .chat-log, .memes-sala .espera p, .memes-sala .reglas div { color: #b9c0ae; }
+.memes-sala .jug .pts, .memes-sala .jug .ok, .memes-sala .res .mono, .memes-sala .podio .mono, .memes-sala .listo-banner b { color: #c5f04a; background: transparent; border: 0; }
+.memes-sala .chip { background: #293320; color: #e7f4c8; border: 1px solid #586e3a; }
+.memes-sala .sala .btn { border: 1px solid #566449; border-radius: 8px; box-shadow: none; }
+.memes-sala .sala .btn-lima { --f: #c5f04a; --t: #1c2415; border-color: #c5f04a; }
+.memes-sala .sala .btn:active { transform: translateY(1px); box-shadow: none; }
+.memes-sala .chat .entrada, .memes-sala .sala .entrada, .memes-sala .texto-fila textarea { background: #141713; color: #efede4; border: 1px solid #566449; }
+.memes-sala .reloj-circ .fondo { fill: #252b22; stroke: #414b38; }
+.memes-sala .reloj-circ .arco { stroke: #c5f04a; }
+.memes-sala .reloj-circ b { color: #efede4; }
+.memes-sala .marco-meme { background: #263021; border: 1px solid #566449; border-radius: 12px; padding: 8px; box-shadow: 0 18px 45px #0005; transform: none !important; }
+.memes-sala .listo-banner { background: #293b22; border: 1px solid #6c8a43; color: #efede4; }
+.memes-sala .secreto { background: #293320; color: #efede4; border: 1px solid #6c8a43; }
+.memes-sala .texto-fila.sel { border-color: #c5f04a; box-shadow: 0 0 0 1px #c5f04a; }
+.memes-sala .res .pie b { color: #efede4; }
+
+body:has(.menu) .menu::before { background: radial-gradient(ellipse at 50% 20%, #2b3923, transparent 64%); }
+body:has(.menu) .menu-hero h1 { color: #efede4; text-shadow: none; -webkit-text-stroke: 0; }
+body:has(.menu) .menu-hero h1 em { color: #c5f04a; }
+body:has(.menu) .menu-hero p { color: #b9c0ae; text-shadow: none; }
+body:has(.menu) .menu-hero .etq, body:has(.menu) .menu .panel { background: #1d211b; color: #efede4; border: 1px solid #414b38; border-radius: 12px; box-shadow: none; transform: none; }
+body:has(.menu) .menu .panel h2, body:has(.menu) .menu label { color: #efede4; }
+body:has(.menu) .menu .etq, body:has(.menu) .menu .vacio { color: #b9c0ae; }
+body:has(.menu) .menu .entrada { background: #141713; color: #efede4; border: 1px solid #566449; }
+body:has(.menu) .menu .btn { border: 1px solid #566449; border-radius: 8px; box-shadow: none; }
+body:has(.menu) .menu .btn-lima { --f: #c5f04a; --t: #1c2415; border-color: #c5f04a; }
+body:has(.menu) .menu .sala-fila, body:has(.menu) .menu .sala-fila:nth-child(n) { background: #252b22; color: #efede4; border: 1px solid #414b38; }
+body:has(.menu) .menu .sala-fila .q small { color: #b9c0ae; }
+
+@media (min-width: 1081px) {
+  body.memes-sala { overflow: hidden; }
+  .memes-sala #app, .memes-sala .sala { height: calc(100dvh - 56px); min-height: 0; }
+  .memes-sala .sala { max-width: 1800px; grid-template-columns: minmax(210px, 280px) minmax(0, 1fr) minmax(240px, 300px); gap: 12px; padding: 12px; align-items: stretch; }
+  .memes-sala .lateral { min-height: 0; position: static; overflow: hidden; }
+  .memes-sala .lateral.izq .panel:last-child { min-height: 0; overflow: auto; }
+  .memes-sala .lateral.der .chat { height: 100%; min-height: 0; }
+  .memes-sala .centro { min-height: 0; overflow: auto; gap: 9px; scrollbar-width: thin; scrollbar-color: #566449 transparent; }
+  .memes-sala .centro:has(.editor) { overflow: hidden; }
+  .memes-sala .cabeza-fase { padding: 8px 12px; flex: none; }
+  .memes-sala .cabeza-fase h2 { font-size: 23px; }
+  .memes-sala .reloj-circ { width: 45px; height: 45px; }
+  .memes-sala .editor { min-height: 0; flex: 0 1 auto; }
+  .memes-sala .marco-meme { width: 100%; }
+  .memes-sala .marco-meme .meme { width: min(100%, calc(48dvh * var(--meme-ratio, 1))); margin: auto; }
+  .memes-sala .barra-edicion { flex: none; }
+  .memes-sala .barra-edicion .btn { padding: 8px 12px; }
+  .memes-sala .textos { min-height: 0; overflow: auto; gap: 5px; }
+  .memes-sala .texto-fila { padding: 5px; }
+  .memes-sala .texto-fila textarea { height: 38px; }
+}
+.memes-sala .votos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; width: min(680px, 100%); margin: 0 auto; }
+.memes-sala .votos button, .memes-sala .votos button:nth-child(n) { width: 100%; height: auto; min-height: 62px; padding: 8px 6px; border: 1px solid #586e3a; border-radius: 10px; background: #252e20; color: #e8f0dc; box-shadow: none; font: 700 14px var(--texto); display: flex; flex-direction: row; justify-content: center; gap: 7px; }
+.memes-sala .votos button span { display: grid; place-items: center; width: 31px; height: 31px; flex: none; border-radius: 7px; background: #3e512b; color: #c5f04a; font: 800 18px var(--titulo); }
+.memes-sala .votos button b { font: inherit; }
+.memes-sala .votos button:hover { border-color: #c5f04a; background: #304025; transform: translateY(-2px); }
+.memes-sala .votos button.on { background: #c5f04a; color: #1c2415; border-color: #c5f04a; outline: 2px solid #efede4; transform: none; }
+.memes-sala .votos button.on span { background: #1c2415; color: #c5f04a; }
+@media (max-width: 560px) { .memes-sala .votos { gap: 4px; } .memes-sala .votos button { flex-direction: column; font-size: 11px; } }

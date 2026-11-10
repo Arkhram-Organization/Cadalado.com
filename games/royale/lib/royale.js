@@ -1,4 +1,4 @@
-// "Último en pie": battle royale 2D. El servidor arma la partida, lleva quién sigue vivo, las bajas,
+// "Battle Shmitz": battle royale 3D. El servidor arma la partida, lleva quién sigue vivo, las bajas,
 // el botín que ya se agarró y el ganador. El movimiento y los disparos van directo entre navegadores (WebRTC);
 // los bots (NPC de cadalado) los simula el navegador del anfitrión y él avisa sus bajas.
 import { crearJuego, idPublico } from '../../../shared/salas.js';
@@ -6,7 +6,8 @@ import { registrarPartida } from '../../../shared/cuenta.js';
 import { getStore } from '../../../shared/store.js';
 import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
-import { DURACION_MAX } from '../public/js/mundo.js';
+import { DURACION_MAX, LADO, TAM, T, BALDOSA, CAJAS, MATERIALES, generarMapa } from '../public/js/mundo.js';
+import { COSTO_PIEZA, VIDA_PIEZA, validarPieza } from '../public/js/construccion.js';
 
 const CUENTA_MS = 4000;
 const FIN_MS = 20_000;
@@ -39,7 +40,7 @@ function terminar(r, ctx) {
   r.fase = 'fin';
   r.ganador = r.vivos[0] || null;
   r.fin = ctx.now + FIN_MS;
-  if (r.ganador) ctx.sistema(`¡${nombreDe(r, r.ganador)} es el último en pie!`);
+  if (r.ganador) ctx.sistema(`¡${nombreDe(r, r.ganador)} es el ganador de Battle Shmitz!`);
 }
 
 export const royale = crearJuego({
@@ -59,6 +60,13 @@ export const royale = crearJuego({
       tomados: [],
       sueltos: [],
       propietarios: {},
+      abiertos: [],
+      aperturas: {},
+      fuentes: {},
+      materiales: {},
+      municion: {},
+      construcciones: [],
+      golpes: {},
       bajas: [],
       kills: {},
       ganador: null,
@@ -94,7 +102,10 @@ export const royale = crearJuego({
         r.vivos = [...r.participantes.map(idPublico), ...r.botNpc.map((_, i) => 'bot' + i)];
         r.tomados = [];
         r.sueltos = [];
-        r.propietarios = {};
+        r.propietarios = Object.fromEntries(r.vivos.map(id => ['inicio-' + id, id]));
+        r.abiertos = []; r.aperturas = {}; r.fuentes = {}; r.construcciones = []; r.golpes = {};
+        r.materiales = Object.fromEntries(r.vivos.map(id => [id, {madera: 0, piedra: 0, metal: 0}]));
+        r.municion = Object.fromEntries(r.vivos.map(id => [id, {livianas: 48, medianas: 0, pesadas: 0, cartuchos: 0, cohetes: 0}]));
         r.bajas = [];
         r.kills = {};
         r.ganador = null;
@@ -107,17 +118,98 @@ export const royale = crearJuego({
       case 'agarrar': {
         // botín: el primero que lo pide se lo queda
         const id = typeof msg.id === 'string' && msg.id.startsWith('drop-') ? msg.id : Number(msg.id);
-        if (r.fase !== 'partida' || (!Number.isInteger(id) && !r.sueltos?.some(b=>b.id===id)) || r.tomados.includes(id)) return {error:'Ese objeto ya no está disponible'};
+        const original = Number.isInteger(id) ? generarMapa(r.semilla).botin[id] : r.sueltos?.find(b => b.id === id);
+        const dueno = msg.bot && ctx.esHost && r.vivos.includes(msg.bot) ? msg.bot : yo;
+        if (r.fase !== 'partida' || !r.vivos.includes(dueno) || !original || original.tipo === 'cofre' || (original.cofre !== undefined && !r.abiertos.includes(original.cofre)) || r.tomados.includes(id)) return {error:'Ese objeto ya no está disponible'};
+        if (MATERIALES[original.tipo]) {
+          r.materiales[dueno] ??= {madera:0,piedra:0,metal:0};
+          r.materiales[dueno][original.tipo] = Math.min(500, r.materiales[dueno][original.tipo] + 30);
+          r.tomados.push(id);
+          return {};
+        }
+        if (CAJAS[original.tipo]) {
+          const caja = CAJAS[original.tipo];
+          r.municion[dueno] ??= {};
+          r.municion[dueno][caja.municion] = Math.min(999, (r.municion[dueno][caja.municion] || 0) + caja.cantidad);
+          r.tomados.push(id);
+          return {};
+        }
+        const cambio = msg.cambio;
+        if (cambio) {
+          const viejo = cambio.item?.id;
+          const origen = String(viejo).startsWith('inicio-') ? {tipo:'pistola',rareza:'comun'} : Number.isInteger(Number(viejo)) ? generarMapa(r.semilla).botin[Number(viejo)] : r.sueltos.find(b=>b.id===viejo);
+          if (!viejo || r.propietarios[viejo] !== dueno || cambio.tipo !== cambio.item?.tipo || cambio.tipo !== origen?.tipo || (origen.rareza || origen.item?.rareza || 'comun') !== (cambio.item?.rareza || 'comun') || !String(cambio.id).startsWith('drop-' + dueno + '-') || r.sueltos.some(b => b.id === cambio.id) || Math.hypot(cambio.x - original.x, cambio.y - original.y) > 2) return {error:'Ese objeto no es tuyo'};
+          r.sueltos.push({id:cambio.id,tipo:cambio.tipo,x:original.x,y:original.y,rareza:cambio.item.rareza||'comun',item:{...cambio.item}});
+          r.propietarios[viejo] = 'suelo';
+        }
         r.tomados.push(id);
-        (r.propietarios??={})[id]=msg.bot && ctx.esHost ? msg.bot : yo;
+        (r.propietarios??={})[id]=dueno;
+        return {};
+      }
+      case 'iniciarCofre': {
+        const id = Number(msg.id);
+        const b = generarMapa(r.semilla).botin[id];
+        if (r.fase !== 'partida' || !r.vivos.includes(yo) || b?.tipo !== 'cofre' || r.abiertos.includes(id)) return {error:'Ese cofre no está disponible'};
+        r.aperturas[yo + ':' + id] = ctx.now;
+        return {};
+      }
+      case 'abrirCofre': {
+        const id = Number(msg.id);
+        const b = generarMapa(r.semilla).botin[id];
+        if (r.fase !== 'partida' || !r.vivos.includes(yo) || b?.tipo !== 'cofre' || r.abiertos.includes(id) || ctx.now - (r.aperturas[yo + ':' + id] || 0) < 950) return {error:'Mantené E durante un segundo'};
+        r.abiertos.push(id);
+        r.tomados.push(id);
+        delete r.aperturas[yo + ':' + id];
+        ctx.sistema(`¡${nombreDe(r, yo)} abrió un cofre!`);
+        return {};
+      }
+      case 'picar': {
+        const id = String(msg.id || '');
+        const dueno = msg.bot && ctx.esHost && r.vivos.includes(msg.bot) ? msg.bot : yo;
+        const mapa = generarMapa(r.semilla);
+        const obstaculo = mapa.obstaculos.find(o => o.id === id);
+        const baldosa = /^m\d+$/.test(id) ? Number(id.slice(1)) : -1;
+        const pared = baldosa >= 0 && baldosa < TAM * TAM && mapa.t[baldosa] === T.PARED;
+        if (r.fase !== 'partida' || !r.vivos.includes(dueno) || (!obstaculo && !pared) || ctx.now - (r.golpes[dueno] || 0) < 450) return {error:'No podés picar eso'};
+        const vida = obstaculo?.vida || 100;
+        const golpe = (r.fuentes[id]?.golpes || 0) + 1;
+        if ((r.fuentes[id]?.vida ?? vida) <= 0) return {error:'Eso ya se rompió'};
+        r.golpes[dueno] = ctx.now;
+        const restante = Math.max(0, (r.fuentes[id]?.vida ?? vida) - 25);
+        r.fuentes[id] = { vida: restante, golpes: golpe };
+        const material = obstaculo?.material || 'piedra';
+        const cantidad = 5 + ((r.semilla ^ baldosa ^ golpe * 17 ^ id.length) >>> 0) % 6;
+        r.materiales[dueno] ??= {madera:0,piedra:0,metal:0};
+        r.materiales[dueno][material] = Math.min(500, r.materiales[dueno][material] + cantidad);
+        return {};
+      }
+      case 'construir': {
+        const p = msg.pieza;
+        const dueno = msg.bot && ctx.esHost && r.vivos.includes(msg.bot) ? msg.bot : yo;
+        if (r.fase !== 'partida' || !r.vivos.includes(dueno) || !p || typeof p.id !== 'string' || !p.id.startsWith('pieza-' + dueno + '-') || p.id.length > 75 || r.construcciones.length >= 400 || r.construcciones.some(x => x.id === p.id)) return {error:'No podés construir ahí'};
+        const materiales = r.materiales[dueno] || {};
+        if (!validarPieza(generarMapa(r.semilla), r.construcciones, p, materiales)) return {error:'No podés construir ahí'};
+        materiales[p.material] -= COSTO_PIEZA;
+        r.construcciones.push({id:p.id,dueno,x:p.x,y:p.y,tipo:p.tipo,material:p.material,rotacion:p.rotacion,vida:VIDA_PIEZA[p.material],dano:0,inicio:ctx.now});
+        return {};
+      }
+      case 'danarPieza': {
+        const p = r.construcciones.find(x => x.id === msg.id && x.vida > 0);
+        if (r.fase !== 'partida' || !r.vivos.includes(yo) || !p) return {error:'Esa pieza ya no está'};
+        const vidaActual = Math.max(0, Math.min(p.vida, VIDA_PIEZA[p.material] * Math.min(1, (ctx.now - p.inicio) / 1000)) - (p.dano || 0));
+        const golpe = Math.min(200, Math.max(0, Number(msg.dano) || 0));
+        p.dano = (p.dano || 0) + golpe;
+        if (golpe >= vidaActual) p.vida = 0;
         return {};
       }
       case 'soltar': {
         const b=msg.b;
-        if(r.fase!=='partida'||!r.vivos.includes(yo)||!b||typeof b.id!=='string'||!b.id.startsWith('drop-'+yo+'-')||b.id.length>70)return {};
-        const tipos=['pistola','subfusil','escopeta','rifle','mini','escudo','venda','botiquin','granada'];
-        if(!tipos.includes(b.tipo)||![b.x,b.y].every(n=>Number.isFinite(n)&&n>=0&&n<=1536)||(r.sueltos?.length||0)>300)return {};
-        r.sueltos??=[];if(!r.sueltos.some(s=>s.id===b.id))r.sueltos.push({id:b.id,tipo:b.tipo,x:b.x,y:b.y,item:{tipo:b.tipo,cantidad:Math.max(1,Math.min(10,Number(b.item?.cantidad)||1)),bala:Math.max(0,Math.min(30,Number(b.item?.bala)||0))}});
+        if(r.fase!=='partida'||!r.vivos.includes(yo)||!b||typeof b.id!=='string'||!b.id.startsWith('drop-'+yo+'-')||b.id.length>70)return {error:'No podés soltar eso'};
+        const tipos=['pistola','subfusil','escopeta','rifle','francotirador','rpg','mini','escudo','venda','botiquin','granada'];
+        const viejo=b.item?.id;
+        const origen=String(viejo).startsWith('inicio-')?{tipo:'pistola',rareza:'comun'}:Number.isInteger(Number(viejo))?generarMapa(r.semilla).botin[Number(viejo)]:r.sueltos.find(s=>s.id===viejo);
+        if(!tipos.includes(b.tipo)||![b.x,b.y].every(n=>Number.isFinite(n)&&n>=0&&n<=LADO)||(r.sueltos?.length||0)>300||r.propietarios[viejo]!==yo||b.item?.tipo!==b.tipo||origen?.tipo!==b.tipo||(origen.rareza||origen.item?.rareza||'comun')!==(b.item?.rareza||'comun'))return {error:'Ese objeto no es tuyo'};
+        r.sueltos??=[];if(!r.sueltos.some(s=>s.id===b.id)){r.sueltos.push({id:b.id,tipo:b.tipo,x:b.x,y:b.y,rareza:b.item.rareza||'comun',item:{tipo:b.tipo,id:b.item.id,rareza:b.item.rareza||'comun',cantidad:Math.max(1,Math.min(10,Number(b.item?.cantidad)||1)),bala:Math.max(0,Math.min(30,Number(b.item?.bala)||0))}});r.propietarios[b.item.id]='suelo';}
         return {};
       }
       case 'muerte': {
@@ -193,6 +285,11 @@ export const royale = crearJuego({
       tomados: r.tomados,
       sueltos: r.sueltos || [],
       propietarios: r.propietarios || {},
+      abiertos: r.abiertos || [],
+      fuentes: r.fuentes || {},
+      materiales: r.materiales || {},
+      municion: r.municion || {},
+      construcciones: (r.construcciones || []).map(p=>({...p,vida:p.vida<=0?0:Math.max(1,Math.min(p.vida,VIDA_PIEZA[p.material]*Math.min(1,(Date.now()-p.inicio)/1000))-(p.dano||0))})),
       bajas: r.bajas,
       kills: r.kills,
       ganador: r.ganador,
@@ -202,7 +299,7 @@ export const royale = crearJuego({
   },
   lobby(r) {
     const host = r.jugadores[r.host];
-    return { titulo: host ? `Isla de ${host.nombre}` : 'Último en pie', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
+    return { titulo: host ? `Battle Shmitz de ${host.nombre}` : 'Battle Shmitz', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
   },
   async despues(r, antes) {
     if (r.fase !== 'fin' || antes.fase === 'fin') return;

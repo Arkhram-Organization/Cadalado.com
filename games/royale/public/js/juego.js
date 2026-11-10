@@ -1,21 +1,26 @@
 // Lógica de la partida en el navegador: mi personaje, las balas y la IA de los bots (los simula el anfitrión).
-import { ARMAS, VIDA, ESCUDO_MAX, moverCirculo, choqueBala, seVen, zona, tipoEn, T } from './mundo.js';
+import { ARMAS, VIDA, ESCUDO_MAX, LADO, danoRareza, RAREZAS, moverCirculo, choqueBala, seVen, zona, tipoEn, T } from './mundo.js';
 import { CASILLEROS, OBJETOS, recoger, comenzarUso, avanzarUso } from './inventario.js';
 
 export const RADIO = 5;
 const VEL = 78; // px/s
 const VEL_AGUA = 44;
-export const CODIGO_ARMA = { pistola: 'p', subfusil: 's', escopeta: 'e', rifle: 'r' };
-export const ARMA_DE_CODIGO = { p: 'pistola', s: 'subfusil', e: 'escopeta', r: 'rifle' };
+export const CODIGO_ARMA = { pistola: 'p', subfusil: 's', escopeta: 'e', rifle: 'r', francotirador: 'f', rpg: 'g' };
+export const ARMA_DE_CODIGO = { p: 'pistola', s: 'subfusil', e: 'escopeta', r: 'rifle', f: 'francotirador', g: 'rpg' };
 
 export class Peleador {
   constructor(id, x, y) {
     Object.assign(this, { id, x, y, ang: 0, vida: VIDA, escudo: 0, vivo: true, mueve: false });
-    this.slots = Array.from({length: CASILLEROS}, (_,i) => i ? null : {tipo:'pistola',bala:ARMAS.pistola.cargador});
+    this.slots = Array.from({length: CASILLEROS}, (_,i) => i ? null : {tipo:'pistola',bala:ARMAS.pistola.cargador,id:'inicio-'+id,rareza:'comun'});
+    this.municion = { livianas: 48, medianas: 0, pesadas: 0, cartuchos: 0, cohetes: 0 };
     this.usando = null;
     this.actual = 0;
     this.enfriar = 0;
     this.recargando = 0;
+    this.enColectivo = false;
+    this.altura = 0;
+    this.paracaidas = false;
+    this.nivel = 0;
   }
   get arma() {
     return this.slots[this.actual] || {tipo:'vacio',bala:0};
@@ -34,12 +39,12 @@ export class Peleador {
   }
   recargar() {
     const a = this.arma;
-    if (!ARMAS[a.tipo] || this.usando || this.recargando > 0 || a.bala >= ARMAS[a.tipo].cargador) return;
-    this.recargando = ARMAS[a.tipo].recarga;
+    if (!ARMAS[a.tipo] || this.usando || this.recargando > 0 || a.bala >= ARMAS[a.tipo].cargador || !this.municion[ARMAS[a.tipo].municion]) return;
+    this.recargando = ARMAS[a.tipo].recarga * (RAREZAS[a.rareza]?.recarga || 1);
   }
   // Agarra un arma: si tiene lugar va al slot libre, si no reemplaza la actual. Devuelve el arma que suelta (o null).
   agarrarArma(tipo) {
-    const nueva = { tipo, bala: ARMAS[tipo].cargador };
+    const nueva = { tipo, bala: ARMAS[tipo].cargador, rareza: 'comun' };
     if (!this.slots[1]) {
       this.slots[1] = nueva;
       this.actual = 1;
@@ -68,6 +73,7 @@ export class Peleador {
   }
   // Movimiento con el mapa (paredes, árboles, agua más lenta)
   mover(mundo, dx, dy, dt, factor = 1) {
+    if (this.enColectivo || this.altura > 0) return;
     const n = Math.hypot(dx, dy);
     this.mueve = n > 0.1;
     if(this.mueve) this.usando = null;
@@ -76,12 +82,32 @@ export class Peleador {
     const p = moverCirculo(mundo, this.x, this.y, (dx / n) * v * dt, (dy / n) * v * dt, RADIO);
     this.x = p.x;
     this.y = p.y;
+    this.nivel = (mundo.construcciones || []).some(pieza => pieza.vida > 0 && pieza.tipo === 'escalera' && Math.abs(pieza.x - this.x) < 16 && Math.abs(pieza.y - this.y) < 16) ? 1 : 0;
+  }
+  subirColectivo() { this.enColectivo = true; this.altura = 85; this.paracaidas = false; }
+  saltar(x, y) {
+    if (!this.enColectivo) return false;
+    this.enColectivo = false; this.x = x; this.y = y;
+    this.altura = 85; this.paracaidas = false;
+    return true;
+  }
+  caer(dt, dx = 0, dy = 0) {
+    if (this.enColectivo || this.altura <= 0) return false;
+    const n = Math.hypot(dx, dy);
+    const vel = this.paracaidas ? 76 : 115;
+    if (n > .1) {
+      this.x = Math.max(8, Math.min(LADO - 8, this.x + dx / n * vel * dt));
+      this.y = Math.max(8, Math.min(LADO - 8, this.y + dy / n * vel * dt));
+    }
+    if (this.altura <= 30) this.paracaidas = true;
+    this.altura = Math.max(0, this.altura - (this.paracaidas ? 13 : 31) * dt);
+    return this.altura === 0;
   }
   // Intenta disparar: devuelve la lista de balas nuevas (o []).
   disparar(rnd = Math.random) {
     const a = this.arma;
     const d = ARMAS[a.tipo];
-    if (!d || this.usando || !this.vivo || this.enfriar > 0 || this.recargando > 0) return [];
+    if (!d || this.usando || !this.vivo || this.enColectivo || this.altura > 0 || this.enfriar > 0 || this.recargando > 0) return [];
     if (a.bala <= 0) {
       this.recargar();
       return [];
@@ -91,7 +117,9 @@ export class Peleador {
     const balas = [];
     for (let k = 0; k < d.perdigones; k++) {
       const ang = this.ang + (rnd() - 0.5) * d.dispersion * 2;
-      balas.push(nuevaBala(this.id, this.x + Math.cos(this.ang) * 8, this.y + Math.sin(this.ang) * 8, ang, a.tipo));
+      const bala = nuevaBala(this.id, this.x + Math.cos(this.ang) * 8, this.y + Math.sin(this.ang) * 8, ang, a.tipo, a.rareza);
+      bala.altura = this.nivel;
+      balas.push(bala);
     }
     if (a.bala === 0) this.recargar();
     return balas;
@@ -103,15 +131,20 @@ export class Peleador {
       this.recargando -= dt;
       if (this.recargando <= 0) {
         this.recargando = 0;
-        this.arma.bala = ARMAS[this.arma.tipo].cargador;
+        const arma = ARMAS[this.arma.tipo];
+        if (arma) {
+          const cantidad = Math.min(arma.cargador - this.arma.bala, this.municion[arma.municion] || 0);
+          this.arma.bala += cantidad;
+          this.municion[arma.municion] -= cantidad;
+        }
       }
     }
   }
 }
 
-export function nuevaBala(de, x, y, ang, tipo) {
+export function nuevaBala(de, x, y, ang, tipo, rareza = 'comun') {
   const d = ARMAS[tipo];
-  return { de, x, y, vx: Math.cos(ang) * d.vel, vy: Math.sin(ang) * d.vel, recorrido: 0, alcance: d.alcance, dano: d.dano, tipo, viva: true };
+  return { de, x, y, vx: Math.cos(ang) * d.vel, vy: Math.sin(ang) * d.vel, recorrido: 0, alcance: d.alcance, dano: danoRareza(d.dano, rareza), tipo, rareza, viva: true };
 }
 
 // Avanza una bala; si toca a alguien de `blancos` (lista de {id,x,y,vivo}) devuelve ese blanco.
@@ -132,7 +165,7 @@ export function avanzarBala(mundo, b, dt, blancos) {
       fMejor = f;
     }
   }
-  const pared = choqueBala(mundo, b.x, b.y, x1, y1);
+  const pared = choqueBala(mundo, b.x, b.y, x1, y1, b.altura || 0);
   if (pared !== null && pared < fMejor) {
     b.x += (x1 - b.x) * pared;
     b.y += (y1 - b.y) * pared;
@@ -140,8 +173,10 @@ export function avanzarBala(mundo, b, dt, blancos) {
     return null;
   }
   if (mejor) {
+    b.x += (x1 - b.x) * fMejor;
+    b.y += (y1 - b.y) * fMejor;
     b.viva = false;
-    return mejor;
+    return b.tipo === 'rpg' ? null : mejor;
   }
   b.recorrido += Math.hypot(x1 - b.x, y1 - b.y);
   b.x = x1;
@@ -178,6 +213,8 @@ export class CerebroBot {
     const salida = { balas: [], agarra: null };
     if (!p.vivo) return salida;
     p.tiempo(dt);
+    if (p.usando) { p.mueve = false; return salida; }
+    if (!ARMAS[p.arma.tipo]) { const arma = p.slots.findIndex(s => ARMAS[s?.tipo]); if (arma >= 0) p.cambiar(arma); }
     this.pensar -= dt;
     const z = zona(semilla, t);
     const enZona = Math.hypot(p.x - z.x, p.y - z.y) < z.r - 20;
@@ -197,10 +234,13 @@ export class CerebroBot {
       if (cerca && cerca !== this.objetivo) this.reaccion = 0.55 + r() * 0.45;
       this.objetivo = cerca;
       if (!this.objetivo) {
+        const cura = p.slots.findIndex(s => s && ((s.tipo === 'botiquin' && p.vida < 55) || (s.tipo === 'venda' && p.vida < 65) || (s.tipo === 'mini' && p.escudo < 25) || (s.tipo === 'escudo' && p.escudo < 50)));
+        if (cura >= 0) { p.cambiar(cura); p.usar(); p.mueve = false; return salida; }
         // sin pelea: a la zona si estoy afuera, si no al botín más cercano o a pasear
         if (!enZona) this.destino = { x: z.siguiente.x + (r() - 0.5) * z.siguiente.r * 0.6, y: z.siguiente.y + (r() - 0.5) * z.siguiente.r * 0.6 };
         else if (!this.destino || Math.hypot(this.destino.x - p.x, this.destino.y - p.y) < 10) {
-          const quiero = botin.filter((b) => (b.tipo === 'botiquin' ? p.vida < 80 : b.tipo === 'escudo' ? p.escudo < ESCUDO_MAX : !p.slots[1] || b.tipo === 'rifle' || b.tipo === 'escopeta')).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
+          const valor = { comun: 0, poco_comun: 35, rara: 70, epica: 110, legendaria: 160 };
+          const quiero = botin.filter(b => ARMAS[b.tipo] || b.tipo === 'botiquin' && p.vida < 80 || b.tipo === 'escudo' && p.escudo < ESCUDO_MAX || b.tipo === 'mini' && p.escudo < 50 || b.tipo === 'venda' && p.vida < 75).sort((a, b) => (Math.hypot(a.x-p.x,a.y-p.y) - (valor[a.rareza]||0)) - (Math.hypot(b.x-p.x,b.y-p.y) - (valor[b.rareza]||0)))[0];
           if (quiero && Math.hypot(quiero.x - p.x, quiero.y - p.y) < 320) this.destino = { x: quiero.x, y: quiero.y, botin: quiero.id };
           else {
             const a = r() * Math.PI * 2;
@@ -224,6 +264,12 @@ export class CerebroBot {
       const dx = e.x - p.x;
       const dy = e.y - p.y;
       const d = Math.hypot(dx, dy);
+      const armas = p.slots.map((s,i)=>({s,i})).filter(x=>ARMAS[x.s?.tipo]);
+      const elegida = armas.sort((a,b) => {
+        const puntaje = x => (x.s.tipo === 'francotirador' ? d > 250 ? 4 : 0 : x.s.tipo === 'escopeta' ? d < 100 ? 4 : 0 : x.s.tipo === 'rifle' ? 3 : 1) + (RAREZAS[x.s.rareza]?.dano || 1);
+        return puntaje(b) - puntaje(a);
+      })[0];
+      if (elegida && elegida.i !== p.actual) p.cambiar(elegida.i);
       const ideal = p.arma.tipo === 'escopeta' ? 60 : p.arma.tipo === 'rifle' ? 190 : 120;
       // se mueve de costado y regula la distancia
       const adelante = d > ideal + 20 ? 1 : d < ideal - 30 ? -1 : 0;

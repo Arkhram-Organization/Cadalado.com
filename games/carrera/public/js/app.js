@@ -2,15 +2,16 @@ import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, gua
 import { POR_ID, charlas, rngNpc } from '/comun/npcs.js';
 import { dicho } from '/comun/dichos.js';
 import { lookParaDibujo } from '/comun/look.js';
+import { avatarSvg } from '/comun/avatar.js';
 import { GESTOS } from '/comun/gestos.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { Escena } from './escena.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
 import { Red } from './red.js';
-import { rutaBot, posBot, COLORES, MAPAS, LIMITE_S } from './pista.js';
+import { rutaBot, posBot, ordenLargada, posLargada, COLORES, MAPAS, LIMITE_S } from './pista.js';
 
 const app = document.querySelector('#app');
-const COLOR = '#4fd1c5';
+const COLOR = '#c5f04a';
 const cuenta = await marco({ juego: 'Ángeles Peña', color: COLOR, volver: '/carrera/' });
 let limpiar = [];
 
@@ -40,7 +41,7 @@ function menu() {
   app.innerHTML = `
   <div class="menu">
     <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · rondas con eliminación · hasta 16</span><h1>Ángeles <em>Peña.</em></h1>
-      <p>Tres mapas: barras que barren el piso, martillos, molinos, pistones, cintas, baldosas que se caen y huecos de doble salto. En cada ronda clasifican los primeros; en la final gana el que llega primero. Con la <b>E</b> le pegás una piña al de al lado.</p></div></div>
+      <p>Cinco mapas con barras, martillos, molinos, pistones, cintas, baldosas y huecos de doble salto. El recorrido cambia en cada partida. En cada ronda clasifican los primeros; con <b>E</b> le pegás una piña al de al lado.</p></div></div>
     <section class="panel">
       <h2>Armar una partida</h2>
       <form data-crear style="display:grid;gap:12px">
@@ -123,6 +124,7 @@ function abrirSala(code) {
     <div class="capa panel-flota hidden" data-lobby></div>
     <div class="capa cuenta" data-cuenta></div>
     <div class="capa aviso" data-aviso></div>
+    <div class="capa eliminacion hidden" data-eliminacion></div>
     <div class="capa espectar hidden" data-espectar><button class="btn btn-chico" data-esp="-1" aria-label="Anterior">&lsaquo;</button><span>Mirando a <b data-esp-nombre></b></span><button class="btn btn-chico" data-esp="1" aria-label="Siguiente">&rsaquo;</button></div>
     <div class="capa gestos-tip" style="position:absolute;right:16px;bottom:70px;color:#fff;font-size:12px;opacity:.75;z-index:5">Mantené <kbd>B</kbd> para los gestos</div>
     <div class="capa pina-hud" data-pina><kbd>E</kbd><span>Piña</span><i><b></b></i></div>
@@ -242,10 +244,16 @@ function abrirSala(code) {
     escena.construirMapa(mapa, semilla);
     escena.quitarSi((id) => id !== yo());
     remotos.clear();
-    botsRonda = est.botsVivos.map((i) => ({ i, npc: est.botNpc[i], ruta: rutaBot(mapa, semilla, i), charlas: charlas(est.botNpc[i], semilla, i, LIMITE_S), prox: 0 }));
+    const orden = ordenLargada(est.participantes, est.botsVivos);
+    botsRonda = est.botsVivos.map((i) => ({ i, npc: est.botNpc[i], ruta: rutaBot(mapa, semilla, i, orden.indexOf('bot' + i), orden.length), charlas: charlas(est.botNpc[i], semilla, i, LIMITE_S), prox: 0 }));
     jugador = new Jugador(mapa, semilla);
-    const i = Math.max(0, est.vivos.indexOf(yo()));
-    jugador.ubicar(((i % 6) - 2.5) * 1.5, 0, -2 - Math.floor(i / 6) * 1.6);
+    const salida = posLargada(Math.max(0, orden.indexOf(yo())), orden.length);
+    jugador.ubicar(salida.x, salida.y, salida.z);
+    for (const id of est.participantes) if (id !== yo()) {
+      const p = posLargada(orden.indexOf(id), orden.length);
+      const e = { ...p, ry: 0, a: 'quieto', t: -5 };
+      remotos.set(id, { obj: { ...e }, meta: e, t: -5, visto: performance.now() });
+    }
     jugador.espectador = !est.vivos.includes(yo());
     enviadoMeta = false;
     camYaw = camYawObj = 0;
@@ -272,10 +280,21 @@ function abrirSala(code) {
       if (mio) {
         sonar(mio.paso ? 'gana' : 'pierde');
         aviso(mio.paso ? '¡CLASIFICASTE!' : 'Quedaste afuera', !mio.paso);
+        if (!mio.paso) mostrarEliminacion(est.clasificacion.filter(x => !x.paso));
       }
     }
-    if (nueva === 'podio') sonar('gana');
+    if (nueva === 'podio') { sonar('gana'); const mio = est.resultados.find(x => x.id === yo()); if (mio && est.resultados[0]?.id !== yo()) mostrarEliminacion(est.clasificacion.filter(x => !x.paso)); }
+    if (nueva === 'cuenta' || nueva === 'lobby') $('[data-eliminacion]').classList.add('hidden');
     $('[data-hud]').classList.toggle('hidden', !(nueva === 'carrera' || nueva === 'cuenta'));
+  }
+
+  function mostrarEliminacion(lista) {
+    const el = $('[data-eliminacion]');
+    el.innerHTML = `<div class="elim-cinta"><small>Ángeles Peña · ronda ${est.ronda}</small><strong>¡ELIMINADO!</strong><span>La pista sigue sin vos</span></div>
+      <div class="elim-lista"><b>Quedaron afuera</b>${lista.slice(0, 6).map(x => `<span>${esc(x.nombre)}</span>`).join('')}</div>`;
+    el.classList.remove('hidden');
+    clearTimeout(mostrarEliminacion.t);
+    mostrarEliminacion.t = setTimeout(() => el.classList.add('hidden'), 5200);
   }
 
   function pintarPaneles() {
@@ -290,16 +309,15 @@ function abrirSala(code) {
       const firma = JSON.stringify([online, e.skins, e.bots, e.botNpc, e.host]);
       if (lob.dataset.firma === firma) return;
       lob.dataset.firma = firma;
-      lob.innerHTML = `<h2>En la largada</h2>
-        <p>Mientras esperan, practicá en el primer mapa. ${esHost ? 'Cuando estén todos, ¡largá!' : `Larga ${esc(nombreDe(e.host))}.`}</p>
+      lob.innerHTML = `<span class="etq">Sala de espera · ${online.length + e.botNpc.length} participantes</span><h2>En la largada</h2>
+        <p>Practicá mientras se reúne el grupo. ${esHost ? 'Cuando estén todos, largá la carrera.' : `Larga ${esc(nombreDe(e.host))}.`}</p>
         <div class="lista-j">${online.map((j) => `<div><i style="background:${colorDe(j.id)}"></i>${esc(j.nombre)}${j.id === e.yo ? ' (vos)' : ''}<small>${j.id === e.host ? 'arma' : ''}</small></div>`).join('')}
           ${e.botNpc.map((n, i) => `<div class="${n === 'mati' ? 'dorado' : ''}"><i style="background:${POR_ID[n]?.look.ropa.remera || '#888'}"></i>${esc(nombreBot(i))}<small>${n === 'mati' ? '¡raro!' : 'bot'}</small></div>`).join('')}</div>
-        <span class="etq">Tu color</span>
+        <span class="etq">Tu personaje · elegí un color</span>
         <div class="colores">${COLORES.map((c, i) => `<button style="background:${c}" class="${i === mio ? 'on' : ''}" data-color="${i}" aria-label="Color ${i + 1}"></button>`).join('')}</div>
         ${esHost ? `<div style="display:flex;gap:8px;align-items:center"><select class="entrada" data-bots style="width:auto">${[0, 3, 5, 7, 9, 11].map((n) => `<option ${n === e.bots ? 'selected' : ''} value="${n}">${n} bots</option>`).join('')}</select>
           <button class="btn btn-lima btn-grande" data-largar style="flex:1">¡Largar!</button></div>` : ''}
-        <div class="teclas"><span><kbd>W A S D</kbd> / <kbd>flechas</kbd></span><span>moverse</span><span><kbd>Espacio</kbd> x2</span><span>saltar y doble salto</span>
-          <span><kbd>Shift</kbd></span><span>tirarse de palomita</span><span><kbd>E</kbd></span><span>piña o patada (cada ${ENFRIAR_GOLPE} s)</span><span>Arrastrá el mouse</span><span>girar la cámara</span></div>`;
+        <div class="teclas"><span><kbd>WASD</kbd> mover</span><span><kbd>Espacio</kbd> saltar x2</span><span><kbd>Shift</kbd> tirarse</span><span><kbd>E</kbd> golpear</span></div>`;
       lob.querySelectorAll('[data-color]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'skin', color: Number(b.dataset.color) })));
       lob.querySelector('[data-bots]')?.addEventListener('change', (ev) => sala.enviar({ t: 'bots', n: Number(ev.target.value) }));
       lob.querySelector('[data-largar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
@@ -325,8 +343,8 @@ function abrirSala(code) {
       const det = (x) => (x.paso ? (x.tiempo != null ? `${(x.tiempo / 1000).toFixed(2)} s` : 'final') : `afuera en ronda ${x.ronda}`);
       const miPuesto = r.findIndex((x) => x.id === e.yo) + 1;
       const gane = miPuesto === 1 && r[0]?.paso;
-      pod.innerHTML = `<h2>${gane ? '¡Ganaste Ángeles Peña!' : miPuesto ? `Terminaste ${miPuesto}º` : 'Resultados'}</h2>
-        <div class="podio-top">${top.map((x, i) => (x ? `<div class="p${[2, 1, 3][i]}"><span class="mono" style="font-size:24px">${['2º', '1º', '3º'][i]}</span><b>${esc(x.nombre)}</b><span class="mono">${det(x)}</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
+      pod.innerHTML = `<span class="etq">Ángeles Peña · final</span><h2>${gane ? '¡Ganaste Ángeles Peña!' : miPuesto ? `Terminaste ${miPuesto}º` : 'Resultados'}</h2>
+        <div class="podio-top">${top.map((x, i) => (x ? `<div class="p${[2, 1, 3][i]}"><span class="podio-avatar">${avatarSvg(x.bot ? lookBot(x.npc) : lookDe(x.id))}</span><span class="mono" style="font-size:24px">${['2º', '1º', '3º'][i]}</span><b>${esc(x.nombre)}</b><span class="mono">${det(x)}</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
         <div class="tabla-res">${r.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' <small style="color:var(--gris)">bot</small>' : ''}</span><span class="mono">${det(x)}</span></div>`).join('')}</div>
         ${esHost ? '<button class="btn btn-lima btn-grande" data-otra style="width:100%;margin-top:14px">Otra partida</button>' : '<p style="margin-top:12px">En unos segundos vuelven a la largada.</p>'}`;
       pod.querySelector('[data-otra]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
@@ -468,23 +486,32 @@ function abrirSala(code) {
     for (const b of botsRonda) if (alcance(posBot(mapa, b.ruta, t, semilla))) golpeados.set('bot' + b.i, performance.now() + 1500);
     if (fase === 'lobby') charlasLobby.forEach((_, i) => alcance(posLobby(i)) && golpeados.set('bot' + i, performance.now() + 1500));
   }
-  // Los bots también pegan: si pasás cerca, cada tanto te tiran una piña o una patada.
-  // Sus posiciones son las mismas en todos los navegadores, así que cada uno resuelve si le pegan a él.
+  // Los bots pelean con quien tengan cerca, incluso entre ellos.
   function botPega(b, e, ahora) {
     if (b.pegaHasta > ahora) {
       e.a = b.pegaTipo;
       e.ry = b.pegaRy;
       return;
     }
-    if (jugador.espectador || jugador.llego || jugador.aturdido > 0 || ahora < (b.proxPega || 0)) return;
-    const dx = jugador.x - e.x, dz = jugador.z - e.z, d = Math.hypot(dx, dz);
-    if (d > 1.5 || Math.abs(jugador.y - e.y) > 1.2) return;
-    b.proxPega = ahora + 4500 + Math.random() * 5000;
-    if (Math.random() > 0.65) return; // no siempre
+    if (ahora < (b.proxPega || 0) || (golpeados.get('bot' + b.i) || 0) > ahora) return;
+    const objetivos = [];
+    if (!jugador.espectador && !jugador.llego && jugador.aturdido <= 0) objetivos.push({ id: yo(), p: jugador, humano: true });
+    for (const otro of botsRonda) if (otro.i !== b.i && (golpeados.get('bot' + otro.i) || 0) <= ahora) objetivos.push({ id: 'bot' + otro.i, p: posBot(mapa, otro.ruta, Math.max(0, (sala.ahora() - est.inicio) / 1000), semilla), humano: false });
+    const cerca = objetivos.map(o => ({ ...o, d: Math.hypot(o.p.x - e.x, o.p.z - e.z) })).filter(o => o.d < 1.7 && Math.abs(o.p.y - e.y) < 1.2).sort((a, b) => a.d - b.d);
+    if (!cerca.length) return;
+    // Si hay NPCs cerca, se enfrentan a ellos con frecuencia; no concentran todas las piñas en la persona.
+    const objetivo = cerca.find(o => !o.humano && o.d < 1.45) || cerca[0];
+    const dx = objetivo.p.x - e.x, dz = objetivo.p.z - e.z;
+    b.proxPega = ahora + 5000 + Math.random() * 4500;
+    if (Math.random() > 0.58) return;
     b.pegaTipo = Math.random() < 0.5 ? 'pina' : 'patada';
     b.pegaRy = Math.atan2(-dx, -dz);
     b.pegaHasta = ahora + 750;
     e.a = b.pegaTipo; e.ry = b.pegaRy;
+    if (!objetivo.humano) {
+      setTimeout(() => { golpeados.set(objetivo.id, performance.now() + 1400); sonar('pina'); }, 280);
+      return;
+    }
     setTimeout(() => {
       const ahoraD = Math.hypot(jugador.x - e.x, jugador.z - e.z);
       if (ahoraD < 2 && !jugador.llego && !jugador.espectador) {
@@ -520,7 +547,7 @@ function abrirSala(code) {
     // cuenta regresiva
     if (fase === 'cuenta' || (fase === 'carrera' && t < 1)) {
       const n = Math.ceil(-t);
-      const txt = n > 0 && n <= 3 ? String(n) : t >= 0 && t < 1 ? '¡YA!' : '';
+      const txt = n > 0 ? String(n) : t >= 0 && t < 1 ? '¡YA!' : '';
       if (txt !== ultimaCuenta) {
         ultimaCuenta = txt;
         $('[data-cuenta]').innerHTML = txt ? `<span>${txt}</span>` : '';
@@ -544,6 +571,7 @@ function abrirSala(code) {
       if (entrada.golpe && puedeMover) pegar(tp);
       entrada.golpe = false;
       const otros = [...remotos.entries()].filter(([id]) => enJuego(id)).map(([, r]) => r.obj);
+      if (enRonda) for (const b of botsRonda) otros.push(posBot(mapa, b.ruta, tp, semilla));
       if (fase === 'lobby') charlasLobby.forEach((_, i) => otros.push(posLobby(i)));
       acumulado += dt;
       while (acumulado >= 1 / 60) {
@@ -607,7 +635,7 @@ function abrirSala(code) {
         escena.personaje(id, lookBot(b.npc), nombreBot(b.i));
         const e = posBot(mapa, b.ruta, tp, semilla);
         if ((golpeados.get(id) || 0) > ahora) e.a = (golpeados.get(id) - ahora > 1250 ? 'golpe' : 'tirado');
-        else if (enRonda) botPega(b, e, ahora);
+        else if (fase === 'carrera') botPega(b, e, ahora);
         escena.mover(id, e, dt);
         // cuando llega a la meta, festeja (o se queja si no clasificó)
         if (!b.llego && tp >= b.ruta.fin) {

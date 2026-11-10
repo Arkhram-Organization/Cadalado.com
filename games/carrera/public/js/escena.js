@@ -3,7 +3,14 @@ import * as THREE from '../vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
 import { MAPAS, estaticos, moviles, rng } from './pista.js';
 
-const PALETA = [0xff7eb6, 0x7aa2ff, 0xffd166, 0x9be15d, 0xf4f1ea, 0xc084fc];
+const PALETAS = {
+  1: [0xff6b84,0x61c8d0,0xffcd65,0x9be15d,0xf4f1ea,0x9a79df],
+  2: [0xf2a34c,0x4a718b,0x69c4c7,0xd3e17d,0xd5e4e8,0xc5739a],
+  3: [0xcb6ee5,0x657cda,0xc5f04a,0x7acbb8,0xf4f1ea,0xe99a58],
+  4: [0xff7166,0x388dd9,0xffd34e,0x4ed4c8,0xfff2dd,0xb776e8],
+  5: [0x5ce4d4,0x556b9c,0xf0a14c,0xa4b4c4,0xe5edf2,0xd56ebf],
+};
+const CIELOS = {1:0x8fd3ff,2:0x9cc5d2,3:0xb8a3e8,4:0x7cc9fa,5:0x839bbd};
 
 function texturaRayas(c1, c2, n = 8, vertical = false) {
   const cv = document.createElement('canvas');
@@ -105,7 +112,7 @@ export class Escena {
     const agua = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshStandardMaterial({ color: 0x2f9bea, roughness: 0.25, metalness: 0.1 }));
     agua.rotation.x = -Math.PI / 2;
     agua.position.y = -14;
-    this.scene.add(agua);
+    this.scene.add(agua); this.agua = agua;
     const r = rng(7);
     const nube = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
     for (let i = 0; i < 30; i++) {
@@ -140,9 +147,13 @@ export class Escena {
     this.mapaId = mapaId;
     this.semilla = semilla;
     const mapa = MAPAS[mapaId];
+    const cielo = CIELOS[mapaId] || CIELOS[1];
+    this.scene.background = new THREE.Color(cielo);
+    this.scene.fog.color.setHex(cielo);
+    this.agua.material.color.setHex(mapaId === 5 ? 0x355679 : mapaId === 3 ? 0x605eb3 : 0x2f9bea);
     const est = estaticos(mapaId);
     const g = new THREE.Group();
-    const mats = PALETA.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55 }));
+    const mats = PALETAS[mapaId].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55 }));
     for (const c of est.cajas) {
       const m = new THREE.Mesh(new THREE.BoxGeometry(c.w, c.h, c.d), mats[c.c]);
       m.position.set(c.x, c.y, c.z);
@@ -185,6 +196,23 @@ export class Escena {
       f.position.set(c.x, 0.02 + (c.y - 2.2), c.z + 1);
       g.add(f);
     }
+    // Pórticos y banderines al costado de la pista marcan cada sector y le dan identidad al mapa.
+    const acento = new THREE.MeshStandardMaterial({ color: PALETAS[mapaId][0], emissive: PALETAS[mapaId][0], emissiveIntensity: 0.23, roughness: 0.5 });
+    for (const cp of mapa.CHECKPOINTS.slice(1)) {
+      for (const lado of [-1, 1]) {
+        const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.19, 4, 10), acento);
+        poste.position.set(lado * 9.5, cp.y + 2, cp.z);
+        g.add(poste);
+        const bandera = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 0.07), mats[(mapaId + (lado + 1)) % mats.length]);
+        bandera.position.set(lado * 8.7, cp.y + 3.25, cp.z);
+        g.add(bandera);
+      }
+      const rotulo = cartel(cp.nombre.toUpperCase(), '#fff');
+      rotulo.position.set(0, cp.y + 5.5, cp.z);
+      g.add(rotulo);
+    }
+    const titulo = cartel(mapa.nombre.toUpperCase(), '#c5f04a');
+    titulo.scale.set(7, 1.8, 1); titulo.position.set(0, 6.4, -4); g.add(titulo);
     // largada a rayas
     const largada = new THREE.Mesh(new THREE.PlaneGeometry(16, 2), new THREE.MeshStandardMaterial({ map: texturaRayas('#ffffff', '#ff4fa3', 16) }));
     largada.rotation.x = -Math.PI / 2;

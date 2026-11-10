@@ -171,7 +171,7 @@ function mesa(code) {
       <span class="saldo" data-saldo>—</span>
     </div>
     <div class="mesa-cuerpo">
-      <section data-zona><div class="pano" style="min-height:420px;display:grid;place-items:center;color:#fff">Sentándote a la mesa…</div></section>
+      <section data-zona><div class="casino-cargando" role="status"><span class="casino-cargando-ficha">D</span><b>Entrando al casino</b><small>Preparando tu lugar en la mesa…</small></div></section>
       <aside class="panel chat"><h3>Charla de la mesa</h3><div class="chat-log" data-log></div>
         <form data-chat><input class="entrada" maxlength="280" placeholder="Escribí algo…" autocomplete="off"><button class="btn btn-chico btn-lima">Enviar</button></form></aside>
     </div>
@@ -179,6 +179,7 @@ function mesa(code) {
   const $ = (s) => app.querySelector(s);
   let est = null;
   let modulo = null;
+  let inicializado = false;
   let saldo = null;
   let saldoMostrado = null;
 
@@ -208,6 +209,18 @@ function mesa(code) {
     },
   };
 
+  const montarTipo = (tipo) => {
+    $('[data-zona]').innerHTML = '';
+    if (tipo === 'blackjack') {
+      app.querySelector('.mesa').classList.add('mesa-bj');
+      document.body.classList.add('casino-full');
+      limpiar.push(() => document.body.classList.remove('casino-full'));
+    }
+    modulo = TIPO[tipo].montar($('[data-zona]'), helpers);
+  };
+  // Las mesas públicas tienen tipo conocido: la escena se dibuja desde el primer instante.
+  if (PUBLICAS.some((m) => m.code === code && m.tipo === 'blackjack')) montarTipo('blackjack');
+
   $('[data-copiar]').onclick = async () => {
     try { await navigator.clipboard.writeText(location.href); } catch {}
     toast('Link de la mesa copiado');
@@ -223,15 +236,9 @@ function mesa(code) {
     intervalo: (e) => (e?.tipo === 'slots' ? 2500 : 900),
     onEstado: (e) => {
       est = e;
-      if (!modulo) {
-        $('[data-zona]').innerHTML = '';
-        // el blackjack ocupa toda la pantalla (mesa 3D de fondo y todo lo demás encima)
-        if (e.tipo === 'blackjack') {
-          app.querySelector('.mesa').classList.add('mesa-bj');
-          document.body.classList.add('casino-full');
-          limpiar.push(() => document.body.classList.remove('casino-full'));
-        }
-        modulo = TIPO[e.tipo].montar($('[data-zona]'), helpers);
+      if (!modulo) montarTipo(e.tipo);
+      if (!inicializado) {
+        inicializado = true;
         document.title = `${e.nombre} · El casino de Dobro`;
         recordar('casino', `/casino/mesa/${code}`, e.nombre);
       }

@@ -3,6 +3,7 @@
 import { api, esc, toast } from './comun.js';
 import { avatarSvg, lookDeNombre } from '/comun/avatar.js';
 import { lookParaDibujo } from '/comun/look.js';
+import { JUEGOS } from './datos.js';
 
 const PID_KEY = 'cadalado.pid'; // el mismo que usan los juegos
 function pid() {
@@ -25,6 +26,7 @@ const SALAS = {
   carrera: (o) => ({ api: '/api/carrera/crear', url: '/carrera/sala/', opciones: { bots: 5, publica: false, ...o } }),
   memes: (o) => ({ api: '/api/memes/crear', url: '/memes/sala/', opciones: { bots: 2, publica: false, ...o } }),
   haxball: (o) => ({ api: '/api/haxball/crear', url: '/haxball/sala/', opciones: { bots: 1, publica: false, ...o } }),
+  casino: (o) => ({ api: '/api/casino/crear', url: '/casino/mesa/', opciones: { tipo: 'blackjack', publica: false, ...o } }),
 };
 
 export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
@@ -65,7 +67,7 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
         invitacion(inv);
       }
       // el líder arrancó: se van todos
-      if (grupo?.ir && grupo.ir.ts !== irVisto && !grupo.soyLider && Date.now() - grupo.ir.ts < 30_000) {
+      if (grupo?.ir && grupo.ir.ts !== irVisto && !grupo.soyLider && location.pathname !== grupo.ir.url) {
         irVisto = grupo.ir.ts;
         toast('¡Arranca el juego! Te llevamos con tu lobby…');
         setTimeout(() => (location.href = grupo.ir.url), 900);
@@ -104,6 +106,13 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
           <button class="gr-btn" data-link>Copiar link de invitación</button>
           ${grupo.miembros.length > 1 ? '<button class="gr-btn" data-salir>Salir de la lobby</button>' : ''}
         </div>
+        ${grupo.miembros.length > 1 ? `<div class="gr-config"><h3>Próxima partida</h3><p>${grupo.soyLider ? 'Elegí el juego y prepará la sala para toda tu lobby.' : 'El líder elige el juego y configura la sala. Vas a entrar con el grupo.'}</p>
+          <label>Juego<select class="gr-select" data-gr-juego ${grupo.soyLider ? '' : 'disabled'}>${JUEGOS.filter(j=>j.estado==='disponible').map(j=>`<option value="${j.id}" ${grupo.juego===j.id?'selected':''}>${esc(j.nombre)}</option>`).join('')}</select></label>
+          ${grupo.juego==='casino'?`<label>Mesa<select class="gr-select" data-gr-config="tipo" ${grupo.soyLider?'':'disabled'}>${[['blackjack','Blackjack'],['ruleta','Ruleta'],['slots','Tragamonedas']].map(([id,n])=>`<option value="${id}" ${grupo.config?.tipo===id?'selected':''}>${n}</option>`).join('')}</select></label>`:''}
+          ${['royale','carrera','memes','haxball'].includes(grupo.juego)?`<label>Bots<input class="gr-select" type="number" min="0" max="${grupo.juego==='royale'?15:grupo.juego==='haxball'?8:15}" value="${grupo.config?.bots??0}" data-gr-config="bots" ${grupo.soyLider?'':'disabled'}></label>`:''}
+          ${grupo.juego==='haxball'?`<label>Minutos<input class="gr-select" type="number" min="0" max="30" value="${grupo.config?.minutos??3}" data-gr-config="minutos" ${grupo.soyLider?'':'disabled'}></label><label>Goles para ganar<input class="gr-select" type="number" min="0" max="30" value="${grupo.config?.goles??3}" data-gr-config="goles" ${grupo.soyLider?'':'disabled'}></label>`:''}
+          ${grupo.soyLider?'<button class="gr-btn lima" data-gr-jugar>Armar sala y entrar todos</button>':'<span class="gr-vacio">Esperando al líder…</span>'}
+        </div>`:''}
       </section>
       <section><h3>Amigos</h3>
         ${usuario ? (amigos.length ? amigos.map((a) => `<div class="gr-fila">${cara(a)}<div class="gr-txt"><b>${esc(a.nombre)}</b><small>${a.grupo ? (a.grupo.id === grupo.id ? 'En tu lobby' : `En una lobby de ${a.grupo.miembros.length}`) : a.enLinea ? 'En línea' : 'Desconectado'}</small></div>
@@ -116,6 +125,9 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
       </section>`;
     panel.querySelector('[data-cerrar]').onclick = () => mostrar(false);
     panel.querySelector('[data-abierto]')?.addEventListener('change', (e) => accion({ accion: 'abierto', valor: e.target.checked }));
+    panel.querySelector('[data-gr-juego]')?.addEventListener('change',e=>accion({accion:'juego',juego:e.target.value}));
+    panel.querySelectorAll('[data-gr-config]').forEach(el=>el.addEventListener('change',()=>accion({accion:'config',[el.dataset.grConfig]:el.type==='number'?Number(el.value):el.value})));
+    panel.querySelector('[data-gr-jugar]')?.addEventListener('click',()=>jugar(grupo.juego,JUEGOS.find(j=>j.id===grupo.juego)?.url||'/'));
     panel.querySelector('[data-link]').onclick = () => { navigator.clipboard?.writeText(link); toast('Link copiado: el que lo abra entra a tu lobby.'); };
     panel.querySelector('[data-salir]')?.addEventListener('click', () => accion({ accion: 'salir' }));
     panel.querySelectorAll('[data-echar]').forEach((b) => (b.onclick = () => accion({ accion: 'echar', nombre: b.dataset.echar })));
@@ -127,16 +139,16 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
   async function jugar(juego, urlBase) {
     if (!grupo || grupo.miembros.length < 2) return irA(urlBase);
     if (!grupo.soyLider) return toast('Arranca el líder de la lobby.', true);
+    if(grupo.juego!==juego && !await accion({accion:'juego',juego}))return;
     let url = urlBase;
-    const s = SALAS[juego]?.({});
+    const s = SALAS[juego]?.(grupo.config||{});
     if (s) {
       try {
         const { code } = await api(s.api, { pid: pid(), nombre: yo().nombre, opciones: s.opciones });
         url = s.url + code;
       } catch (e) { return toast(e.message, true); }
     }
-    await accion({ accion: 'jugar', url });
-    irA(url);
+    if (await accion({ accion: 'jugar', url })) irA(url);
   }
 
   // entrar con un link de invitación (?lobby=CODIGO)

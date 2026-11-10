@@ -8,11 +8,11 @@
 export const JUEGOS = [
   {
     id: 'royale',
-    nombre: 'Último en pie',
+    nombre: 'Battle Shmitz',
     estado: 'disponible',
     nuevo: true,
     url: '/royale/',
-    linea: 'Battle royale 3D con inventario y personajes animados: armas, botín, una zona que se achica y el último que queda gana.',
+    linea: 'Saltá del colectivo, explorá ocho lugares, juntá botín y construí para ser quien gane Battle Shmitz.',
     datos: [['Jugadores', 'Hasta 24, con bots'], ['Modalidad', 'Online, tiempo real'], ['Partida', '3 a 6 min']],
     color: '#ff6b5b',
     captura: '/img/royale-poster-chico.webp',
@@ -119,7 +119,7 @@ export const EQUIPO = [
 ];
 
 export const NOVEDADES = [
-  { etiqueta: 'Nuevo', titulo: 'Último en pie', texto: 'Battle royale 3D con inventario y personajes animados con los personajes de cadalado.', juego: 'royale' },
+  { etiqueta: 'Nuevo', titulo: 'Battle Shmitz', texto: 'Colectivo, ocho lugares, cofres, construcción y partidas con amigos y bots.', juego: 'royale' },
   { etiqueta: 'Nuevo', titulo: 'Ángeles Peña', texto: 'Obstáculos en 3D, en tiempo real y con bots para llenar la largada.', juego: 'carrera' },
   { etiqueta: 'Nuevo', titulo: 'El casino de Dobro', texto: 'Ruleta, blackjack y tragamonedas con pozo compartido. Fichas de mentira.', juego: 'casino' },
   { etiqueta: 'Nuevo', titulo: 'Make it Meme', texto: '100 plantillas, textos donde quieras y votación anónima.', juego: 'memes' },

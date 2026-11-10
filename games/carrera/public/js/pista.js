@@ -212,8 +212,52 @@ const M3 = {
   ],
 };
 
-export const MAPAS = { 1: M1, 2: M2, 3: M3 };
-export const ORDEN_RONDAS = [1, 2, 3];
+// Dos recorridos adicionales con obstáculos y ambientación propios.
+const M4 = {
+  ...M1, id: 4, nombre: 'Carnaval del cielo', tema: 'carnaval',
+  estaticos() {
+    const e = M1.estaticos();
+    e.cajas = e.cajas.map(c => ({ ...c, c: [5, 2, 3, 0, 1, 4][c.c] ?? c.c }));
+    e.cajas.push(caja(-6, 0.5, -34, 2, 1, 3, 5), caja(6, 0.5, -88, 2, 1, 3, 5));
+    return e;
+  },
+  moviles(t, semilla) {
+    const m = M1.moviles(t, semilla);
+    m.barras.push({ x: 0, y: 0.55, z: -115, ang: -1.25 * t + 0.7, w: -1.25, largo: 6.5, r: 0.35 });
+    return m;
+  },
+};
+const M5 = {
+  ...M2, id: 5, nombre: 'Fábrica de nubes', tema: 'fabrica',
+  estaticos() {
+    const e = M2.estaticos();
+    e.cajas = e.cajas.map(c => ({ ...c, c: [1, 4, 5, 2, 0, 3][c.c] ?? c.c }));
+    e.cajas.push(caja(-6, 0.6, -68, 1.2, 1.2, 2, 4), caja(6, 0.6, -125, 1.2, 1.2, 2, 4));
+    return e;
+  },
+  moviles(t, semilla) {
+    const m = M2.moviles(t, semilla);
+    m.martillos.push(pendulo(-121, 1.2, fases(semilla, 12)[10], t, 7));
+    return m;
+  },
+};
+export const MAPAS = { 1: M1, 2: M2, 3: M3, 4: M4, 5: M5 };
+export const ORDEN_RONDAS = Object.keys(MAPAS).map(Number);
+
+export function ordenLargada(personas, bots) {
+  const orden = [];
+  for (let i = 0; i < Math.max(personas.length, bots.length); i++) {
+    if (i < personas.length) orden.push(personas[i]);
+    if (i < bots.length) orden.push('bot' + bots[i]);
+  }
+  return orden;
+}
+export function posLargada(indice, total) {
+  const columnas = Math.min(8, Math.max(1, total));
+  const fila = Math.floor(indice / columnas);
+  const enFila = Math.min(columnas, total - fila * columnas);
+  return { x: (indice % columnas - (enFila - 1) / 2) * 1.8, y: 0, z: -3 + fila * 2.1 };
+}
 
 const cacheF = new Map();
 function fases(semilla, n) {
@@ -240,14 +284,14 @@ export const moviles = (mapaId, t, semilla) => {
 // ---------------------------------------------------------------- bots
 // Cada bot recorre la ruta del mapa con su velocidad, a veces se cae o lo golpean.
 // Son más lentos que una persona (6.4 m/s): se les puede ganar, pero no son malos.
-export function rutaBot(mapaId, semilla, i) {
+export function rutaBot(mapaId, semilla, i, salida = i, total = Math.max(8, i + 1)) {
   const mapa = MAPAS[mapaId];
   const r = rng((semilla * 31 + i * 7919 + mapaId * 104729) >>> 0);
   const v = 5.3 + r() * 1.0; // bots más rápidos: hay que correr de verdad
   let carril = (r() - 0.5) * 6;
   const segs = [];
   let t = 0;
-  let pos = { x: carril, y: 0, z: -3 - r() * 4 };
+  let pos = posLargada(salida, total);
   const yDe = (y, z) => (y === 'rampa' ? alturaRampa(mapa.rampa, Math.max(mapa.rampa.z1, Math.min(mapa.rampa.z0, z))) : y ?? pos.y);
   const seg = (b, dur, tipo) => {
     segs.push({ t0: t, t1: t + dur, a: { ...pos }, b, tipo });
@@ -305,6 +349,12 @@ export function rutaBot(mapaId, semilla, i) {
       for (let k = 1; k <= tramos; k++) {
         const z = z0 + ((p.ir - z0) * k) / tramos;
         let x = fijo ? carril : Math.max(-lim, Math.min(lim, (pos.x ?? 0) * 0.5 + carril * 0.5 + (r() - 0.5) * 3.2));
+        // Tomar el carril antes de llegar a una columna sólida evita que el NPC la atraviese.
+        for (const c of estaticos(mapaId).cajas) {
+          const top = c.y + c.h / 2, bottom = c.y - c.h / 2;
+          if (top <= 0.7 || bottom >= 1.8 || c.w >= 9 || Math.abs(z - c.z) > c.d / 2 + 4) continue;
+          if (Math.abs(x - c.x) < c.w / 2 + 0.85 || (pos.x - c.x) * (x - c.x) < 0) x = Math.max(-lim, Math.min(lim, c.x + ((pos.x || carril) >= c.x ? 1 : -1) * (c.w / 2 + 1.1)));
+        }
         if (k === tramos && !fijo) x = Math.max(-lim, Math.min(lim, x));
         const destino = { x, y: yDe(p.y, z), z };
         const d = Math.hypot(destino.x - (pos.x ?? 0), destino.z - (pos.z ?? 0));
@@ -339,8 +389,12 @@ export function posBot(mapaId, ruta, t, semilla) {
   const z = a.z + (b.z - a.z) * k;
   let y = a.y + (b.y - a.y) * k;
   if (s.tipo === 'salto') y += Math.sin(k * Math.PI) * (s.t1 - s.t0 > 0.8 ? 2.4 : 1.6);
+  // Saltitos al correr, además de los saltos grandes entre plataformas.
+  const faseBrinco = t * 1.6 + ruta.v;
+  const brinca = s.tipo === 'camina' && Math.abs(b.z - a.z) > 1.5 && Math.abs(b.y - a.y) < 0.05 && Math.floor(faseBrinco) % 3 === 0;
+  if (brinca) y += Math.sin((faseBrinco % 1) * Math.PI) * 0.45;
   if (s.tipo === 'cae') y -= Math.min(8, k * 14);
   const ry = Math.atan2(-(b.x - a.x), -(b.z - a.z)) || 0;
-  const anim = t > ruta.fin ? 'festeja' : s.tipo === 'salto' ? 'salto' : s.tipo === 'golpe' || s.tipo === 'cae' ? 'golpe' : s.tipo === 'tirado' ? 'tirado' : s.tipo === 'camina' ? 'corre' : 'quieto';
+  const anim = t > ruta.fin ? 'festeja' : s.tipo === 'salto' || brinca ? 'salto' : s.tipo === 'golpe' || s.tipo === 'cae' ? 'golpe' : s.tipo === 'tirado' ? 'tirado' : s.tipo === 'camina' ? 'corre' : 'quieto';
   return { x, y, z, ry: s.tipo === 'camina' || s.tipo === 'salto' ? ry : 0, a: anim };
 }
