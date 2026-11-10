@@ -2,6 +2,7 @@
 
 /* ---------- salón ---------- */
 .salon { max-width: 1160px; margin: 0 auto; padding: 30px 16px 70px; }
+.salon .menu-fondo::after { background: linear-gradient(180deg, rgba(20, 6, 8, .72) 0%, rgba(20, 6, 8, .45) 40%, rgba(20, 6, 8, .85) 100%); }
 .salon-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
 .salon-hero h1 { font-size: clamp(44px, 7vw, 86px); }
 .salon-hero h1 em { font-style: normal; color: var(--oro); }
@@ -265,12 +266,6 @@ button.lugar:hover { border-color: var(--oro); color: var(--oro); }
 
 /* salón con alfombra roja y luces doradas */
 .salon { position: relative; }
-.salon::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(circle at 15% 10%, rgba(242,201,76,.25) 0 120px, transparent 121px),
-    radial-gradient(circle at 85% 18%, rgba(242,201,76,.18) 0 160px, transparent 161px),
-    repeating-linear-gradient(45deg, rgba(0,0,0,.08) 0 2px, transparent 2px 14px),
-    radial-gradient(ellipse at 50% 0%, #8a1325, #3a0710 70%, #1d0408); }
 .salon-hero h1 { text-shadow: 0 4px 0 #000, 0 0 30px rgba(242,201,76,.35); }
 .salon-hero p { color: #f3d9c0; }
 .mesa-card { border: 3px solid var(--oro); }

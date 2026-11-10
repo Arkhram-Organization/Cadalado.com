@@ -1,6 +1,7 @@
 import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { avatarSvg, lookDeId, lookDeNombre, lookDeJugador } from '/comun/avatar.js';
 import { PLANTILLAS } from './plantillas.js';
+import { fondoMenu } from '/comun/fondo-menu.js';
 
 const PL = new Map(PLANTILLAS.map((p) => [p.id, p]));
 const app = document.querySelector('#app');
@@ -109,6 +110,7 @@ function menu() {
         : '<div class="vacio">No hay salas abiertas. ¡Armá la primera!</div>';
     } catch {}
   };
+  limpiar.push(fondoMenu(app.querySelector('.menu'), { imagen: '/img/memes-poster.webp' }));
   cargar();
   const t = setInterval(cargar, 5000);
   limpiar.push(() => clearInterval(t));

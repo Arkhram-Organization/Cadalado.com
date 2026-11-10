@@ -6,6 +6,7 @@ import { avatarSvg } from '/comun/avatar.js';
 import { GESTOS } from '/comun/gestos.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { Escena } from './escena.js';
+import { fondoMenu } from '/comun/fondo-menu.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
 import { Red } from './red.js';
 import { rutaBot, posBot, ordenLargada, posLargada, COLORES, MAPAS, LIMITE_S } from './pista.js';
@@ -36,6 +37,28 @@ function ruteo() {
 }
 
 // ---------------------------------------------------------------- menú
+// Fondo del menú: la pista con el elenco corriendo, frenada en el medio de la carrera (como en pausa)
+function carreraDeFondo(canvas) {
+  const esc3 = new Escena(canvas);
+  esc3.construirMapa(1, 7);
+  esc3.actualizarMoviles(4.2);
+  const corredores = ['angeles', 'julo', 'olcho', 'glinsky', 'mati', 'faur', 'volcho', 'dobro'];
+  corredores.forEach((n, i) => {
+    const p = esc3.personaje('f' + n, { ...POR_ID[n]?.look }, POR_ID[n]?.nombre || '');
+    p.listo?.then(() => { for (let k = 0; k < 18; k++) p.animar('corre', 0.033 + i * 0.002); pintar(); });
+    esc3.mover('f' + n, { x: -5 + (i % 4) * 3.3 + Math.sin(i) * 0.6, y: 0, z: -10 - Math.floor(i / 4) * 3.4 - (i % 2) * 1.4, ry: Math.PI, a: 'corre' }, 0.2);
+  });
+  const pintar = () => {
+    esc3.redimensionar();
+    esc3.camara.position.set(9, 7.5, 2.5); esc3.camara.lookAt(-2, 0.5, -18);
+    esc3.sol.position.set(20, 40, 0); esc3.sol.target.position.set(0, 0, -15);
+    esc3.render(0);
+  };
+  pintar();
+  addEventListener('resize', pintar);
+  return () => { removeEventListener('resize', pintar); esc3.destruir(); };
+}
+
 function menu() {
   document.title = 'Ángeles Peña · cadalado';
   app.innerHTML = `
@@ -86,6 +109,7 @@ function menu() {
         : '<div class="vacio">No hay partidas abiertas. ¡Armá una!</div>';
     } catch {}
   };
+  limpiar.push(fondoMenu(app.querySelector('.menu'), { dibujar: carreraDeFondo }));
   cargar();
   const t = setInterval(cargar, 5000);
   limpiar.push(() => clearInterval(t));

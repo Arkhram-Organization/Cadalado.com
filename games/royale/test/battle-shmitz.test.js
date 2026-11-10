@@ -16,7 +16,10 @@ test('geografía fija, ocho lugares separados y botín variable por semilla', ()
     const x = LUGARES[i], y = LUGARES[j];
     assert.ok(x.x + x.w <= y.x || y.x + y.w <= x.x || x.y + x.h <= y.y || y.y + y.h <= x.y, `${x.nombre} y ${y.nombre} se pisan`);
   }
-  assert.ok(a.botin.filter(x => x.tipo === 'cofre' && x.x >= 65*16 && x.x < 95*16 && x.y >= 64*16 && x.y < 94*16).length >= 6);
+  const q = LUGARES.find(l => l.id === 'queque');
+  const cofresQueque = a.botin.filter(x => x.tipo === 'cofre' && x.x >= q.x*16 && x.x < (q.x+q.w)*16 && x.y >= q.y*16 && x.y < (q.y+q.h)*16).length;
+  assert.ok(cofresQueque >= 6, `cofres en el Queque: ${cofresQueque}`);
+  for (const l of LUGARES) assert.ok(a.botin.some(x => x.tipo === 'cofre' && x.x >= l.x*16 && x.x < (l.x+l.w)*16 && x.y >= l.y*16 && x.y < (l.y+l.h)*16), `sin cofres en ${l.nombre}`);
   assert.notDeepEqual(zona(123, 80), zona(456, 80));
 });
 

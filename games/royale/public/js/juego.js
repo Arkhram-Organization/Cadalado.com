@@ -3,6 +3,8 @@ import { ARMAS, VIDA, ESCUDO_MAX, LADO, danoRareza, RAREZAS, moverCirculo, choqu
 import { CASILLEROS, OBJETOS, recoger, comenzarUso, avanzarUso } from './inventario.js';
 
 export const RADIO = 5;
+export const ALTURA_SALTO = 100;
+export const ALTURA_PLANEADOR = 34;
 const VEL = 78; // px/s
 const VEL_AGUA = 44;
 export const CODIGO_ARMA = { pistola: 'p', subfusil: 's', escopeta: 'e', rifle: 'r', francotirador: 'f', rpg: 'g' };
@@ -84,24 +86,29 @@ export class Peleador {
     this.y = p.y;
     this.nivel = (mundo.construcciones || []).some(pieza => pieza.vida > 0 && pieza.tipo === 'escalera' && Math.abs(pieza.x - this.x) < 16 && Math.abs(pieza.y - this.y) < 16) ? 1 : 0;
   }
-  subirColectivo() { this.enColectivo = true; this.altura = 85; this.paracaidas = false; }
+  subirColectivo() { this.enColectivo = true; this.altura = ALTURA_SALTO; this.paracaidas = false; }
   saltar(x, y) {
     if (!this.enColectivo) return false;
     this.enColectivo = false; this.x = x; this.y = y;
-    this.altura = 85; this.paracaidas = false;
+    this.altura = ALTURA_SALTO; this.paracaidas = false;
     return true;
   }
-  caer(dt, dx = 0, dy = 0) {
+  // Caída libre y después el planeador (se abre solo cerca del piso o con Espacio).
+  // Al tocar el piso se cierra y devuelve true.
+  caer(dt, dx = 0, dy = 0, abrir = false) {
     if (this.enColectivo || this.altura <= 0) return false;
+    if ((abrir && this.altura < ALTURA_SALTO - 12) || this.altura <= ALTURA_PLANEADOR) this.paracaidas = true;
     const n = Math.hypot(dx, dy);
-    const vel = this.paracaidas ? 76 : 115;
+    const vel = this.paracaidas ? 82 : 128;
     if (n > .1) {
       this.x = Math.max(8, Math.min(LADO - 8, this.x + dx / n * vel * dt));
       this.y = Math.max(8, Math.min(LADO - 8, this.y + dy / n * vel * dt));
+      this.ang = Math.atan2(dy, dx);
     }
-    if (this.altura <= 30) this.paracaidas = true;
-    this.altura = Math.max(0, this.altura - (this.paracaidas ? 13 : 31) * dt);
-    return this.altura === 0;
+    this.mueve = n > .1;
+    this.altura = Math.max(0, this.altura - (this.paracaidas ? 11 : 27) * dt);
+    if (this.altura === 0) { this.paracaidas = false; this.mueve = false; return true; }
+    return false;
   }
   // Intenta disparar: devuelve la lista de balas nuevas (o []).
   disparar(rnd = Math.random) {

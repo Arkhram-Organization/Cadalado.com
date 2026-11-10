@@ -3,7 +3,7 @@
 export const BALDOSA = 16;
 export const TAM = 160;
 export const LADO = TAM * BALDOSA; // 2560 px
-export const T = { AGUA: 0, ARENA: 1, PASTO: 2, PISO: 3, PARED: 4, CAMINO: 5 };
+export const T = { AGUA: 0, ARENA: 1, PASTO: 2, PISO: 3, PARED: 4, CAMINO: 5, TIERRA: 6, PLAZA: 7, MADERA: 8 };
 export const SOLIDO = (t) => t === T.PARED;
 
 export function rng(semilla) {
@@ -62,21 +62,41 @@ export const MATERIALES = Object.freeze({ madera: { nombre: 'Madera', color: '#b
 export const VIDA = 100;
 export const ESCUDO_MAX = 100;
 
-// Los rectángulos no se pisan. Coordenadas en baldosas; la geografía no depende de la semilla.
+// ---------------------------------------------------------------- la isla de Battle Shmitz
+// Geografía fija (igual en todas las partidas); lo que cambia con la semilla es el botín y la zona.
+// Coordenadas de los lugares en baldosas. Los rectángulos no se pisan.
 export const LUGARES = Object.freeze([
-  { id: 'queque', nombre: 'El reino del Queque', corto: 'Queque', x: 65, y: 64, w: 30, h: 30, estilo: 'ciudad', botin: 5 },
-  { id: 'asman', nombre: 'El despacho de Asman', corto: 'Asman', x: 107, y: 43, w: 22, h: 22, estilo: 'oficinas', botin: 3 },
-  { id: 'angeles', nombre: 'Ángeles angieados', corto: 'Ángeles', x: 27, y: 43, w: 27, h: 24, estilo: 'barrio', botin: 3 },
-  { id: 'kiwi', nombre: 'Kiwi', corto: 'Kiwi', x: 33, y: 109, w: 27, h: 24, estilo: 'granja', botin: 2 },
-  { id: 'fondeana', nombre: 'Ciudad Fondeana', corto: 'Fondeana', x: 112, y: 105, w: 28, h: 23, estilo: 'puerto', botin: 3 },
-  { id: 'templo', nombre: 'El templo', corto: 'Templo', x: 68, y: 24, w: 24, h: 22, estilo: 'templo', botin: 3 },
-  { id: 'macabies', nombre: 'Macabíes macabros', corto: 'Macabíes', x: 73, y: 116, w: 29, h: 25, estilo: 'estadio', botin: 3 },
-  { id: 'vasquito', nombre: 'El Vasquito', corto: 'Vasquito', x: 17, y: 80, w: 23, h: 20, estilo: 'ruta', botin: 2 },
+  { id: 'queque', nombre: 'El reino del Queque', corto: 'Queque', x: 59, y: 59, w: 42, h: 40, estilo: 'ciudad', botin: 4 },
+  { id: 'templo', nombre: 'El templo', corto: 'Templo', x: 66, y: 13, w: 28, h: 25, estilo: 'templo', botin: 3 },
+  { id: 'asman', nombre: 'El despacho de Asman', corto: 'Asman', x: 109, y: 33, w: 27, h: 27, estilo: 'oficinas', botin: 3 },
+  { id: 'angeles', nombre: 'Ángeles angieados', corto: 'Ángeles', x: 20, y: 32, w: 33, h: 28, estilo: 'barrio', botin: 3 },
+  { id: 'vasquito', nombre: 'El Vasquito', corto: 'Vasquito', x: 11, y: 72, w: 27, h: 24, estilo: 'ruta', botin: 2 },
+  { id: 'kiwi', nombre: 'Kiwi', corto: 'Kiwi', x: 24, y: 105, w: 35, h: 29, estilo: 'granja', botin: 2 },
+  { id: 'macabies', nombre: 'Macabíes macabros', corto: 'Macabíes', x: 65, y: 107, w: 36, h: 34, estilo: 'estadio', botin: 3 },
+  { id: 'fondeana', nombre: 'Ciudad Fondeana', corto: 'Fondeana', x: 110, y: 96, w: 38, h: 32, estilo: 'puerto', botin: 3 },
 ]);
 export function lugarEn(px, py) {
   const x = px / BALDOSA, y = py / BALDOSA;
-  return LUGARES.find(l => x >= l.x && y >= l.y && x < l.x + l.w && y < l.y + l.h) || null;
+  return LUGARES.find((l) => x >= l.x && y >= l.y && x < l.x + l.w && y < l.y + l.h) || null;
 }
+
+// Colores de cada estilo de edificio (paredes, techo y piso de adentro)
+const ESTILOS = {
+  torre: { color: '#c9bba6', techo: '#6c5a4f', piso: '#b9a58c' },
+  torre2: { color: '#e0d2b8', techo: '#8a4f3d', piso: '#c3ae93' },
+  torre3: { color: '#a9b8c6', techo: '#4d5a6b', piso: '#b8bcc0' },
+  pastel: { color: '#f2b5c4', techo: '#c45d7a', piso: '#e8d3b8' },
+  pastel2: { color: '#ffd3a8', techo: '#d0704f', piso: '#e9d5b5' },
+  pastel3: { color: '#c7e1f5', techo: '#5b86b8', piso: '#e3d7c0' },
+  vidrio: { color: '#8fb4cc', techo: '#3f5466', piso: '#c9cfd3' },
+  ladrillo: { color: '#b46a4c', techo: '#5b3a2e', piso: '#c9a27a' },
+  granero: { color: '#c0392b', techo: '#f2e9dc', piso: '#b98d5a' },
+  campo: { color: '#efe2c4', techo: '#7d5b3a', piso: '#c9a27a' },
+  piedra: { color: '#ddd3bd', techo: '#b8a77f', piso: '#d8ccb2' },
+  galpon: { color: '#8e9ba3', techo: '#5c6870', piso: '#a9a39a' },
+  tribuna: { color: '#5e4f66', techo: '#3c3044', piso: '#6b7d4e' },
+};
+const CONTENEDORES = ['#d35400', '#2e86c1', '#27ae60', '#c0392b', '#8e44ad', '#f1c40f'];
 
 const cache = new Map();
 export function generarMapa(semilla) {
@@ -84,151 +104,345 @@ export function generarMapa(semilla) {
   const terreno = rng(0x5b17cafe);
   const botines = rng(semilla ^ 0x15a1a);
   const costa = ruido(terreno, 12);
+  const bosque = ruido(terreno, 9);
   const t = new Uint8Array(TAM * TAM);
+  const alturas = new Uint8Array(TAM * TAM);
+  const rio = new Uint8Array(TAM * TAM);
   const idx = (x, y) => y * TAM + x;
+  const dentro = (x, y) => x >= 0 && y >= 0 && x < TAM && y < TAM;
+  const poner = (x, y, tipo) => { if (dentro(x, y)) t[idx(x, y)] = tipo; };
+  const rect = (x, y, w, h, tipo) => { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) poner(i, j, tipo); };
+  const lugar = (id) => LUGARES.find((l) => l.id === id);
+
+  // 1) costa
   for (let y = 0; y < TAM; y++) for (let x = 0; x < TAM; x++) {
     const ang = Math.atan2(y - 80, x - 80);
-    const radio = 71 + 4 * Math.sin(5 * ang) + 2 * Math.cos(9 * ang) + (costa(x / TAM, y / TAM) - .5) * 5;
+    const radio = 73 + 3.5 * Math.sin(5 * ang + 1) + 2 * Math.cos(7 * ang) + (costa(x / TAM, y / TAM) - 0.5) * 6;
     const d = Math.hypot(x - 80, y - 80);
-    t[idx(x, y)] = d > radio ? T.AGUA : d > radio - 4 ? T.ARENA : T.PASTO;
+    t[idx(x, y)] = d > radio ? T.AGUA : d > radio - 3.5 ? T.ARENA : T.PASTO;
   }
-  // Caminos anchos desde la ciudad central. Se dibujan antes de las construcciones.
-  const pintarCamino = (ax, ay, bx, by) => {
-    const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2);
-    for (let k = 0; k <= n; k++) {
-      const x = Math.round(ax + (bx - ax) * k / n), y = Math.round(ay + (by - ay) * k / n);
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
-        const xx = x + i, yy = y + j;
-        if (xx >= 0 && yy >= 0 && xx < TAM && yy < TAM && t[idx(xx, yy)] === T.PASTO) t[idx(xx, yy)] = T.CAMINO;
-      }
+  // los lugares siempre son tierra firme (menos el lado del mar del puerto)
+  for (const l of LUGARES) if (l.id !== 'fondeana') for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) if (t[idx(x, y)] === T.AGUA || t[idx(x, y)] === T.ARENA) t[idx(x, y)] = T.PASTO;
+
+  // 2) río (del norte al este) y laguna
+  const trazo = (puntos, fn) => {
+    for (let k = 0; k < puntos.length - 1; k++) {
+      const [ax, ay] = puntos[k], [bx, by] = puntos[k + 1];
+      const n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2);
+      for (let s = 0; s <= n; s++) fn(ax + (bx - ax) * s / n, ay + (by - ay) * s / n);
     }
   };
-  for (const l of LUGARES.slice(1)) pintarCamino(80, 79, l.x + l.w / 2, l.y + l.h / 2);
-  pintarCamino(20, 90, 135, 114);
+  trazo([[99, 2], [101, 16], [103, 30], [104, 44], [105, 58], [111, 70], [126, 79], [142, 85], [158, 88]], (x, y) => {
+    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) {
+      const xx = Math.round(x + i), yy = Math.round(y + j);
+      if (!dentro(xx, yy) || Math.hypot(i, j) > 1.9) continue;
+      if (LUGARES.some((l) => xx >= l.x && xx < l.x + l.w && yy >= l.y && yy < l.y + l.h)) continue;
+      t[idx(xx, yy)] = T.AGUA; rio[idx(xx, yy)] = 1;
+    }
+  });
+  for (let y = 64; y < 78; y++) for (let x = 40; x < 56; x++) {
+    const d = Math.hypot((x - 47.5) / 6.5, (y - 70.5) / 5);
+    if (d < 1) { t[idx(x, y)] = T.AGUA; rio[idx(x, y)] = 1; } else if (d < 1.35 && t[idx(x, y)] === T.PASTO) t[idx(x, y)] = T.ARENA;
+  }
+  // orillas del río con un poco de arena
+  for (let y = 1; y < TAM - 1; y++) for (let x = 1; x < TAM - 1; x++) if (t[idx(x, y)] === T.PASTO && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([i, j]) => rio[idx(x + i, y + j)])) t[idx(x, y)] = T.ARENA;
+
+  // 3) caminos: asfalto entre los lugares, tierra en los senderos; sobre el río, puentes de madera
+  const camino = (puntos, ancho = 3, tipo = T.CAMINO) => trazo(puntos, (x, y) => {
+    const r = (ancho - 1) / 2;
+    for (let j = -Math.ceil(r); j <= Math.ceil(r); j++) for (let i = -Math.ceil(r); i <= Math.ceil(r); i++) {
+      if (Math.abs(i) > r + 0.01 || Math.abs(j) > r + 0.01) continue;
+      const xx = Math.round(x + i), yy = Math.round(y + j);
+      if (!dentro(xx, yy)) continue;
+      const k = idx(xx, yy), actual = t[k];
+      if (rio[k]) t[k] = T.MADERA;
+      else if (actual === T.PASTO || actual === T.ARENA || actual === T.TIERRA || (actual === T.CAMINO && tipo === T.CAMINO)) t[k] = tipo;
+    }
+  });
+  camino([[80, 59], [80, 38]]); // al templo
+  camino([[100, 68], [106, 62], [113, 58], [122, 58]]); // a lo de Asman (puente)
+  camino([[59, 79], [44, 81], [38, 84]]); // al Vasquito
+  camino([[80, 98], [82, 107]]); // a Macabíes
+  camino([[100, 92], [110, 100], [116, 104]]); // al puerto
+  camino([[62, 61], [55, 54], [52, 47]]); // a Ángeles
+  camino([[24, 96], [30, 104], [36, 106]], 2, T.TIERRA);
+  camino([[58, 120], [65, 122]], 2, T.TIERRA);
+  camino([[100, 124], [110, 120]], 2, T.TIERRA);
+  camino([[30, 60], [26, 66], [24, 72]], 2, T.TIERRA);
+  camino([[66, 26], [52, 30], [42, 33]], 2, T.TIERRA);
+  camino([[94, 24], [104, 28], [112, 34]], 2, T.TIERRA); // puente norte
+
+  // 4) edificios
   const casas = [];
-  const alturas = new Uint8Array(TAM * TAM);
-  const casa = (l, x, y, w, h, color, altura = 1) => {
-    if (x < 2 || y < 2 || x + w >= TAM - 2 || y + h >= TAM - 2) return;
+  const obstaculos = [];
+  const decoraciones = [];
+  const edificio = (l, x, y, w, h, estilo, pisos = 1, { puertas = ['s', 'n'], tipo = 'casa', divisiones = [] } = {}) => {
+    const e = ESTILOS[estilo];
     for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) {
       const borde = i === x || j === y || i === x + w - 1 || j === y + h - 1;
       t[idx(i, j)] = borde ? T.PARED : T.PISO;
-      alturas[idx(i, j)] = altura;
+      alturas[idx(i, j)] = pisos;
     }
-    // Dos puertas enfrentadas mantienen comunicados los interiores y el resto de la isla.
-    const puerta = x + Math.floor(w / 2);
-    t[idx(puerta, y)] = T.PISO;
-    t[idx(puerta, y + h - 1)] = T.PISO;
-    casas.push({ x, y, w, h, color, altura, lugar: l.id });
+    const abrir = (i, j) => { t[idx(i, j)] = T.PISO; };
+    for (const p of puertas) {
+      const [lado, off] = typeof p === 'string' ? [p, 0.5] : p;
+      if (lado === 's' || lado === 'n') { const i = x + Math.max(1, Math.min(w - 3, Math.floor((w - 2) * off))); const j = lado === 'n' ? y : y + h - 1; abrir(i, j); abrir(i + 1, j); }
+      else { const j = y + Math.max(1, Math.min(h - 3, Math.floor((h - 2) * off))); const i = lado === 'o' ? x : x + w - 1; abrir(i, j); abrir(i, j + 1); }
+    }
+    // paredes de adentro con su puerta
+    for (const d of divisiones) {
+      if (d.x !== undefined) { for (let j = y + 1; j < y + h - 1; j++) t[idx(x + d.x, j)] = T.PARED; const p = y + Math.floor(h * (d.puerta ?? 0.5)); abrir(x + d.x, p); abrir(x + d.x, p + 1); }
+      else { for (let i = x + 1; i < x + w - 1; i++) t[idx(i, y + d.y)] = T.PARED; const p = x + Math.floor(w * (d.puerta ?? 0.5)); abrir(p, y + d.y); abrir(p + 1, y + d.y); }
+    }
+    const c = { x, y, w, h, color: e.color, techo: e.techo, piso: e.piso, altura: pisos, lugar: l?.id || null, tipo };
+    casas.push(c);
+    return c;
   };
-  for (const l of LUGARES) {
-    for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) {
-      if (t[idx(x, y)] === T.PASTO) t[idx(x, y)] = l.estilo === 'templo' || l.estilo === 'ciudad' || l.estilo === 'oficinas' ? T.PISO : T.CAMINO;
+  const bloque = (l, x, y, w, h, color) => { // contenedores y bloques macizos
+    for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) { t[idx(i, j)] = T.PARED; alturas[idx(i, j)] = 1; }
+    casas.push({ x, y, w, h, color, techo: color, piso: color, altura: 1, lugar: l.id, tipo: 'contenedor' });
+  };
+  const obstaculo = (x, y, tipo, extra = {}) => {
+    const base = { arbol: { r: 6, material: 'madera', vida: 80 }, roca: { r: 8, material: 'piedra', vida: 110 }, auto: { r: 9, material: 'metal', vida: 160 }, columna: { r: 4.5, material: 'piedra', vida: 200 }, silo: { r: 14, material: 'metal', vida: 400 }, surtidor: { r: 4, material: 'metal', vida: 90 }, monumento: { r: 21, material: 'piedra', vida: 99999 }, caja: { r: 6, material: 'madera', vida: 60 }, tractor: { r: 10, material: 'metal', vida: 220 } }[tipo];
+    obstaculos.push({ id: 'o' + obstaculos.length, x, y, tipo, ...base, tono: terreno(), ...extra });
+  };
+  const deco = (tipo, x, y, extra = {}) => decoraciones.push({ tipo, x, y, ...extra });
+  const px = (n) => (n + 0.5) * BALDOSA;
+
+  // El reino del Queque: la gran ciudad del centro, con el monumento al Queque en la plaza
+  {
+    const l = lugar('queque');
+    rect(l.x, l.y, l.w, l.h, T.PLAZA);
+    rect(l.x, 77, l.w, 4, T.CAMINO); // avenida este-oeste
+    rect(78, l.y, 4, l.h, T.CAMINO); // avenida norte-sur
+    for (const [x, y] of [[61, 67], [84, 67], [61, 88], [84, 88]]) rect(x, y, 15, 2, T.CAMINO);
+    rect(73, 72, 14, 14, T.PLAZA);
+    obstaculo(px(79.5), px(78.5), 'monumento');
+    for (const [x, y] of [[76.5, 75.5], [83, 75.5], [76.5, 82.5], [83, 82.5]]) deco('fuente', px(x), px(y));
+    const cuadras = [[61, 61], [84, 61], [61, 82], [84, 82]];
+    const estilos = ['torre', 'torre2', 'torre3', 'ladrillo'];
+    cuadras.forEach(([cx, cy], q) => {
+      const e = (k) => estilos[(q + k) % estilos.length];
+      edificio(l, cx, cy, 7, 6, e(0), 2 + (q % 2), { puertas: ['s', 'e'] });
+      edificio(l, cx + 9, cy, 6, 6, e(1), 3, { puertas: ['s', 'o'] });
+      edificio(l, cx, cy + 8, 15, 6, e(2), 2 + ((q + 1) % 3), { puertas: ['n', 's', 'o'], divisiones: [{ x: 7, puerta: 0.4 }] });
+    });
+    for (let x = l.x + 2; x < l.x + l.w - 1; x += 5) for (const y of [76, 81]) deco('farola', px(x), px(y));
+    for (let y = l.y + 2; y < l.y + l.h - 1; y += 5) for (const x of [77, 82]) deco('farola', px(x), px(y));
+    for (const [x, y, rot] of [[64, 78, 0], [96, 79, 0], [79, 64, 1], [80, 95, 1], [88, 78, 0], [70, 79, 0]]) obstaculo(px(x), px(y), 'auto', { rot: rot * Math.PI / 2 });
+    for (const [x, y] of [[75, 76], [84, 76], [75, 81], [84, 81]]) deco('banco', px(x), px(y));
+  }
+  // El templo: un templo de piedra con columnas en un patio
+  {
+    const l = lugar('templo');
+    rect(l.x + 1, l.y + 1, l.w - 2, l.h - 2, T.PLAZA);
+    edificio(l, 71, 16, 18, 13, 'piedra', 3, { puertas: ['s', 'n', 'o', 'e'], divisiones: [{ y: 6, puerta: 0.45 }] });
+    for (let x = 69; x <= 91; x += 4) { obstaculo(px(x), px(31.5), 'columna'); obstaculo(px(x), px(14), 'columna'); }
+    for (let y = 18; y <= 28; y += 5) { obstaculo(px(68), px(y), 'columna'); obstaculo(px(92), px(y), 'columna'); }
+    rect(78, 29, 4, 7, T.PLAZA);
+    for (let y = 31; y <= 35; y++) deco('escalon', px(79.5), px(y));
+    for (const [x, y] of [[70, 34], [90, 34], [69, 17], [91, 17]]) deco('arbusto', px(x), px(y), { tam: 1.4 });
+  }
+  // El despacho de Asman: dos torres de oficinas y el estacionamiento
+  {
+    const l = lugar('asman');
+    rect(l.x, l.y, l.w, l.h, T.PLAZA);
+    edificio(l, 111, 35, 15, 13, 'vidrio', 4, { puertas: ['s', ['s', 0.85], 'o', ['e', 0.3]], divisiones: [{ x: 7, puerta: 0.3 }, { y: 7, puerta: 0.25 }] });
+    edificio(l, 127, 35, 8, 9, 'torre3', 3, { puertas: ['s', 'o'] });
+    rect(111, 50, 24, 9, T.CAMINO);
+    for (let x = 112; x < 134; x += 3) { deco('raya', px(x), px(52.5), { w: 2, h: 40, color: '#e9e6dc' }); deco('raya', px(x), px(56.5), { w: 2, h: 40, color: '#e9e6dc' }); }
+    for (const [x, y] of [[113.5, 53], [119.5, 53], [128.5, 57], [122.5, 57], [131.5, 53]]) obstaculo(px(x), px(y), 'auto', { rot: Math.PI / 2 });
+    for (let x = 112; x < 135; x += 6) deco('farola', px(x), px(49));
+    deco('cartel', px(126), px(46), { texto: 'ASMAN' });
+  }
+  // Ángeles angieados: un barrio de casitas pastel con jardín y pileta
+  {
+    const l = lugar('angeles');
+    rect(l.x + 1, 45, l.w - 2, 3, T.CAMINO);
+    rect(36, l.y + 1, 3, l.h - 2, T.PLAZA);
+    const estilos = ['pastel', 'pastel2', 'pastel3'];
+    let k = 0;
+    for (const x of [22, 41]) for (const y of [34, 50]) {
+      const ancho = x === 22 ? 12 : 10;
+      edificio(l, x, y, ancho, 8, estilos[k % 3], 1 + (k % 2), { puertas: y === 34 ? ['s', 'n'] : ['n', 's'], divisiones: [{ x: Math.floor(ancho / 2), puerta: 0.5 }] });
+      if (k % 2 === 0) rect(x + 2, 43, 4, 1, T.AGUA); // pileta en el patio
+      k++;
     }
-    if (l.id === 'templo') {
-      casa(l, l.x + 5, l.y + 5, 14, 10, '#d6c5a3', 2);
-    } else if (l.id === 'macabies') {
-      casa(l, l.x + 4, l.y + 5, 21, 13, '#665965', 2);
-      for (let yy = l.y + 6; yy < l.y + 17; yy++) for (let xx = l.x + 5; xx < l.x + 24; xx++) if (t[idx(xx,yy)] === T.PISO) t[idx(xx,yy)] = T.PASTO;
-    } else if (l.id === 'vasquito') {
-      casa(l, l.x + 6, l.y + 5, 10, 8, '#ab7051');
-    } else {
-      const paso = l.id === 'queque' ? 9 : l.id === 'kiwi' ? 12 : 10;
-      const ancho = l.id === 'kiwi' ? 9 : l.id === 'queque' ? 7 : 7;
-      const alto = l.id === 'kiwi' ? 7 : 6;
-      for (let y = l.y + 2; y + alto < l.y + l.h - 1; y += paso)
-        for (let x = l.x + 2; x + ancho < l.x + l.w - 1; x += paso) {
-          const colores = { ciudad: '#9b8170', oficinas: '#708ba0', barrio: '#b57b62', granja: '#aa8655', puerto: '#7f9192' };
-          casa(l, x, y, ancho, alto, colores[l.estilo], l.id === 'queque' ? 2 + (casas.length % 3) : l.id === 'asman' ? 3 : 1);
-        }
+    for (let x = 21; x < 52; x += 2) { deco('cerca', px(x), px(32.6), { rot: 0 }); deco('cerca', px(x), px(59.4), { rot: 0 }); }
+    for (const [x, y] of [[34, 38], [34, 54], [53, 38], [53, 54], [20.5, 44], [20.5, 50]]) deco('arbusto', px(x), px(y), { tam: 1.6 });
+    for (let i = 0; i < 18; i++) deco('flores', px(22 + terreno() * 30), px(33 + terreno() * 26), { color: ['#ff7aa8', '#ffd166', '#c084fc', '#ff8a5b'][i % 4] });
+    deco('cartel', px(37.5), px(44), { texto: 'ÁNGELES' });
+  }
+  // El Vasquito: el bar y almacén de ruta en el cruce
+  {
+    const l = lugar('vasquito');
+    rect(l.x + 1, 84, l.w - 2, 3, T.CAMINO);
+    rect(23, l.y + 1, 3, l.h - 2, T.CAMINO);
+    edificio(l, 12, 74, 10, 8, 'ladrillo', 1, { puertas: ['s', 'e'], divisiones: [{ x: 5, puerta: 0.5 }] });
+    edificio(l, 28, 74, 9, 8, 'campo', 1, { puertas: ['s', 'o'] });
+    edificio(l, 28, 89, 8, 6, 'galpon', 1, { puertas: ['n'] });
+    rect(13, 88, 8, 6, T.PLAZA);
+    for (const [x, y] of [[15, 90.5], [18, 90.5]]) obstaculo(px(x), px(y), 'surtidor');
+    deco('techito', px(16.5), px(90.5));
+    obstaculo(px(31), px(86), 'auto', { rot: 0, grande: true });
+    deco('cartel', px(24.5), px(82.5), { texto: 'EL VASQUITO' });
+  }
+  // Kiwi: la granja con granero, silo y la huerta de kiwis
+  {
+    const l = lugar('kiwi');
+    rect(l.x + 1, l.y + 1, l.w - 2, 13, T.TIERRA);
+    edificio(l, 26, 107, 12, 10, 'granero', 2, { puertas: ['s', 'e', 'n'] });
+    edificio(l, 46, 107, 9, 7, 'campo', 1, { puertas: ['s', 'o'] });
+    obstaculo(px(41.5), px(110), 'silo');
+    obstaculo(px(48), px(118), 'tractor');
+    for (let y = 121; y < 133; y += 2) { rect(26, y, 31, 1, T.TIERRA); for (let x = 27; x < 56; x += 3) deco('cultivo', px(x), px(y)); }
+    for (let x = 25; x < 58; x += 2) deco('cerca', px(x), px(119.4), { rot: 0 });
+    for (const [x, y] of [[30, 118], [52, 116]]) obstaculo(px(x), px(y), 'caja');
+    deco('cartel', px(41.5), px(105.5), { texto: 'KIWI' });
+  }
+  // Macabíes macabros: el estadio abandonado, con tribunas y la cancha
+  {
+    const l = lugar('macabies');
+    rect(l.x + 1, l.y + 1, l.w - 2, l.h - 2, T.TIERRA);
+    const cx = 83, cy = 124, rx = 15, ry = 13;
+    for (let y = l.y + 1; y < l.y + l.h - 1; y++) for (let x = l.x + 1; x < l.x + l.w - 1; x++) {
+      const d = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
+      if (d < 0.78) t[idx(x, y)] = T.PASTO;
+      else if (d < 1) { t[idx(x, y)] = T.PARED; alturas[idx(x, y)] = 2; }
+    }
+    // cuatro entradas
+    for (const [x0, y0, w, h] of [[81, 109, 4, 5], [81, 133, 4, 6], [67, 122, 5, 4], [94, 122, 6, 4]]) rect(x0, y0, w, h, T.TIERRA);
+    casas.push({ x: 68, y: 111, w: 31, h: 27, color: ESTILOS.tribuna.color, techo: ESTILOS.tribuna.techo, piso: ESTILOS.tribuna.piso, altura: 2, lugar: 'macabies', tipo: 'estadio', elipse: { cx, cy, rx, ry } });
+    deco('raya', px(83), px(124), { w: 3, h: 300, color: '#f4f1ea', rot: Math.PI / 2 });
+    deco('circulo', px(82.5), px(123.5), { r: 34 });
+    deco('raya', px(83), px(116.5), { w: 120, h: 3, color: '#f4f1ea' });
+    deco('raya', px(83), px(130.5), { w: 120, h: 3, color: '#f4f1ea' });
+    for (const [x, y] of [[76, 119], [90, 128], [79, 129], [88, 118]]) obstaculo(px(x), px(y), 'caja');
+    for (const [x, y] of [[68, 109], [99, 110], [68, 139], [99, 139], [70, 113], [97, 135]]) obstaculo(px(x), px(y), 'arbol', { forma: 'muerto', r: 5 });
+  }
+  // Ciudad Fondeana: el puerto, con galpones, contenedores, muelles y el faro
+  {
+    const l = lugar('fondeana');
+    for (let y = l.y; y < l.y + l.h; y++) for (let x = l.x; x < l.x + l.w; x++) if (t[idx(x, y)] !== T.AGUA) t[idx(x, y)] = x < 132 ? T.PLAZA : t[idx(x, y)] === T.ARENA ? T.ARENA : T.PLAZA;
+    edificio(l, 112, 98, 11, 8, 'galpon', 2, { puertas: ['s', 'o', 'e'] });
+    edificio(l, 125, 98, 9, 7, 'ladrillo', 2, { puertas: ['s', 'o'] });
+    edificio(l, 112, 117, 8, 7, 'pastel3', 1, { puertas: ['n', 'e'] });
+    let c = 0;
+    for (const y of [109, 113]) for (let x = 114; x < 132; x += 7) bloque(l, x, y, 5, 2, CONTENEDORES[c++ % CONTENEDORES.length]);
+    // muelles que llegan al mar
+    for (const y of [118, 123]) for (let x = 124; x < 152; x++) for (const yy of [y, y + 1]) { if (dentro(x, yy) && t[idx(x, yy)] !== T.PARED) t[idx(x, yy)] = T.MADERA; }
+    for (let x = 126; x < 132; x++) for (let y = 118; y < 125; y++) if (t[idx(x, y)] === T.AGUA || t[idx(x, y)] === T.ARENA) t[idx(x, y)] = T.MADERA;
+    for (const [x, y, r] of [[146, 121.5, 0], [140, 116, 0.3], [150, 126, -0.4]]) deco('bote', px(x), px(y), { rot: r });
+    deco('faro', px(137), px(103));
+    obstaculo(px(137), px(103), 'columna', { r: 7, faro: true });
+    for (const [x, y] of [[122, 108], [133, 112], [121, 116]]) obstaculo(px(x), px(y), 'caja');
+    deco('cartel', px(120), px(107.5), { texto: 'FONDEANA' });
+  }
+
+  // 5) árboles, rocas y arbustos afuera de los lugares
+  const libreAfuera = (x, y, margen = 2) => !LUGARES.some((l) => x >= l.x - margen && x < l.x + l.w + margen && y >= l.y - margen && y < l.y + l.h + margen);
+  for (let k = 0; k < 6000 && obstaculos.length < 520; k++) {
+    const x = 4 + Math.floor(terreno() * (TAM - 8)), y = 4 + Math.floor(terreno() * (TAM - 8));
+    const tipo = t[idx(x, y)];
+    if ((tipo !== T.PASTO && tipo !== T.ARENA) || !libreAfuera(x, y)) continue;
+    const densidad = bosque(x / TAM, y / TAM);
+    const roca = terreno() < 0.12;
+    if (!roca && tipo === T.PASTO && terreno() > densidad * 1.25 - 0.18) continue;
+    const ox = (x + 0.2 + terreno() * 0.6) * BALDOSA, oy = (y + 0.2 + terreno() * 0.6) * BALDOSA;
+    if (obstaculos.some((o) => Math.abs(o.x - ox) < 26 && Math.abs(o.y - oy) < 26 && Math.hypot(o.x - ox, o.y - oy) < (roca ? 30 : 22))) continue;
+    if ([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([i, j]) => [T.CAMINO, T.TIERRA, T.MADERA, T.AGUA].includes(t[idx(x + i, y + j)]))) continue;
+    if (roca) obstaculo(ox, oy, 'roca', { r: 6 + terreno() * 5 });
+    else {
+      const forma = tipo === T.ARENA ? 'palmera' : y < 45 ? (terreno() < 0.7 ? 'pino' : 'redondo') : y > 100 && x > 60 && x < 105 ? 'muerto' : terreno() < 0.25 ? 'pino' : 'redondo';
+      obstaculo(ox, oy, 'arbol', { forma, r: forma === 'palmera' ? 4 : 6, copa: 11 + terreno() * 6 });
     }
   }
-  // El puerto tiene muelles que llegan al mar; la huerta y el templo tienen siluetas propias.
-  for (let x = 137; x <= 153; x++) for (const y of [111, 119]) t[idx(x,y)] = T.CAMINO;
-  const decoraciones = [];
-  const templo = LUGARES.find(l => l.id === 'templo');
-  for (const x of [templo.x + 2, templo.x + 21]) for (let y = templo.y + 3; y < templo.y + 19; y += 4) decoraciones.push({tipo:'columna',x:(x+.5)*BALDOSA,y:(y+.5)*BALDOSA});
-  const kiwi = LUGARES.find(l => l.id === 'kiwi');
-  for (let y = kiwi.y + 4; y < kiwi.y + 20; y += 4) for (let x = kiwi.x + 3; x < kiwi.x + 23; x += 3) if (t[idx(x,y)] !== T.PARED) decoraciones.push({tipo:'cultivo',x:(x+.5)*BALDOSA,y:(y+.5)*BALDOSA});
-  const obstaculos = [];
-  for (let k = 0; k < 1800 && obstaculos.length < 370; k++) {
-    const x = 5 + Math.floor(terreno() * (TAM - 10));
-    const y = 5 + Math.floor(terreno() * (TAM - 10));
-    if (t[idx(x, y)] !== T.PASTO || LUGARES.some(l => x >= l.x - 2 && x < l.x + l.w + 2 && y >= l.y - 2 && y < l.y + l.h + 2)) continue;
-    const px = (x + .5) * BALDOSA, py = (y + .5) * BALDOSA;
-    if (obstaculos.some(o => Math.hypot(o.x - px, o.y - py) < 30)) continue;
-    const roca = terreno() < .23;
-    obstaculos.push({ id: 'o' + obstaculos.length, x: px, y: py, r: roca ? 7 + terreno() * 3 : 6, tipo: roca ? 'roca' : 'arbol', material: roca ? 'piedra' : 'madera', vida: roca ? 110 : 80, copa: 12 + terreno() * 5, tono: terreno() });
+  for (let k = 0; k < 2500 && decoraciones.filter((d) => d.tipo === 'arbusto').length < 140; k++) {
+    const x = 4 + Math.floor(terreno() * (TAM - 8)), y = 4 + Math.floor(terreno() * (TAM - 8));
+    if (t[idx(x, y)] !== T.PASTO || !libreAfuera(x, y, 0)) continue;
+    deco(terreno() < 0.6 ? 'arbusto' : 'flores', px(x), px(y), { tam: 0.8 + terreno() * 0.8, color: ['#ffd166', '#ff7aa8', '#f4f1ea', '#c084fc'][Math.floor(terreno() * 4)] });
   }
-  for (let k = 0; k < 20; k++) {
-    const x = 15 + Math.floor(terreno() * 130), y = 15 + Math.floor(terreno() * 130);
-    if (t[idx(x, y)] !== T.CAMINO) continue;
-    obstaculos.push({ id: 'o' + obstaculos.length, x: (x + .5) * BALDOSA, y: (y + .5) * BALDOSA, r: 9, tipo: 'auto', material: 'metal', vida: 160, tono: terreno() });
-  }
+
+  // 6) botín (cambia con la semilla). Los ids son la posición en la lista: el servidor los usa así.
   const botin = [];
   const tipos = ['pistola', 'subfusil', 'escopeta', 'rifle', 'francotirador', 'botiquin', 'venda', 'mini', 'escudo', 'granada'];
+  const pesoArma = ['pistola', 'pistola', 'subfusil', 'subfusil', 'escopeta', 'escopeta', 'rifle', 'rifle', 'francotirador'];
+  const pesoCura = ['venda', 'venda', 'mini', 'mini', 'escudo', 'botiquin', 'granada'];
   const rarezaAleatoria = (mejor = false) => {
     const n = botines();
-    if (mejor) return n < .08 ? 'legendaria' : n < .38 ? 'epica' : n < .78 ? 'rara' : 'poco_comun';
-    return n < .5 ? 'comun' : n < .78 ? 'poco_comun' : n < .93 ? 'rara' : n < .985 ? 'epica' : 'legendaria';
+    if (mejor) return n < 0.1 ? 'legendaria' : n < 0.4 ? 'epica' : n < 0.8 ? 'rara' : 'poco_comun';
+    return n < 0.46 ? 'comun' : n < 0.76 ? 'poco_comun' : n < 0.92 ? 'rara' : n < 0.985 ? 'epica' : 'legendaria';
   };
   const agregarBotin = (x, y, tipo, cofre = null, mejor = false) => {
-    const rareza = tipo === 'rpg' ? (botines() < .22 ? 'legendaria' : 'epica') : ARMAS[tipo] ? rarezaAleatoria(mejor) : 'comun';
-    const b = { id: botin.length, x, y, tipo, rareza };
+    const rareza = tipo === 'rpg' ? (botines() < 0.25 ? 'legendaria' : 'epica') : ARMAS[tipo] ? rarezaAleatoria(mejor) : 'comun';
+    const b = { id: botin.length, x: Math.round(x), y: Math.round(y), tipo, rareza };
     if (cofre !== null) b.cofre = cofre;
     botin.push(b);
     return b;
   };
+  const algo = () => (botines() < 0.55 ? pesoArma[Math.floor(botines() * pesoArma.length)] : pesoCura[Math.floor(botines() * pesoCura.length)]);
+  const pisoDe = (c) => {
+    const lista = [];
+    for (let j = c.y + 1; j < c.y + c.h - 1; j++) for (let i = c.x + 1; i < c.x + c.w - 1; i++) if (t[idx(i, j)] === T.PISO && t[idx(i + 1, j)] !== T.PARED && t[idx(i - 1, j)] !== T.PARED && t[idx(i, j + 1)] !== T.PARED && t[idx(i, j - 1)] !== T.PARED) lista.push([i, j]);
+    return lista;
+  };
+  const ocupado = (x, y, d = 18) => botin.some((b) => Math.abs(b.x - x) < d && Math.abs(b.y - y) < d);
+  const cofre = (x, y) => {
+    const c = agregarBotin(x, y, 'cofre');
+    const arma = botines() < 0.12 ? 'rpg' : pesoArma[Math.floor(botines() * pesoArma.length)];
+    agregarBotin(x + 16, y + 4, arma, c.id, true);
+    agregarBotin(x - 14, y + 8, pesoCura[Math.floor(botines() * pesoCura.length)], c.id);
+    agregarBotin(x + 2, y - 15, 'balas-' + ARMAS[arma].municion, c.id);
+    agregarBotin(x - 10, y - 10, ['madera', 'piedra', 'metal'][Math.floor(botines() * 3)], c.id);
+    return c;
+  };
   for (const c of casas) {
-    const l = LUGARES.find(l => l.id === c.lugar);
-    const n = l.botin + Math.floor(botines() * 2);
+    if (c.tipo === 'contenedor' || c.tipo === 'estadio') continue;
+    const l = LUGARES.find((x) => x.id === c.lugar);
+    const libres = pisoDe(c);
+    if (!libres.length) continue;
+    const n = Math.min(libres.length, Math.round((l?.botin || 2) * (c.w * c.h) / 70) + 1 + Math.floor(botines() * 2));
     for (let k = 0; k < n; k++) {
-      const x = (c.x + 1.5 + botines() * (c.w - 3)) * BALDOSA;
-      const y = (c.y + 1.5 + botines() * (c.h - 3)) * BALDOSA;
-      agregarBotin(x, y, tipos[Math.floor(botines() * tipos.length)]);
+      const [i, j] = libres[Math.floor(botines() * libres.length)];
+      const x = px(i), y = px(j);
+      if (!ocupado(x, y)) agregarBotin(x, y, algo());
     }
   }
-  for (let k = 0; k < 450 && botin.length < 190; k++) {
-    const x = Math.floor(botines() * TAM), y = Math.floor(botines() * TAM);
-    if (t[idx(x, y)] !== T.PASTO && t[idx(x, y)] !== T.CAMINO) continue;
-    agregarBotin((x + .5) * BALDOSA, (y + .5) * BALDOSA, tipos[Math.floor(botines() * tipos.length)]);
+  // cofres: muchos en el Queque, algunos en cada lugar (casi siempre adentro de un edificio)
+  for (const l of LUGARES) {
+    const cuantos = l.id === 'queque' ? 9 : l.id === 'kiwi' || l.id === 'vasquito' ? 3 : 4;
+    const adentro = casas.filter((c) => c.lugar === l.id && c.tipo === 'casa').flatMap((c) => pisoDe(c));
+    const afuera = [];
+    for (let j = l.y + 2; j < l.y + l.h - 2; j++) for (let i = l.x + 2; i < l.x + l.w - 2; i++) if ([T.PLAZA, T.PASTO, T.TIERRA].includes(t[idx(i, j)]) && !obstaculos.some((o) => Math.hypot(o.x - px(i), o.y - px(j)) < o.r + 14)) afuera.push([i, j]);
+    let puestos = 0;
+    for (let k = 0; k < 80 && puestos < cuantos; k++) {
+      const lista = adentro.length && k % 4 !== 3 ? adentro : afuera;
+      if (!lista.length) continue;
+      const [i, j] = lista[Math.floor(botines() * lista.length)];
+      const x = px(i), y = px(j);
+      if (botin.some((b) => b.tipo === 'cofre' && Math.hypot(b.x - x, b.y - y) < 90) || ocupado(x, y, 30)) continue;
+      cofre(x, y); puestos++;
+    }
   }
+  // un poco de botín suelto por la isla y cajas de munición
+  for (let k = 0; k < 900 && botin.length < 330; k++) {
+    const x = Math.floor(botines() * TAM), y = Math.floor(botines() * TAM);
+    if (![T.PASTO, T.CAMINO, T.TIERRA, T.PLAZA].includes(t[idx(x, y)])) continue;
+    const bx = px(x), by = px(y);
+    if (ocupado(bx, by, 40) || obstaculos.some((o) => Math.hypot(o.x - bx, o.y - by) < o.r + 8)) continue;
+    agregarBotin(bx, by, botines() < 0.4 ? ['balas-livianas', 'balas-medianas', 'balas-cartuchos', 'balas-pesadas', 'balas-livianas', 'balas-medianas'][Math.floor(botines() * 6)] : algo());
+  }
+  // lugares de salida (para el principio y las pruebas)
   const salidas = [];
   for (let k = 0; k < 5000 && salidas.length < 24; k++) {
-    const x = 6 + Math.floor(terreno() * (TAM - 12));
-    const y = 6 + Math.floor(terreno() * (TAM - 12));
+    const x = 6 + Math.floor(terreno() * (TAM - 12)), y = 6 + Math.floor(terreno() * (TAM - 12));
     if (t[idx(x, y)] !== T.PASTO && t[idx(x, y)] !== T.CAMINO) continue;
-    const px = (x + .5) * BALDOSA, py = (y + .5) * BALDOSA;
-    if (obstaculos.some(o => Math.hypot(o.x - px, o.y - py) < o.r + 10)) continue;
-    if (salidas.some(s => Math.hypot(s.x - px, s.y - py) < 170)) continue;
-    salidas.push({ x: px, y: py });
+    const sx = px(x), sy = px(y);
+    if (obstaculos.some((o) => Math.hypot(o.x - sx, o.y - sy) < o.r + 10)) continue;
+    if (salidas.some((s) => Math.hypot(s.x - sx, s.y - sy) < 170)) continue;
+    salidas.push({ x: sx, y: sy });
   }
-  for (const s of salidas) for (let i = 0; i < 3; i++) {
-    const x = s.x + Math.cos(i * 2.1) * 22, y = s.y + Math.sin(i * 2.1) * 22;
-    const tx = Math.floor(x / BALDOSA), ty = Math.floor(y / BALDOSA);
-    if (t[idx(tx, ty)] !== T.PASTO && t[idx(tx, ty)] !== T.CAMINO) continue;
-    if (obstaculos.some(o => Math.hypot(o.x - x, o.y - y) < o.r + 6)) continue;
-    agregarBotin(x, y, ['mini', 'venda', 'granada'][i]);
-  }
-  // Los cofres y su contenido ya tienen ids fijos; el contenido se ve al abrirlos.
-  for (const l of LUGARES) for (let i = 0; i < (l.id === 'queque' ? 7 : 2); i++) {
-    const libres = [];
-    for (let yy = l.y + 2; yy < l.y + l.h - 2; yy++) for (let xx = l.x + 2; xx < l.x + l.w - 2; xx++) if (!SOLIDO(t[idx(xx, yy)])) libres.push([xx, yy]);
-    const [tx, ty] = libres[Math.floor((i + .5) * libres.length / (l.id === 'queque' ? 7 : 2))];
-    const x = (tx + .5) * BALDOSA, y = (ty + .5) * BALDOSA;
-    const cofre = agregarBotin(x, y, 'cofre');
-    const arma = botines() < .1 ? 'rpg' : tipos[Math.floor(botines() * 5)];
-    agregarBotin(x + 14, y, arma, cofre.id, true);
-    agregarBotin(x - 12, y + 9, botines() < .5 ? 'botiquin' : 'escudo', cofre.id);
-    const municion = ARMAS[arma].municion;
-    agregarBotin(x, y - 15, 'balas-' + municion, cofre.id);
-    agregarBotin(x + 12, y + 14, ['madera', 'piedra', 'metal'][i % 3], cofre.id);
-  }
-  for (let i = 0; i < 95; i++) {
-    const x = 8 + Math.floor(botines() * (TAM - 16)), y = 8 + Math.floor(botines() * (TAM - 16));
-    if (t[idx(x, y)] !== T.PASTO && t[idx(x, y)] !== T.CAMINO) continue;
-    agregarBotin((x + .5) * BALDOSA, (y + .5) * BALDOSA, ['balas-livianas', 'balas-medianas', 'balas-cartuchos', 'balas-pesadas', 'balas-cohetes'][Math.floor(botines() * 5)]);
-  }
-  const m = { semilla, t, casas, alturas, obstaculos, decoraciones, botin, salidas, lugares: LUGARES };
+  const m = { semilla, t, casas, alturas, obstaculos, decoraciones, botin, salidas, lugares: LUGARES, rio };
   cache.set(semilla, m);
   return m;
 }

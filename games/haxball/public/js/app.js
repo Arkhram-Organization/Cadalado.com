@@ -10,6 +10,7 @@ import { Red } from '/comun/red.js';
 import { ESTADIOS, COLOR, R_JUG, R_PEL, estadio, nuevoMundo, acomodar, paso, pensarBot, codificar, decodificar } from './fisica.js';
 import * as THREE from '/comun/vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
+import { fondoMenu } from '/comun/fondo-menu.js';
 
 const app = document.querySelector('#app');
 const COLOR_JUEGO = '#4fd1c5';
@@ -41,26 +42,27 @@ function menu() {
   <div class="menu hx-menu">
     <div class="menu-hero"><div><span class="etq">HaxBall, con la física del original</span><h1>Hax<em>ball.</em></h1>
       <p>Dos equipos, una pelota y mucho caos. Mismos estadios, mismos saques y la misma física que el HaxBall de siempre, pero cada ficha es la cabeza de tu personaje.</p>
-      <div class="hx-chips"><span>👥 1 a 20</span><span>⏱ 3–10 min</span><span>🎮 Teclado</span></div></div></div>
+      <div class="hx-chips"><span>1 a 20 jugadores</span><span>3 a 10 minutos</span><span>Teclado</span></div></div></div>
     <section class="panel">
       ${cuenta ? '' : `<h2>1. Tu nombre</h2><input class="entrada" data-nombre maxlength="20" value="${esc(nombreGuardado())}" placeholder="¿Cómo te llaman?" style="margin-bottom:18px">`}
       <h2>${cuenta ? '' : '2. '}Elegí cómo jugar</h2>
       <div class="hx-modos">
-        <a class="hx-modo" href="/haxball/entrenar" data-ir><b>🎯 Modo entrenamiento (solo)</b><span>Practicá solo en la cancha, con todos los estadios.</span><small>WASD y patada con Espacio, Shift izq o Ctrl izq</small></a>
-        <a class="hx-modo" href="/haxball/local" data-ir><b>🎮 Juego local (misma pantalla)</b><span>Enfrentate 1v1 contra un amigo en la misma compu, sin internet.</span><small>🔴 J1: WASD + Espacio · 🔵 J2: flechitas + Enter, Shift der o Ctrl der</small></a>
-        <form class="hx-modo" data-crear><b>🌐 Crear sala online</b><span>Creá una sala y compartí el link. Los bots del club completan los equipos.</span>
+        <a class="hx-modo" href="/haxball/entrenar" data-ir><b>Entrenamiento</b><span>Practicá solo en la cancha, con todos los estadios.</span><small>WASD y patada con Espacio, Shift izq o Ctrl izq</small></a>
+        <a class="hx-modo" href="/haxball/local" data-ir><b>Local 1 contra 1</b><span>Enfrentate 1v1 contra un amigo en la misma compu, sin internet.</span><small>Rojo: WASD + Espacio · Azul: flechitas + Enter, Shift der o Ctrl der</small></a>
+        <form class="hx-modo" data-crear><b>Sala online</b><span>Creá una sala y compartí el link. Los bots del club completan los equipos.</span>
           <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center;font-size:13px">Bots <select class="entrada" name="bots" style="width:auto">${[0, 1, 2, 3, 5, 7].map((n) => `<option ${n === 1 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
           <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" name="publica" checked style="accent-color:${COLOR_JUEGO}"> Pública</label>
           <button class="btn btn-lima">Crear sala de Haxball</button></span></form>
       </div>
     </section>
     <section class="panel">
-      <h2>🔑 Unirse a una sala</h2>
+      <h2>Unirse a una sala</h2>
       <form class="fila-form" data-unirse><input class="entrada" maxlength="16" placeholder="Código, ej: K7QX2" autocapitalize="characters" required><button class="btn">Unirme</button></form>
       <h2 style="margin-top:22px">Salas abiertas</h2>
       <div class="salas" data-salas><div class="vacio">Buscando…</div></div>
     </section>
   </div>`;
+  limpiar.push(fondoMenu(app.querySelector('.menu'), { dibujar: partidoDeFondo }));
   const nombre = () => app.querySelector('[data-nombre]')?.value.trim();
   app.querySelector('[data-nombre]')?.addEventListener('change', () => guardarNombre(nombre()));
   app.querySelector('[data-crear]').onsubmit = async (e) => {
@@ -92,6 +94,33 @@ function menu() {
   cargar();
   const t = setInterval(cargar, 5000);
   limpiar.push(() => clearInterval(t));
+}
+
+// Fondo del menú: un partido de bots del club, frenado en una jugada (como en pausa)
+function partidoDeFondo(canvas) {
+  const m = nuevoMundo('big');
+  const npcs = ['glinsky', 'julo', 'faur', 'volcho', 'angeles', 'olcho', 'mati', 'dobro'];
+  npcs.forEach((n, i) => m.jug.set('bot' + n, { x: 0, y: 0, vx: 0, vy: 0, equipo: i % 2 ? 'azul' : 'rojo' }));
+  acomodar(m, 'rojo');
+  for (let k = 0; k < 520; k++) { const e = new Map(); for (const id of m.jug.keys()) e.set(id, pensarBot(m, id, k / 60)); paso(m, e); if (m.gol) { m.gol = null; acomodar(m, 'azul'); } }
+  const caras = new Map();
+  const g = canvas.getContext('2d');
+  const pintar = () => {
+    const r = canvas.getBoundingClientRect();
+    canvas.width = Math.max(300, r.width * Math.min(2, devicePixelRatio)); canvas.height = Math.max(200, r.height * Math.min(2, devicePixelRatio));
+    // la cancha corrida a la derecha, para que el menú quede a la izquierda
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#718C5A'; g.fillRect(0, 0, canvas.width, canvas.height);
+    const ancho = canvas.width;
+    canvas.width = ancho;
+    const c2 = document.createElement('canvas'); c2.width = Math.round(ancho * 0.72); c2.height = canvas.height;
+    dibujarCancha(c2.getContext('2d'), c2, m, { yo: null, nombre: (id) => POR_ID[id.slice(3)]?.nombre || '', cara: (id) => caras.get(id) });
+    g.fillStyle = '#718C5A'; g.fillRect(0, 0, canvas.width, canvas.height);
+    g.drawImage(c2, ancho - c2.width, 0);
+  };
+  pintar();
+  for (const n of npcs) caraRedonda({ ...POR_ID[n]?.look }, 96).then((c) => { caras.set('bot' + n, c); pintar(); }).catch(() => {});
+  addEventListener('resize', pintar);
+  return () => removeEventListener('resize', pintar);
 }
 
 // ---------------------------------------------------------------- cancha (común a todos los modos)

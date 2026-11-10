@@ -262,3 +262,15 @@ kbd { font-family: var(--cond); font-size: 11px; font-weight: 700; border: 1px s
 .apuesta { margin-top: 14px; padding: 12px 14px; border: 1px solid rgba(242, 201, 76, 0.45); border-radius: 4px; display: grid; gap: 8px; text-align: left; background: rgba(242, 201, 76, 0.06); }
 .apuesta b { color: #f2c94c; }
 .apuesta.on { border-color: #f2c94c; }
+
+/* menú arriba de la mesa (el juego queda de fondo, en pausa) */
+#menu { position: relative; background: transparent; isolation: isolate; }
+#menu .menu-fondo { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: #120c08; }
+#menu .menu-fondo img { width: 100%; height: 100%; object-fit: cover; animation: truco-acerca 50s ease-in-out infinite alternate; }
+@keyframes truco-acerca { from { transform: scale(1.04); } to { transform: scale(1.15) translateX(-2%); } }
+#menu .menu-fondo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14, 9, 6, .78), rgba(14, 9, 6, .62) 45%, rgba(14, 9, 6, .9)); }
+#menu .menu-pausa { position: absolute; right: 70px; bottom: 18px; z-index: 1; display: flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 99px; background: rgba(0, 0, 0, .55); color: #f4ead8; font: 700 11px var(--cond); letter-spacing: .2em; text-transform: uppercase; }
+#menu .menu-pausa i { width: 4px; height: 12px; border-radius: 1px; background: var(--brass); }
+#menu .menu-pausa i + i { margin-right: 6px; }
+#menu .panel { background: rgba(26, 18, 12, .74); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-color: rgba(214, 173, 106, .28); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, .4); }
+#menu .menu-head h1 { text-shadow: 0 4px 18px rgba(0, 0, 0, .6); }

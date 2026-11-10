@@ -1,4 +1,5 @@
 import { Sala, marco, api, pid, esc, toast, sonar, recordar } from '/comun/sala.js';
+import { fondoMenu } from '/comun/fondo-menu.js';
 import { lookDeJugador } from '/comun/avatar.js';
 import { fmt, ficha, carta, SIMBOLO } from './piezas.js';
 import { montarRuleta } from './ruleta.js';
@@ -76,6 +77,7 @@ async function salon() {
           <h2>${t.nombre}</h2><p>${t.texto}</p>
           <div class="pie"><span class="chip" data-gente="${tipo}">Mesa abierta</span><span class="btn btn-lima">Jugar</span></div>
         </a>`;
+  limpiar.push(fondoMenu(app.querySelector('.salon'), { imagen: '/img/casino-poster.webp' }));
       }).join('')}
     </div>
     <h2 class="etq" style="margin:26px 0 10px;color:#fff">Todas las mesas · elegí la que tenga lugar</h2>
