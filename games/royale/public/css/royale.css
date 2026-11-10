@@ -300,3 +300,11 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
   .bs-jugar { padding: 10px 16px; } .bs-jugar b { font-size: 26px; }
   .bs-fin-caja { padding: 14px; } .bs-fin-caja h2 { font-size: 40px; } .bs-tabla div { padding: 4px 8px; }
 }
+
+/* objeto recién agarrado: el casillero salta y brilla */
+.ranura.nuevo { animation: ranura-nueva .6s cubic-bezier(.2,1.6,.4,1); }
+.ranura.nuevo::after { content: ''; position: absolute; inset: -4px; border-radius: 10px; border: 3px solid #fff; animation: ranura-aro .6s ease-out forwards; pointer-events: none; }
+@keyframes ranura-nueva { 0% { transform: translateY(-4px) scale(.7); } 60% { transform: translateY(-10px) scale(1.15); } 100% { transform: translateY(-4px) scale(1); } }
+@keyframes ranura-aro { from { opacity: 1; transform: scale(.9); } to { opacity: 0; transform: scale(1.35); } }
+.btn-t.b6 { bottom: 290px; background: #c9b8ff; }
+@media (max-height: 520px) { .isla.es-tactil .btn-t.b6 { bottom: 88px; right: 188px; } }

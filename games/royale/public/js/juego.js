@@ -5,8 +5,8 @@ import { CASILLEROS, OBJETOS, recoger, comenzarUso, avanzarUso } from './inventa
 export const RADIO = 5;
 export const ALTURA_SALTO = 100;
 export const ALTURA_PLANEADOR = 34;
-const VEL = 78; // px/s
-const VEL_AGUA = 44;
+const VEL = 62; // px/s
+const VEL_AGUA = 36;
 export const CODIGO_ARMA = { pistola: 'p', subfusil: 's', escopeta: 'e', rifle: 'r', francotirador: 'f', rpg: 'g' };
 export const ARMA_DE_CODIGO = { p: 'pistola', s: 'subfusil', e: 'escopeta', r: 'rifle', f: 'francotirador', g: 'rpg' };
 
@@ -80,7 +80,7 @@ export class Peleador {
     this.mueve = n > 0.1;
     if(this.mueve) this.usando = null;
     if (!this.mueve) return;
-    const v = (tipoEn(mundo, this.x, this.y) === T.AGUA ? VEL_AGUA : VEL) * factor;
+    const v = (tipoEn(mundo, this.x, this.y) === T.AGUA ? VEL_AGUA : VEL) * factor * (this.agachado ? 0.5 : 1);
     const p = moverCirculo(mundo, this.x, this.y, (dx / n) * v * dt, (dy / n) * v * dt, RADIO);
     this.x = p.x;
     this.y = p.y;
@@ -123,7 +123,7 @@ export class Peleador {
     this.enfriar = d.cadencia;
     const balas = [];
     for (let k = 0; k < d.perdigones; k++) {
-      const ang = this.ang + (rnd() - 0.5) * d.dispersion * 2;
+      const ang = this.ang + (rnd() - 0.5) * d.dispersion * 2 * (this.agachado ? 0.6 : 1);
       const bala = nuevaBala(this.id, this.x + Math.cos(this.ang) * 8, this.y + Math.sin(this.ang) * 8, ang, a.tipo, a.rareza);
       bala.altura = this.nivel;
       balas.push(bala);

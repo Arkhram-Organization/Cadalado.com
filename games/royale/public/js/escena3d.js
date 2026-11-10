@@ -319,6 +319,15 @@ export class Isla3D {
     g.userData.botin = b; g.userData.modelo = modelo;
     this.botinGrupo.add(g); this.loot.set(b.id, g);
   }
+  // agarrar: el objeto vuela hasta la persona, se achica y deja un destello del color de la rareza
+  agarrar(id, p) {
+    const g = this.loot.get(id); if (!g) return;
+    g.userData.agarrado = { t0: performance.now(), p, x: g.position.x, y: g.position.z };
+    const b = g.userData.botin;
+    const color = ARMAS[b.tipo] ? (RAREZAS[b.rareza] || RAREZAS.comun).color : COLOR_TIPO[b.tipo] || '#f4e6c8';
+    setTimeout(() => this.golpe(p.x, p.y, color), 220);
+  }
+  soltarAgarrado(id) { const g = this.loot.get(id); if (g) delete g.userData.agarrado; }
   quitarBotin(id) { const g = this.loot.get(id); if (g) { this.botinGrupo.remove(g); this.loot.delete(id); } }
   // Lo que se rompió con el pico (árboles, rocas, autos o paredes)
   actualizarFuentes(m) {
@@ -436,9 +445,10 @@ export class Isla3D {
     this.zoom += (zoomObj - this.zoom) * Math.min(1, dt * 2.5);
     if (this.modoCamara === 'tercera') {
       this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
-      const lejos = this.zoom;
-      this.camera.position.set(foco.x, alzada + 62 * lejos, foco.y + 70 * lejos);
-      this.camera.lookAt(foco.x, alzada + 6, foco.y - 40);
+      const lejos = this.zoom, yaw = this.yaw || 0, inc = this.inclina ?? 1;
+      const atras = 70 * lejos, alto = 62 * lejos * inc;
+      this.camera.position.set(foco.x + Math.sin(yaw) * atras, alzada + alto, foco.y + Math.cos(yaw) * atras);
+      this.camera.lookAt(foco.x - Math.sin(yaw) * 40, alzada + 6, foco.y - Math.cos(yaw) * 40);
     } else {
       const w = W * this.zoom, h = H * this.zoom;
       Object.assign(this.ortho, { left: -w / 2, right: w / 2, top: h / 2, bottom: -h / 2 }); this.ortho.updateProjectionMatrix();
@@ -569,10 +579,16 @@ export class Isla3D {
       }
       a.particulas.forEach((m, i) => { m.visible = !!uso; if (uso) { const ang = (i * 6.28) / 8 + ms / 700; m.position.set(Math.cos(ang) * 0.55, 0.2 + ((ms / 700 + i * 0.13) % 1.8), Math.sin(ang) * 0.55); m.material.color.set(esEscudo ? (i % 2 ? '#9fd0ff' : '#5aa0ff') : i % 2 ? '#6df090' : '#d6ffe0'); } });
       if (p.vivo) {
-        a.death = 0; a.persona.grupo.scale.setScalar(10);
+        a.death = 0;
         const fire = balas.some((b) => b.de === p.id && Math.hypot(b.x - p.x, b.y - p.y) < 30);
-        const estado = p.gesto ? 'g-' + p.gesto : p.altura > 0 ? (p.paracaidas ? 'quieto' : 'quieto') : { mueve: p.mueve, corre: p.mueve, velocidad: p.mueve ? 1 : 0, apunta: !!tipoArma, dispara: fire, recargando: p.recargando > 0, curando: !!p.usando, golpe: p.vida < a.health };
+        const conModelo = !!p.look?.modelo;
+        const estado = p.gesto ? 'g-' + p.gesto : p.altura > 0 ? 'quieto' : p.agachado && conModelo && !p.usando ? 'agachadoLado' : { mueve: p.mueve, corre: p.mueve && !p.agachado, velocidad: p.mueve ? (p.agachado ? 0.5 : 1) : 0, apunta: !!tipoArma, dispara: fire, recargando: p.recargando > 0, curando: !!p.usando, golpe: p.vida < a.health };
         a.persona.animar(estado, dt);
+        // agachado: los muñecos sin animación propia se achican un poco y se inclinan
+        const agacha = p.agachado && !conModelo && !(p.altura > 0) ? 1 : 0;
+        a.agacha = (a.agacha || 0) + (agacha - (a.agacha || 0)) * Math.min(1, dt * 10);
+        a.persona.grupo.scale.set(10, 10 * (1 - a.agacha * 0.26), 10);
+        if (!(p.altura > 0)) a.persona.grupo.rotation.x = -a.agacha * 0.22;
         a.health = p.vida; a.flash.visible = fire && Math.random() < 0.6;
         a.mano.visible = !p.gesto;
       }
@@ -604,6 +620,20 @@ export class Isla3D {
         if (!abierto) { const pos = pts.geometry.attributes.position; for (let i = 0; i < 10; i++) { const a = ms / 900 + (i * 6.28) / 10, h = ((ms / 1400 + i * 0.37) % 1) * 22; pos.setXYZ(i, Math.cos(a) * 9, 3 + h, Math.sin(a) * 9); } pos.needsUpdate = true; }
         continue;
       }
+      const ag = g.userData.agarrado;
+      if (ag) {
+        const k = (ahora - ag.t0) / 260;
+        g.visible = k < 1;
+        if (k < 1) {
+          const e = k * k;
+          g.position.set(ag.x + (ag.p.x - ag.x) * e, Math.sin(k * Math.PI) * 10 + 4 * e, ag.y + (ag.p.y - ag.y) * e);
+          g.scale.setScalar(Math.max(0.05, 1 - e * 0.9));
+          g.userData.modelo.rotation.y += dt * 20;
+          g.userData.aura.visible = false;
+        }
+        continue;
+      }
+      g.scale.setScalar(1); g.userData.aura.visible = true;
       const visible = !tomados.has(id) && (b.cofre === undefined || abiertos.has(b.cofre)) && !lejos;
       g.visible = visible;
       if (!visible) continue;

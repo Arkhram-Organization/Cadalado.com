@@ -35,12 +35,12 @@ function ruido(r, n = 8) {
 }
 
 export const ARMAS = {
-  pistola: { nombre: 'Pistola', dano: 24, cadencia: .4, cargador: 12, recarga: 1.4, vel: 520, dispersion: .05, alcance: 340, perdigones: 1, municion: 'livianas', color: '#c9c9c9' },
-  subfusil: { nombre: 'Subfusil', dano: 14, cadencia: 1 / 7, cargador: 30, recarga: 1.9, vel: 560, dispersion: .12, alcance: 320, perdigones: 1, municion: 'livianas', color: '#7aa2ff' },
-  escopeta: { nombre: 'Escopeta', dano: 11, cadencia: 1.1, cargador: 5, recarga: 2.2, vel: 480, dispersion: .28, alcance: 170, perdigones: 8, municion: 'cartuchos', color: '#ff7a45' },
-  rifle: { nombre: 'Rifle de asalto', dano: 30, cadencia: .25, cargador: 30, recarga: 2.1, vel: 820, dispersion: .025, alcance: 620, perdigones: 1, municion: 'medianas', color: '#c084fc' },
-  francotirador: { nombre: 'Francotirador', dano: 100, cadencia: 2.8, cargador: 1, recarga: 2.8, vel: 1500, dispersion: .003, alcance: 1000, perdigones: 1, municion: 'pesadas', color: '#9d8af2' },
-  rpg: { nombre: 'Lanzacohetes', dano: 70, cadencia: 3, cargador: 1, recarga: 3, vel: 210, dispersion: .012, alcance: 520, perdigones: 1, municion: 'cohetes', color: '#e5ab55' },
+  pistola: { nombre: 'Pistola', dano: 24, cadencia: .4, cargador: 12, recarga: 1.4, vel: 374, dispersion: .05, alcance: 340, perdigones: 1, municion: 'livianas', color: '#c9c9c9' },
+  subfusil: { nombre: 'Subfusil', dano: 14, cadencia: 1 / 7, cargador: 30, recarga: 1.9, vel: 403, dispersion: .12, alcance: 320, perdigones: 1, municion: 'livianas', color: '#7aa2ff' },
+  escopeta: { nombre: 'Escopeta', dano: 11, cadencia: 1.1, cargador: 5, recarga: 2.2, vel: 346, dispersion: .28, alcance: 170, perdigones: 8, municion: 'cartuchos', color: '#ff7a45' },
+  rifle: { nombre: 'Rifle de asalto', dano: 30, cadencia: .25, cargador: 30, recarga: 2.1, vel: 590, dispersion: .025, alcance: 620, perdigones: 1, municion: 'medianas', color: '#c084fc' },
+  francotirador: { nombre: 'Francotirador', dano: 100, cadencia: 2.8, cargador: 1, recarga: 2.8, vel: 1080, dispersion: .003, alcance: 1000, perdigones: 1, municion: 'pesadas', color: '#9d8af2' },
+  rpg: { nombre: 'Lanzacohetes', dano: 70, cadencia: 3, cargador: 1, recarga: 3, vel: 151, dispersion: .012, alcance: 520, perdigones: 1, municion: 'cohetes', color: '#e5ab55' },
 };
 export const RAREZAS = Object.freeze({
   comun: { nombre: 'Común', color: '#b9b9b9', dano: 1, recarga: 1 },
