@@ -103,6 +103,7 @@ function cuadro(t) {
   if (v.auto) v.yaw += dt * 0.5;
   v.persona.grupo.rotation.y = v.yaw;
   v.persona.animar('g-' + v.anim, dt);
+  if (v.aureola) { v.aureola.rotation.y += dt * .6; v.aureola.children.forEach((p, i) => { p.position.y = .3 + ((t / 2400 + i / 18) % 1) * 2.2; p.scale.setScalar(.6 + Math.sin(t / 350 + i) * .4); }); }
   const c = v.centro;
   v.camara.position.set(c.x, c.y + v.dist * 0.08, c.z + v.dist); v.camara.lookAt(c.x, c.y, c.z);
   v.renderer.render(v.escena, v.camara);
@@ -115,7 +116,13 @@ async function abrirVisor(cont, id) {
   encuadrar();
   if (v.id !== id) {
     if (v.persona) { v.escena.remove(v.persona.grupo); v.persona.dispose?.(); v.persona = null; }
-    v.id = id; v.anim = 'quieto'; v.yaw = 0.35; v.auto = true;
+    if (v.aureola) { v.escena.remove(v.aureola); for (const p of v.aureola.children) { p.geometry.dispose(); p.material.dispose(); } v.aureola = null; }
+    if (id === 'batata') {
+      v.aureola = new v.THREE.Group();
+      for (let i = 0; i < 36; i++) { const p = new v.THREE.Mesh(new v.THREE.OctahedronGeometry(.035), new v.THREE.MeshBasicMaterial({color: i % 2 ? '#ffd166' : '#fff0c4'})); const a = i * 2.4; p.position.set(Math.cos(a) * 1.05, i / 16, Math.sin(a) * .7); v.aureola.add(p); }
+      v.escena.add(v.aureola);
+    }
+    v.id = id; v.anim = id === 'batata' ? 'festeja' : 'quieto'; v.yaw = Math.PI; v.auto = id !== 'batata';
     const p = v.crearPersona(v.THREE, { ...POR_ID[id]?.look, travesuras: {} }, { sombras: false });
     await p.listo;
     if (v.id !== id) { p.dispose?.(); return; }
@@ -173,7 +180,7 @@ function listaAmigos(id) {
 }
 function infoHtml(id) {
   const s = skin(id), r = datos.rarezas[s.rareza], mia = datos.mias.includes(id);
-  const actual = visor?.id === id ? visor.anim : 'quieto';
+  const actual = visor?.id === id ? visor.anim : id === 'batata' ? 'festeja' : 'quieto';
   return `<span><span class="ti-chip">${esc(r.nombre)}</span>${s.nuevo && !mia ? ' <span class="ti-chip" style="background:#ffe03a">¡Nuevo!</span>' : ''}</span>
     <h3>${esc(nombre(id))}</h3>
     <span class="ti-tipo">Skin con modelo 3D</span>
@@ -190,7 +197,7 @@ function detalle(id, recien = false) {
   if (mismo && !recien) { $('.ti-det-info').innerHTML = infoHtml(id); return; }
   m.innerHTML = `<div class="ti-det ${recien ? 'recien' : ''}" style="--r:${r.color}" role="dialog" aria-modal="true" aria-label="${esc(nombre(id))}">
     <button class="ti-cerrar" data-cerrar aria-label="Cerrar">×</button>
-    <div class="ti-visor"><img class="ti-portada" src="${portada(id)}" alt="${esc(nombre(id))}"><button class="ti-vista" data-vista>Portada</button><span class="ti-girar">Arrastrá para girarlo · rueda para acercar</span></div>
+    <div class="ti-visor ${id === 'batata' ? 'batata-revela en-3d' : ''}"><img class="ti-portada" src="${portada(id)}" alt="${esc(nombre(id))}"><button class="ti-vista" data-vista>Portada</button><span class="ti-girar">Arrastrá para girarlo · rueda para acercar</span></div>
     <div class="ti-det-info">${infoHtml(id)}</div>
   </div>`;
   m.hidden = false;

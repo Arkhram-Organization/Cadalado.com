@@ -250,3 +250,21 @@ test('los obstáculos y las piñas te tiran al piso un rato', () => {
   for (let i = 0; i < 60; i++) j.paso(1 / 60, 3, { x: 0, z: 1 }, 0);
   assert.notEqual(j.anim, 'tirado', 'se levanta');
 });
+
+test('final: el cruce más temprano gana aunque su mensaje llegue después', async () => {
+  const A='finalPrimeroA123', B='finalSegundoB123';
+  const {code}=(await req('POST','/crear',{pid:A,nombre:'Primero',opciones:{bots:0}})).data;
+  await accion(code,B,{t:'join',nombre:'Segundo'});
+  await accion(code,A,{t:'empezar'});
+  await tocar(code,{inicio:Date.now()-25000,fase:'carrera'});
+  // Segundo tiene mejor conexión; Primero cruzó 500 ms antes.
+  await accion(code,B,{t:'meta',tiempo:24700});
+  await accion(code,A,{t:'meta',tiempo:24200});
+  await tocar(code,{fin:Date.now()-1});
+  const e=(await ver(code,A)).estado;
+  assert.equal(e.fase,'podio');
+  assert.equal(e.resultados[0].nombre,'Primero');
+  assert.equal(e.resultados[0].puesto,1);
+  assert.equal(e.ganador,e.resultados[0].id);
+  assert.equal(e.resultados[1].nombre,'Segundo');
+});

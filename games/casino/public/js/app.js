@@ -49,7 +49,7 @@ function ruteo() {
   limpiar = [];
   sala?.cerrar();
   sala = null;
-  const m = location.pathname.match(/^\/casino\/mesa\/([A-Za-z0-9-]{3,16})/);
+  const m = location.pathname.match(/^\/casino\/(?:mesa|sala)\/([A-Za-z0-9-]{3,16})/);
   if (m) mesa(m[1].toUpperCase());
   else salon();
 }

@@ -119,7 +119,7 @@ test('partida: arranca, botín de a uno, bajas, el bot habla y termina con un ga
   assert.equal(JSON.stringify(v.estado).includes('pidRoyale'), false, 'no se filtran identificadores');
 });
 
-test('cofre tarda un segundo y el servidor entrega su contenido una sola vez', async () => {
+test('cofre abre con una sola acción y entrega su contenido una sola vez', async () => {
   const pid='pidCofreAA1';
   const {code}=(await req('POST','/crear',{pid,nombre:'Lola',opciones:{bots:2}})).data;
   await accion(code,pid,{t:'join',nombre:'Lola'});
@@ -129,14 +129,10 @@ test('cofre tarda un segundo y el servidor entrega su contenido una sola vez', a
   const cofre=generarMapa(v.semilla).botin.find(b=>b.tipo==='cofre');
   const contenido=generarMapa(v.semilla).botin.find(b=>b.cofre===cofre.id);
   assert.ok((await accion(code,pid,{t:'agarrar',id:contenido.id})).data.error);
-  await accion(code,pid,{t:'iniciarCofre',id:cofre.id});
-  assert.ok((await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
-  const r=JSON.parse(await getStore().get(`sala:royale:${code}`));
-  r.aperturas[v.yo+':'+cofre.id]=Date.now()-1100;
-  await getStore().set(`sala:royale:${code}`,JSON.stringify(r),3600);
   v=(await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.estado;
   assert.ok(v.abiertos.includes(cofre.id));
-  assert.ok((await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
+  assert.ok(!(await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
+  assert.equal((await ver(code,pid)).estado.abiertos.filter(id=>id===cofre.id).length,1);
   await accion(code,pid,{t:'agarrar',id:contenido.id});
   assert.equal((await ver(code,pid)).estado.propietarios[contenido.id],v.yo);
 });

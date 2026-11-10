@@ -15,6 +15,8 @@ export const RAREZAS = {
 // Cuanto más exclusiva, más cara: míticas 12.500, legendarias 7.500, épicas 5.500.
 // Cada una con su frase célebre, que sale en la portada.
 export const SKINS = [
+  { id: 'trosman', rareza: 'epica', precio: 5_500, frase: 'YA ESTÁ, Shmitz y Jávila.', nuevo: true },
+  { id: 'batata', rareza: 'mitica', precio: 12_500, frase: '¡Fe, gloria y aguante el Gasolero!', nuevo: true },
   { id: 'capitan', rareza: 'comun', precio: 800, frase: '¡Ningún pibe se queda sin mate!' },
   { id: 'chapa', rareza: 'comun', precio: 800, frase: 'Mi batería está al 3%. Igual corro.' },
   { id: 'colon', rareza: 'comun', precio: 1_200, frase: '¡Tierra a la vista!' },
@@ -48,7 +50,7 @@ export function rotacion(dia = diaDeHoy()) {
   const top = mezclar(SKINS.filter((s) => (s.rareza === 'mitica' || s.rareza === 'legendaria') && !s.nuevo), dia);
   const fijas = SKINS.filter((s) => s.nuevo);
   const epicas = mezclar(SKINS.filter((s) => s.rareza === 'epica' && !s.nuevo), dia * 31 + 7);
-  const destacadas = [top[0], ...fijas, ...epicas].slice(0, 3);
+  const destacadas = [...fijas, ...top, ...epicas].slice(0, Math.max(3, fijas.length));
   const resto = mezclar(SKINS.filter((s) => !destacadas.includes(s) && (s.rareza === 'comun' || s.rareza === 'rara')), dia * 37 + 13);
   const sobra = mezclar(SKINS.filter((s) => !destacadas.includes(s) && s.rareza === 'epica'), dia * 41 + 29);
   const diarias = [...resto.slice(0, 3), dia % 2 ? sobra[0] : resto[3]].filter(Boolean);
@@ -58,7 +60,10 @@ export const enVenta = (dia = diaDeHoy()) => { const r = rotacion(dia); return [
 const clave = (q) => `skins:${q}`;
 
 export async function mias(q) {
-  try { return JSON.parse((await getStore().get(clave(q))) || '[]'); } catch { return []; }
+  const store = getStore();
+  const todas = q.startsWith('u:') && await store.get(`codigo:quieneschapamax:${q.slice(2)}`);
+  const propias = JSON.parse((await store.get(clave(q))) || '[]');
+  return todas ? [...new Set([...propias, ...SKINS.map(s => s.id)])] : propias;
 }
 export async function tienda(pid, u) {
   const q = quien(pid, u?.id);
@@ -115,7 +120,7 @@ async function regalosNuevos(u) {
 const CODIGOS = { opusreligioso: 40_000, ad1min: 100_000, quieneschapamax: 'todas-las-skins' };
 export async function canjear(pid, u, codigo) {
   const c = String(codigo || '').trim().toLowerCase();
-  const premio = CODIGOS[c];
+  const premio = Object.hasOwn(CODIGOS, c) ? CODIGOS[c] : null;
   if (!premio) throw err('Ese código no existe.', 404);
   if (!u) throw err('Para canjear códigos tenés que entrar con tu cuenta.', 401);
   const store = getStore(), marca = `codigo:${c}:${u.id}`;
@@ -123,7 +128,7 @@ export async function canjear(pid, u, codigo) {
   const q = quien(pid, u.id);
   try {
     if (premio === 'todas-las-skins') {
-      const tengo = await mias(q);
+      const tengo = JSON.parse((await store.get(clave(q))) || '[]');
       const miasNuevas = [...new Set([...tengo, ...SKINS.map((s) => s.id)])];
       await store.set(clave(q), JSON.stringify(miasNuevas));
       return { saldo: await saldo(q), mias: miasNuevas, skins: miasNuevas.length - tengo.length };
