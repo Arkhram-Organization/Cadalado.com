@@ -11,22 +11,34 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/tienda.css">
+  <link rel="stylesheet" href="/css/tienda.css?v=2">
 </head>
 <body>
   <div id="cabecera"></div>
   <main class="tienda">
     <div class="contenedor">
       <header class="ti-cabeza">
-        <div><span class="ti-etq">Se paga con las fichas del casino de Dobro</span><h1>Tienda</h1></div>
+        <div class="ti-titulo">
+          <h1>Tienda</h1>
+          <span class="ti-reloj" data-reloj>Se renueva en —</span>
+        </div>
         <div class="ti-saldo"><i class="moneda"></i><div><small>Tus fichas</small><b data-saldo>—</b></div><a class="ti-mas" href="/casino/">Conseguir más</a></div>
       </header>
-      <section class="ti-destacada" data-destacada></section>
-      <nav class="ti-filtros" data-filtros></nav>
-      <section class="ti-grilla" data-grilla><div class="cargando"></div><div class="cargando"></div><div class="cargando"></div></section>
+      <div class="ti-vidriera">
+        <section class="ti-bloque ti-dest">
+          <h2>Destacados</h2>
+          <div class="ti-dest-grilla" data-destacadas><div class="cargando"></div><div class="cargando"></div><div class="cargando"></div></div>
+        </section>
+        <section class="ti-bloque ti-diarios">
+          <h2>Diarios</h2>
+          <div class="ti-diarios-grilla" data-diarias><div class="cargando"></div><div class="cargando"></div><div class="cargando"></div><div class="cargando"></div></div>
+        </section>
+      </div>
+      <section class="ti-mias" data-mias hidden></section>
       <p class="ti-nota" data-nota></p>
     </div>
   </main>
+  <div class="ti-modal" data-modal hidden></div>
   <div id="pie"></div>
   <script type="module" src="/js/tienda.js"></script>
 </body>

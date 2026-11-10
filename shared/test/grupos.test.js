@@ -61,18 +61,36 @@ test('grupos: con cuenta se invita a un amigo y ve la lobby del amigo', async ()
   assert.equal(r.data.amigos[0].grupo.id, id);
 });
 
-test('tienda: se compra una skin con las fichas del casino y no se puede pagar dos veces', async () => {
+test('tienda: se compra una skin en venta con las fichas del casino y no se puede pagar dos veces', async () => {
   const a = cliente('11.0.0.9');
   const pid = 'pidtienda' + rnd();
   let r = await a('GET', `/tienda?pid=${pid}`);
   assert.equal(r.data.saldo, 10_000);
   assert.ok(r.data.skins.find((s) => s.id === 'mati').precio > r.data.skins.find((s) => s.id === 'capitan').precio, 'la mítica es la más cara');
-  r = await a('POST', '/tienda/comprar', { pid, skin: 'olcho' });
-  assert.equal(r.data.saldo, 10_000 - 3_500);
-  assert.deepEqual(r.data.mias, ['olcho']);
-  r = await a('POST', '/tienda/comprar', { pid, skin: 'olcho' });
-  assert.equal(r.data.saldo, 6_500, 'comprarla otra vez no cobra');
-  r = await a('POST', '/tienda/comprar', { pid, skin: 'mati' });
-  assert.equal(r.status, 400, 'no alcanza para la mítica');
-  assert.equal((await a('GET', `/tienda?pid=${pid}`)).data.saldo, 6_500);
+  assert.equal(r.data.destacadas.length, 3);
+  assert.equal(r.data.diarias.length, 4);
+  assert.ok(r.data.skins.every((s) => s.frase), 'todas tienen su frase');
+  const venta = [...r.data.destacadas, ...r.data.diarias];
+  const barata = r.data.skins.filter((s) => r.data.diarias.includes(s.id)).sort((x, y) => x.precio - y.precio)[0];
+  r = await a('POST', '/tienda/comprar', { pid, skin: barata.id });
+  assert.equal(r.data.saldo, 10_000 - barata.precio);
+  assert.deepEqual(r.data.mias, [barata.id]);
+  r = await a('POST', '/tienda/comprar', { pid, skin: barata.id });
+  assert.equal(r.data.saldo, 10_000 - barata.precio, 'comprarla otra vez no cobra');
+  const fuera = ['capitan', 'chapa', 'colon', 'claude', 'angie', 'olcho', 'sandra'].find((id) => !venta.includes(id));
+  r = await a('POST', '/tienda/comprar', { pid, skin: fuera });
+  assert.equal(r.status, 400, 'lo que no está en venta hoy no se compra');
+  assert.equal((await a('GET', `/tienda?pid=${pid}`)).data.saldo, 10_000 - barata.precio);
+});
+
+test('tienda: la rotación es fija por día, cambia entre días y vende solo un par', async () => {
+  const { rotacion, enVenta, SKINS } = await import('../tienda.js');
+  assert.deepEqual(rotacion(20800), rotacion(20800));
+  const distintas = new Set(Array.from({ length: 10 }, (_, i) => enVenta(20800 + i).join()));
+  assert.ok(distintas.size >= 8);
+  for (let d = 20800; d < 20900; d++) {
+    const v = enVenta(d);
+    assert.equal(new Set(v).size, 7);
+    assert.ok(v.length < SKINS.length / 2);
+  }
 });
