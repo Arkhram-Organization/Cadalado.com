@@ -2,7 +2,7 @@
 // Se guarda en la cuenta (si entraste) y en este navegador; los juegos lo mandan al entrar a una sala.
 import * as THREE from '/comun/vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
-import { avatarSvg, lookDeNombre } from '/comun/avatar.js';
+import { avatarSvg } from '/comun/avatar.js';
 import { NPCS } from '/comun/npcs.js';
 import { GESTOS } from '/comun/gestos.js';
 import { LOOK_BASE, VESTIMENTAS, ESTILOS_PELO, CUERPOS, PRENDAS, BARBAS, LENTES, PALETAS, limpiarLook, lookParaDibujo, aplicarVestimenta, lookAlAzar } from '/comun/look.js';
@@ -52,7 +52,9 @@ camara.lookAt(0, 0.95, 0);
 let persona = null;
 let giro = 0;
 let giroObj = 0;
+let armado = 0;
 function armar() {
+  const turno = ++armado;
   if (persona) {
     escena.remove(persona.grupo);
     persona.dispose?.();
@@ -60,6 +62,17 @@ function armar() {
   persona = crearPersona(THREE, lookParaDibujo(look), { sombras: true });
   persona.grupo.rotation.y = giro;
   escena.add(persona.grupo);
+  persona.listo.then(() => {
+    if (turno !== armado || !persona) return;
+    const box = new THREE.Box3().setFromObject(persona.grupo);
+    const tam = box.getSize(new THREE.Vector3());
+    const npc = !!look.npc;
+    const centroY = box.min.y + tam.y * (npc ? .63 : .5);
+    const altoVisible = tam.y * (npc ? .68 : 1.18);
+    const distancia = altoVisible / (2 * Math.tan(THREE.MathUtils.degToRad(camara.fov / 2)));
+    camara.position.set(0, centroY, -distancia);
+    camara.lookAt(0, centroY, 0);
+  });
 }
 function medir() {
   const w = caja.clientWidth;
@@ -85,7 +98,6 @@ function cuadro(ms) {
   requestAnimationFrame(cuadro);
   const dt = Math.min(0.05, (ms - ultimo) / 1000);
   ultimo = ms;
-  if (arrastre == null && animacion === 'quieto') giroObj += dt * 0.25;
   giro += (giroObj - giro) * Math.min(1, dt * 8);
   if (persona) {
     persona.grupo.rotation.y = giro;
@@ -137,15 +149,20 @@ const bloque = (titulo, cuerpo, abierto = false) => `<details class="bloque" ${a
 
 function pintar() {
   const abiertos = [...document.querySelectorAll('.bloque')].map((d) => d.open);
-  const casillero = bloque('Casillero: jugá con alguien del elenco', `<p class="ayuda">Elegí un personaje y entrás a los juegos con él (con su modelo, sus gestos y sus travesuras).</p>
+  const seleccionado = tienda.skins.find((x) => x.id === look.npc);
+  const rarezaSeleccionada = tienda.rarezas[seleccionado?.rareza] || { nombre: 'Tu estilo', color: '#c5f04a' };
+  caja.style.setProperty('--rareza', rarezaSeleccionada.color);
+  caja.dataset.npc = look.npc || '';
+  $('[data-identidad]').innerHTML = `<small>${esc(rarezaSeleccionada.nombre)}</small><strong>${esc(look.npc ? NPCS.find((n) => n.id === look.npc)?.nombre : 'Mi personaje')}</strong>`;
+  const casillero = bloque('Casillero de personajes', `<div class="casillero-cabeza"><div><span class="et">Personajes</span><h3>Elegí tu personaje</h3><p>Previsualizalo a la izquierda y entrá a todos los juegos con su modelo, gestos y frases.</p></div><a class="btn btn-chico" href="/tienda">Ir a la tienda</a></div>
     <div class="vestimentas casillero">${NPCS.map((n) => {
       const s = tienda.skins.find((x) => x.id === n.id), r = tienda.rarezas[s?.rareza];
       const mia = !s || tienda.mias.includes(n.id);
-      return mia ? `<button class="vest ${look.npc === n.id ? 'on' : ''}" data-npc="${n.id}" style="--r:${r?.color || 'transparent'}"><span class="av">${avatarSvg(lookDeNombre(n.nombre))}</span><b>${esc(n.nombre)}</b></button>`
-        : `<a class="vest bloqueada" href="/tienda" style="--r:${r?.color || '#888'}" title="Comprala en la tienda"><span class="av">${avatarSvg(lookDeNombre(n.nombre))}</span><b>${esc(n.nombre)}</b><small>${esc(r?.nombre || '')} · ${Number(s.precio).toLocaleString('es-AR')} fichas</small></a>`;
+      const foto = `<span class="av"><img src="/img/personajes/${n.id}.webp" alt="" loading="lazy"></span>`;
+      return mia ? `<button class="vest ${look.npc === n.id ? 'on' : ''}" data-npc="${n.id}" style="--r:${r?.color || '#9aa4ad'}">${foto}<span class="vest-datos"><small>${esc(r?.nombre || 'Personaje')}</small><b>${esc(n.nombre)}</b></span></button>`
+        : `<a class="vest bloqueada" href="/tienda" style="--r:${r?.color || '#888'}" title="Comprala en la tienda">${foto}<span class="vest-datos"><small>${esc(r?.nombre || '')}</small><b>${esc(n.nombre)}</b><em>${Number(s.precio).toLocaleString('es-AR')} fichas</em></span></a>`;
     }).join('')}</div>
-    <p class="ayuda">Las que tienen candado se compran en la <a href="/tienda">tienda</a> con las fichas del casino.</p>
-    ${look.npc ? `<p class="ayuda">Estás jugando como <b>${esc(NPCS.find((n) => n.id === look.npc)?.nombre || '')}</b>. <button class="btn btn-chico" data-npc="">Volver a mi personaje</button></p>` : ''}`, true);
+    <div class="casillero-pie"><span>${look.npc ? `Equipado: <b>${esc(NPCS.find((n) => n.id === look.npc)?.nombre || '')}</b>` : '<b>Tu personaje personalizado está equipado</b>'}</span>${look.npc ? '<button class="btn btn-chico" data-npc="">Volver a mi personaje</button>' : ''}</div>`, true);
   const html = [
     casillero,
     bloque('Vestimentas de base', `<p class="ayuda">Cambian la ropa y los accesorios; después podés editar todo.</p><div class="vestimentas">${VESTIMENTAS.map((v) => `<button class="vest" data-vest="${v.id}"><span class="av">${avatarSvg(lookParaDibujo(aplicarVestimenta(look, v.id)))}</span><b>${esc(v.nombre)}</b></button>`).join('')}</div>`, true),

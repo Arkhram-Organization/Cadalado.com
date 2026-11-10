@@ -6,10 +6,14 @@
 .pj-titulo p { color: var(--blanco-2); font-size: 17px; }
 .pj-grilla { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: 24px; align-items: start; }
 .pj-vista { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 12px; }
-.pj-lienzo { position: relative; height: 480px; border-radius: 24px; overflow: hidden; background: radial-gradient(circle at 50% 35%, #3a4a32, #1b1f18 70%); box-shadow: inset 0 0 0 1px var(--borde); cursor: grab; }
+.pj-lienzo { --rareza: #c5f04a; position: relative; height: min(620px, calc(100vh - 180px)); min-height: 480px; border-radius: 12px; overflow: hidden; background: radial-gradient(circle at 50% 32%, color-mix(in srgb, var(--rareza) 58%, #263142), color-mix(in srgb, var(--rareza) 18%, #111722) 64%, #0c1018); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rareza) 62%, transparent), 0 18px 55px rgba(0,0,0,.34); cursor: grab; transition: background .25s, box-shadow .25s; }
+.pj-lienzo::before { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.075) 38.5%, transparent 39%), repeating-linear-gradient(135deg, transparent 0 46px, rgba(255,255,255,.035) 47px 48px); pointer-events: none; }
 .pj-lienzo:active { cursor: grabbing; }
 .pj-lienzo canvas { width: 100%; height: 100%; display: block; touch-action: none; }
-.pj-ayuda { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 12px; color: rgba(255,255,255,.55); pointer-events: none; }
+.pj-ayuda { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.7); pointer-events: none; }
+.pj-identidad { position: absolute; left: 18px; bottom: 42px; display: grid; pointer-events: none; text-transform: uppercase; text-shadow: 0 2px 8px #000; }
+.pj-identidad small { color: var(--rareza); font: 800 11px var(--mono); letter-spacing: .14em; }
+.pj-identidad strong { color: #fff; font: italic 900 clamp(30px, 4vw, 50px)/.9 var(--titulo); }
 .pj-anims, .ops { display: flex; flex-wrap: wrap; gap: 6px; }
 .pj-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
 .pj-acciones .btn-grande { flex: 1 1 100%; }
@@ -49,12 +53,27 @@
   .pj-lienzo { height: 380px; }
 }
 
-/* casillero del elenco y gestos */
-.casillero .vest.on { box-shadow: inset 0 0 0 2px var(--lima); }
+/* Casillero del elenco: tarjetas 3D y jerarquía visual inspirada en un locker. */
+.casillero-cabeza { display: flex; align-items: end; justify-content: space-between; gap: 12px; padding: 2px 0 8px; }
+.casillero-cabeza h3 { margin: 2px 0 3px; font: italic 900 clamp(28px, 3vw, 42px)/.9 var(--titulo); text-transform: uppercase; }
+.casillero-cabeza p { color: var(--blanco-2); font-size: 13px; max-width: 520px; }
+.casillero .vest.on { border-color: #fff; box-shadow: 0 0 0 3px var(--r), 0 9px 24px color-mix(in srgb, var(--r) 35%, transparent); transform: translateY(-3px); }
 .pj-gestos-t { width: 100%; font-size: 12px; color: var(--blanco-2); margin-top: 6px; }
 
-.casillero .vest { box-shadow: inset 0 0 0 2px var(--r, transparent); }
-.casillero .vest.bloqueada { position: relative; opacity: .6; filter: grayscale(.7); text-decoration: none; color: inherit; display: grid; justify-items: center; }
-.casillero .vest.bloqueada::after { content: 'Tienda'; position: absolute; top: 4px; right: 4px; padding: 1px 6px; border-radius: 99px; background: #ffd36a; color: #2a1a04; font: 800 9px var(--mono); text-transform: uppercase; }
-.casillero .vest.bloqueada small { font-size: 10px; color: var(--gris); }
+.vestimentas.casillero { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.casillero .vest { position: relative; display: grid; grid-template-rows: minmax(125px, 1fr) auto; padding: 0; overflow: hidden; aspect-ratio: .82; border: 2px solid color-mix(in srgb, var(--r) 72%, #fff 12%); border-radius: 8px; background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--r) 67%, #283342), color-mix(in srgb, var(--r) 24%, #111720) 70%); box-shadow: inset 0 0 32px color-mix(in srgb, var(--r) 16%, transparent); }
+.casillero .vest:hover { border-color: #fff; box-shadow: 0 0 0 2px var(--r); }
+.casillero .vest .av { width: 100%; height: 100%; min-height: 0; display: grid; align-items: end; overflow: hidden; }
+.casillero .vest .av img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; transform: scale(1.08); transform-origin: center bottom; filter: drop-shadow(0 10px 8px rgba(0,0,0,.45)); transition: transform .18s; }
+.casillero .vest:hover .av img, .casillero .vest.on .av img { transform: scale(1.15); }
+.casillero .vest-datos { width: 100%; min-height: 48px; display: flex; flex-direction: column; justify-content: center; padding: 6px 8px; background: linear-gradient(90deg, color-mix(in srgb, var(--r) 82%, #111), color-mix(in srgb, var(--r) 40%, #111)); text-align: left; }
+.casillero .vest-datos small { color: rgba(255,255,255,.72); font: 800 8px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.casillero .vest-datos b { color: #fff; font: 900 16px/1 var(--titulo); text-transform: uppercase; text-align: left; }
+.casillero .vest-datos em { color: rgba(255,255,255,.75); font: normal 700 9px var(--mono); }
+.casillero .vest.bloqueada { opacity: .62; filter: saturate(.5); text-decoration: none; color: inherit; }
+.casillero .vest.bloqueada::after { content: '🔒'; position: absolute; top: 7px; right: 7px; width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; background: rgba(10,12,16,.82); font-size: 13px; }
 .casillero .vest.bloqueada:hover { opacity: 1; filter: none; }
+.casillero-pie { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 8px; background: var(--carbon-3); color: var(--blanco-2); font-size: 13px; }
+@media (max-width: 1120px) { .vestimentas.casillero { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .vestimentas.casillero { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pj-lienzo { height: min(560px, 70vh); } }
+@media (max-width: 560px) { .vestimentas.casillero { grid-template-columns: repeat(2, minmax(0, 1fr)); } .casillero-cabeza { align-items: start; flex-direction: column; } }
