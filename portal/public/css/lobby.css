@@ -167,3 +167,5 @@
 .lb-muro,.lb-juegos{background:linear-gradient(90deg,#141413f2 60%,rgba(20,20,19,.4))}
 .lb-juegos{background:linear-gradient(270deg,#141413f2 60%,rgba(20,20,19,.4))}
 @media (prefers-reduced-motion:reduce){.lb-luces i{animation:none;display:none}.lb-fondo-capa{transition:opacity .3s}}
+
+.brand .brand-logo{width:34px;height:34px;display:block;flex:none}

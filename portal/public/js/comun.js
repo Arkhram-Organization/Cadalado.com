@@ -100,7 +100,7 @@ function cabecera() {
     <div class="contenedor">
       <a class="logo" href="/" data-logo aria-label="cadalado, inicio"><img src="/marca.svg" alt=""><span>cadalado</span></a>
       <nav class="nav" id="nav" aria-label="Principal">
-        ${link('/#muro', 'Muro')}${link('/#juegos', 'Juegos')}${link('/personaje', 'Tu personaje')}${link('/equipo', 'Equipo')}${link('/club', 'Club')}
+        ${link('/#muro', 'Muro')}${link('/#juegos', 'Juegos')}${link('/personaje', 'Tu personaje')}${link('/tienda', 'Tienda')}${link('/equipo', 'Equipo')}${link('/club', 'Club')}
       </nav>
       <div class="cabecera-der">
         <span data-cuenta></span>

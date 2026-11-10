@@ -3,7 +3,7 @@ import { ARMAS, VIDA, ESCUDO_MAX, LADO, danoRareza, RAREZAS, moverCirculo, choqu
 import { CASILLEROS, OBJETOS, recoger, comenzarUso, avanzarUso } from './inventario.js';
 
 export const RADIO = 5;
-export const ALTURA_SALTO = 100;
+export const ALTURA_SALTO = 150;
 export const ALTURA_PLANEADOR = 34;
 const VEL = 62; // px/s
 const VEL_AGUA = 36;
@@ -60,10 +60,11 @@ export class Peleador {
   recoger(tipo,item=null) { return recoger(this,tipo,ARMAS,item); }
   usar() { return comenzarUso(this); }
   // Recibe daño (primero se gasta el escudo). Devuelve true si murió.
-  dano(d) {
+  // soloVida: la tormenta no gasta el escudo
+  dano(d, soloVida = false) {
     if (!this.vivo) return false;
     this.usando = null;
-    const contra = Math.min(this.escudo, d);
+    const contra = soloVida ? 0 : Math.min(this.escudo, d);
     this.escudo -= contra;
     this.vida -= d - contra;
     if (this.vida <= 0) {
@@ -106,7 +107,7 @@ export class Peleador {
       this.ang = Math.atan2(dy, dx);
     }
     this.mueve = n > .1;
-    this.altura = Math.max(0, this.altura - (this.paracaidas ? 11 : 27) * dt);
+    this.altura = Math.max(0, this.altura - (this.paracaidas ? 7.5 : 17) * dt);
     if (this.altura === 0) { this.paracaidas = false; this.mueve = false; return true; }
     return false;
   }

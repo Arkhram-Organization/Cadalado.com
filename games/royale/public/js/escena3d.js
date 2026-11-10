@@ -332,6 +332,12 @@ export class Isla3D {
   // Lo que se rompió con el pico (árboles, rocas, autos o paredes)
   actualizarFuentes(m) {
     const rotos = new Set(m.obstaculos.filter((o) => o.roto).map((o) => o.id));
+    this.yaRotos ??= new Set();
+    for (const o of m.obstaculos) if (o.roto && !this.yaRotos.has(o.id)) {
+      this.yaRotos.add(o.id);
+      const color = o.tipo === 'arbol' ? '#5a9444' : o.material === 'metal' ? '#9fb7c2' : o.material === 'madera' ? '#b98552' : '#a7aba4';
+      this.golpe(o.x, o.y, color); this.golpe(o.x, o.y, o.tipo === 'arbol' ? '#7a5a3c' : color); this.explosion(o.x, o.y, false);
+    }
     const d = new THREE.Object3D();
     for (const { inst, ids } of this.obstaculosInst) {
       let cambio = false;
@@ -397,6 +403,18 @@ export class Isla3D {
       this.effects.push({ m: humo, t: 0.6, total: 0.6, v: new THREE.Vector3(), crece: 40 });
     }
   }
+  // fuegos artificiales (para el que gana)
+  fuego(x, y) {
+    const colores = ['#ff3b5c', '#ffd23f', '#5ee36a', '#3fb5ff', '#c58aff', '#ffffff'];
+    const c1 = colores[Math.floor(Math.random() * colores.length)], c2 = colores[Math.floor(Math.random() * colores.length)];
+    const alto = 45 + Math.random() * 30;
+    for (let i = 0; i < 34; i++) {
+      const m = new THREE.Mesh(this.geoChispa ??= new THREE.IcosahedronGeometry(1.8, 0), new THREE.MeshBasicMaterial({ color: i % 2 ? c1 : c2, transparent: true }));
+      m.position.set(x, alto, y); m.scale.setScalar(0.8); this.scene.add(m);
+      const a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2, v = 45 + Math.random() * 25;
+      this.effects.push({ m, t: 1.3, total: 1.3, v: new THREE.Vector3(Math.cos(a) * Math.cos(b) * v, Math.sin(b) * v * 0.6 + 20, Math.sin(a) * Math.cos(b) * v), suave: true });
+    }
+  }
   golpe(x, y, color = '#f4e6c8') {
     for (let i = 0; i < 8; i++) {
       const m = new THREE.Mesh(this.geoChispa ??= new THREE.IcosahedronGeometry(1.8, 0), new THREE.MeshBasicMaterial({ color, transparent: true }));
@@ -439,9 +457,9 @@ export class Isla3D {
     if (this.w !== width || this.h !== height) { this.w = width; this.h = height; this.renderer.setSize(width, height, false); }
     this.agua.uniforms.t.value = ms / 1000;
     this.camera = this.modoCamara === 'tercera' ? this.tercera : this.ortho;
-    const alzada = foco.enColectivo ? 100 : foco.altura || 0;
+    const alzada = foco.enColectivo ? 150 : foco.altura || 0;
     // más alto, más lejos: en el colectivo y en la caída se ve más isla
-    const zoomObj = foco.enColectivo ? 2.6 : 1 + Math.min(1.7, alzada / 58);
+    const zoomObj = (foco.enColectivo ? 2.7 : 1 + Math.min(1.7, alzada / 70)) * (this.acercar || 1);
     this.zoom += (zoomObj - this.zoom) * Math.min(1, dt * 2.5);
     if (this.modoCamara === 'tercera') {
       this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
@@ -459,7 +477,7 @@ export class Isla3D {
     if (Math.abs(this.sun.shadow.camera.right - sombra) > 30) { Object.assign(this.sun.shadow.camera, { left: -sombra, right: sombra, top: sombra, bottom: -sombra }); this.sun.shadow.camera.updateProjectionMatrix(); }
     // colectivo
     this.colectivo.visible = !!colectivo;
-    if (colectivo) { this.colectivo.position.set(colectivo.x, 100 + Math.sin(ms / 700) * 2, colectivo.y); this.colectivo.rotation.y = -colectivo.angulo; this.colectivo.userData.fuego.scale.setScalar(0.8 + Math.sin(ms / 60) * 0.25); }
+    if (colectivo) { this.colectivo.position.set(colectivo.x, 150 + Math.sin(ms / 700) * 2, colectivo.y); this.colectivo.rotation.y = -colectivo.angulo; this.colectivo.userData.fuego.scale.setScalar(0.8 + Math.sin(ms / 60) * 0.25); }
     // edificio donde estoy: techo afuera y paredes bajas
     const fx = Math.floor(foco.x / BALDOSA), fy = Math.floor(foco.y / BALDOSA);
     let adentro = -1;
@@ -482,7 +500,7 @@ export class Isla3D {
     this.dibujarBotin(tomados, abiertos, foco, ms, dt);
     this.dibujarBalas(balas, granadas);
     this.effects = this.effects.filter((e) => {
-      e.t -= dt; e.m.position.addScaledVector(e.v, dt); e.v.y -= 90 * dt;
+      e.t -= dt; e.m.position.addScaledVector(e.v, dt); e.v.y -= (e.suave ? 25 : 90) * dt; if (e.suave) e.v.multiplyScalar(1 - dt * 1.2);
       const k = Math.max(0, e.t / e.total);
       if (e.crece) { e.m.scale.setScalar(4 + (1 - k) * e.crece); e.m.material.opacity = k * 0.8; } else { e.m.scale.setScalar(Math.max(0.05, k * 1.2)); e.m.material.opacity = k; }
       if (e.t <= 0) { this.scene.remove(e.m); e.m.material.dispose(); return false; }

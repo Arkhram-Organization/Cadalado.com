@@ -163,6 +163,19 @@ export const royale = crearJuego({
         ctx.sistema(`¡${nombreDe(r, yo)} abrió un cofre!`);
         return {};
       }
+      case 'dispararFuente': {
+        // árboles, rocas, autos y cajas también se rompen a tiros (sin dar materiales)
+        const id = String(msg.id || '');
+        const o = generarMapa(r.semilla).obstaculos.find((x) => x.id === id);
+        if (r.fase !== 'partida' || !r.vivos.includes(yo) || !o || o.vida > 5000) return {};
+        r.tiros ??= {};
+        if (ctx.now - (r.tiros[yo] || 0) < 70) return {};
+        r.tiros[yo] = ctx.now;
+        const vida = r.fuentes[id]?.vida ?? o.vida;
+        if (vida <= 0) return {};
+        r.fuentes[id] = { vida: Math.max(0, vida - Math.min(120, Math.max(0, Number(msg.dano) || 0))), golpes: r.fuentes[id]?.golpes || 0 };
+        return {};
+      }
       case 'picar': {
         const id = String(msg.id || '');
         const dueno = msg.bot && ctx.esHost && r.vivos.includes(msg.bot) ? msg.bot : yo;

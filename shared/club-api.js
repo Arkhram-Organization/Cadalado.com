@@ -3,6 +3,7 @@ import { json, readJson, serverError, subruta } from './http.js';
 import * as c from './cuenta.js';
 import * as muro from './muro.js';
 import * as grupos from './grupos.js';
+import * as tienda from './tienda.js';
 
 const necesitaCuenta = async (request) => {
   const u = await c.usuarioActual(request);
@@ -35,6 +36,18 @@ export async function handle(request) {
     }
     if (ruta === '/yo' && metodo === 'POST') {
       return json({ usuario: await c.cambiarNombre(await necesitaCuenta(request), body.nombre) });
+    }
+    // tienda de skins (se pagan con las fichas del casino)
+    if (ruta === '/tienda' && metodo === 'GET') {
+      const pid = String(url.searchParams.get('pid') || '');
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(pid)) return json({ error: 'Identificador inválido' }, 400);
+      return json(await tienda.tienda(pid, await c.usuarioActual(request)));
+    }
+    if (ruta === '/tienda/comprar' && metodo === 'POST') {
+      const pid = String(body.pid || '');
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(pid)) return json({ error: 'Identificador inválido' }, 400);
+      try { return json(await tienda.comprar(pid, await c.usuarioActual(request), String(body.skin || ''))); }
+      catch (e) { return json({ error: e.message }, e.status || 400); }
     }
     if (ruta === '/look' && metodo === 'POST') {
       return json({ usuario: await c.guardarLook(await necesitaCuenta(request), body.look) });

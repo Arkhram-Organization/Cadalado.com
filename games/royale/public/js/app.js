@@ -241,6 +241,9 @@ function abrirSala(code) {
   const numeros = []; // números de daño que flotan
   let golpeT = 0;
   let slotNuevo = { i: -1, hasta: 0 };
+  let ultimoAgarre = 0;
+  let fuegoT = 0;
+  const tiroFuente = new Map();
   let espectando = 0;
   let muertePor = null;
   let reportado = false;
@@ -461,7 +464,8 @@ function abrirSala(code) {
       const gane = e.ganador === e.yo;
       const mio = orden.findIndex((x) => x.id === e.yo);
       const total = orden.length;
-      fin.innerHTML = `<div class="bs-fin-caja ${gane ? 'gano' : ''}">
+      fin.classList.toggle('gano', gane);
+      fin.innerHTML = `${gane ? `<div class="bs-victoria"><i></i><small>Battle Shmitz</small><b>#1</b><strong>¡Último en pie!</strong></div>` : ''}<div class="bs-fin-caja ${gane ? 'gano' : ''}">
         ${gane ? `<div class="bs-corona">${ICONOS.corona}</div><small>#1 de ${total}</small><h2>¡Último en pie!</h2><p>Ganaste Battle Shmitz con ${e.kills[e.yo] || 0} eliminaciones.</p>`
           : mio >= 0 ? `<small>Quedaste</small><h2>#${mio + 1} <span>de ${total}</span></h2><p>${e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}.` : 'Terminó la partida.'} Hiciste ${e.kills[e.yo] || 0} eliminaciones.</p>`
           : `<small>Terminó</small><h2>${e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}` : 'Fin de la partida'}</h2>`}
@@ -497,7 +501,7 @@ function abrirSala(code) {
     if (!yo?.vivo) return;
     numeros.push({ x: yo.x, y: yo.y - 16, texto: String(Math.round(d)), hasta: performance.now() + 800, malo: true, escudo: yo.escudo > 0 });
     $('[data-vineta]').classList.remove('golpe'); void $('[data-vineta]').offsetWidth; $('[data-vineta]').classList.add('golpe');
-    if (yo.dano(d)) morir(por);
+    if (yo.dano(d, por === 'zona')) morir(por);
   }
   function morir(por) {
     if (reportado) return;
@@ -509,7 +513,7 @@ function abrirSala(code) {
   function danarBot(b, d, por) {
     if (!b.p.vivo) return;
     numeros.push({ x: b.p.x, y: b.p.y - 16, texto: String(Math.round(d)), hasta: performance.now() + 800, escudo: b.p.escudo > 0 });
-    const murio = b.p.dano(d);
+    const murio = b.p.dano(d, por === 'zona');
     if (!murio && (b.p.materiales?.madera || 0) >= 10 && Math.random() < 0.27) {
       const atacante = por === yoId() ? yo : remotos.get(por)?.obj;
       const ang = atacante ? Math.atan2(atacante.y - b.p.y, atacante.x - b.p.x) : b.p.ang;
@@ -698,7 +702,7 @@ function abrirSala(code) {
     vista.golpe(x, y, o?.material === 'madera' ? '#e0b47a' : '#d6dbd8');
     sala.enviar({ t: 'picar', id }).then((r) => { if (!r?.error) red.actual?.todos({ k: 'pico', id, n: Math.random() }); });
   }
-  $('[data-slots]').addEventListener('click', (e) => { if (e.target.closest('[data-pico]')) { picoActivo = !picoActivo; modoConstruccion = false; return; } const b = e.target.closest('[data-slot]'); if (b) { yo?.cambiar(+b.dataset.slot); picoActivo = false; if (OBJETOS[yo?.arma.tipo]) usarObjeto(); } });
+  $('[data-slots]').addEventListener('click', (e) => { const pz = e.target.closest('[data-pieza]'); if (pz) { tipoPieza = pz.dataset.pieza; return; } const mt = e.target.closest('[data-material]'); if (mt) { materialPieza = mt.dataset.material; return; } if (e.target.closest('[data-pico]')) { picoActivo = !picoActivo; modoConstruccion = false; return; } const b = e.target.closest('[data-slot]'); if (b) { yo?.cambiar(+b.dataset.slot); picoActivo = false; if (OBJETOS[yo?.arma.tipo]) usarObjeto(); } });
   const mirando = () => (fase === 'partida' || fase === 'fin') && (!yo || !yo.vivo);
 
   // ---------------------------------------------------------------- HUD
@@ -742,8 +746,12 @@ function abrirSala(code) {
       const pie = !s ? '' : OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala}`;
       return `<button data-slot="${i}" class="ranura ${s ? 'r-' + (s.rareza || 'comun') : 'vacia'} ${i === yo.actual && !picoActivo && !modoConstruccion ? 'on' : ''} ${i === slotNuevo.i && performance.now() < slotNuevo.hasta ? 'nuevo' : ''}" style="--r:${r?.color || '#55605a'}" title="${esc(datos?.nombre || 'Libre')}"><small>${i + 1}</small>${s ? `<i>${ICONOS[s.tipo] || ''}</i><span>${pie}</span>` : ''}</button>`;
     }).join('');
-    poner('[data-slots]', slots);
-    const nombreArma = picoActivo ? 'Pico' : modoConstruccion ? 'Construcción' : d ? `${d.nombre}` : OBJETOS[yo.arma.tipo]?.nombre || 'Mano vacía';
+    // en modo construcción, el inventario se cambia por las piezas y los materiales (con cuánto tenés de cada uno)
+    const mats = yo.materiales || {};
+    const obra = `<button class="ranura obra ${tipoPieza === 'pared' ? 'on' : ''}" data-pieza="pared"><i>${ICONOS.pared}</i><small>F</small><span>Pared</span></button><button class="ranura obra ${tipoPieza === 'escalera' ? 'on' : ''}" data-pieza="escalera"><i>${ICONOS.escalera}</i><small>F</small><span>Escalera</span></button><span class="ranura-sep"></span>` +
+      ['madera', 'piedra', 'metal'].map((k, i) => `<button class="ranura mat m-${k} ${materialPieza === k ? 'on' : ''} ${(mats[k] || 0) < COSTO_PIEZA ? 'falta' : ''}" data-material="${k}"><i>${ICONOS[k]}</i><small>${i + 1}</small><span>${mats[k] || 0}</span></button>`).join('');
+    poner('[data-slots]', modoConstruccion ? obra : slots);
+    const nombreArma = picoActivo ? 'Pico' : modoConstruccion ? `Construir ${tipoPieza}` : d ? `${d.nombre}` : OBJETOS[yo.arma.tipo]?.nombre || 'Mano vacía';
     poner('[data-arma-n]', `${esc(nombreArma)}${d && !picoActivo && !modoConstruccion ? ` <em style="color:${RAREZAS[yo.arma.rareza || 'comun'].color}">${RAREZAS[yo.arma.rareza || 'comun'].nombre}</em>` : ''}`);
     poner('[data-arma-balas]', d && !picoActivo && !modoConstruccion ? (yo.recargando > 0 ? '<b class="recarga">Recargando…</b>' : `<b>${yo.arma.bala}</b><small>${yo.municion[d.municion] || 0}</small>`) : OBJETOS[yo.arma.tipo] ? `<b>×${yo.arma.cantidad}</b><small>F usar</small>` : '');
     const m = yo.materiales || {};
@@ -755,7 +763,7 @@ function abrirSala(code) {
     if (u) { const k = 1 - u.restante / u.total; $('[data-uso-arco]').style.strokeDashoffset = String(119.4 * (1 - k)); poner('[data-uso-t]', Math.max(0, u.restante).toFixed(1)); poner('[data-uso-n]', OBJETOS[u.tipo].nombre); $('[data-uso]').classList.toggle('escudo', !!OBJETOS[u.tipo].escudo); }
     // construcción
     ver('[data-construir]', modoConstruccion);
-    if (modoConstruccion) poner('[data-construir]', ['pared', 'escalera'].map((p) => `<div class="${tipoPieza === p ? 'on' : ''}"><i>${ICONOS[p]}</i><b>${p === 'pared' ? 'Pared' : 'Escalera'}</b><small>${COSTO_PIEZA} ${materialPieza}</small></div>`).join('') + '<p><kbd>F</kbd> pieza <kbd>R</kbd> rotar <kbd>1-3</kbd> material <kbd>Clic</kbd> poner <kbd>Q</kbd> salir</p>');
+    if (modoConstruccion) poner('[data-construir]', `<p><b>Modo construcción</b> · cada pieza cuesta ${COSTO_PIEZA} de ${materialPieza} (tenés ${mats[materialPieza] || 0})</p><p><kbd>F</kbd> pieza <kbd>R</kbd> rotar <kbd>1-3</kbd> material <kbd>Clic</kbd> poner <kbd>Q</kbd> salir</p>`);
     poner('[data-teclas]', modoConstruccion ? '' : picoActivo ? '<kbd>Clic</kbd> picar árboles, rocas, autos y paredes' : '<kbd>Q</kbd> construir <kbd>C</kbd> pico <kbd>R</kbd> recargar <kbd>X</kbd> soltar');
   }
 
@@ -843,6 +851,8 @@ function abrirSala(code) {
     const txt = fase === 'cuenta' ? String(Math.max(1, Math.ceil(-t))) : fase === 'partida' && t < 1 ? '¡Al colectivo!' : '';
     if (txt !== ultimaCuenta) { ultimaCuenta = txt; $('[data-cuenta]').innerHTML = txt ? `<span>${txt}</span>` : ''; }
 
+    // en la cuenta regresiva ya estamos todos arriba del colectivo
+    if (fase === 'cuenta') { const pos = posicionColectivo(est.semilla, 0); if (yo) { yo.x = pos.x; yo.y = pos.y; yo.enColectivo = true; } for (const b of botsSim.values()) { b.p.x = pos.x; b.p.y = pos.y; } }
     // yo
     const puedoJugar = yo?.vivo && fase === 'partida' && t >= 0 && !document.querySelector('.cl-esc') && !document.activeElement?.matches('input,textarea') && !rueda.abierta && !mapa.abierto;
     if (yo) {
@@ -904,9 +914,9 @@ function abrirSala(code) {
           if (ms - cofreActual.desde >= 1000 && !cofreActual.abriendo) { cofreActual.abriendo = true; sala.enviar({ t: 'abrirCofre', id: cercaCofre.id }).then((r) => { if (!r?.error) { abiertos.add(cercaCofre.id); aviso('¡Abriste un cofre!'); } }); }
         } else cofreActual = null;
         // Los objetos de inventario se agarran con E (el más cercano). Si estás lleno, cambia el de la mano.
-        if (pedirAgarrar && !cercaCofre) {
-          const b = mundo.botin.filter((b) => !tomados.has(b.id) && b.tipo !== 'cofre' && !CAJAS[b.tipo] && !MATERIALES[b.tipo] && (b.cofre === undefined || abiertos.has(b.cofre)) && Math.hypot(b.x - yo.x, b.y - yo.y) < 24).sort((a, c) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(c.x - yo.x, c.y - yo.y))[0];
-          if (b) agarrarYa(b);
+        if ((pedirAgarrar || ((teclas.has('KeyE') || tactilE) && ms - ultimoAgarre > 200)) && !cercaCofre) {
+          const b = mundo.botin.filter((b) => !tomados.has(b.id) && b.tipo !== 'cofre' && !CAJAS[b.tipo] && !MATERIALES[b.tipo] && (b.cofre === undefined || abiertos.has(b.cofre)) && Math.hypot(b.x - yo.x, b.y - yo.y) < 30).sort((a, c) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(c.x - yo.x, c.y - yo.y))[0];
+          if (b) { agarrarYa(b); ultimoAgarre = ms; }
         }
       }
       if (yo.vivo && fase === 'partida' && t >= 0) {
@@ -1009,6 +1019,11 @@ function abrirSala(code) {
       } else if (!b.viva && !tocado && propia) {
         const pieza = (mundo.construcciones || []).find((p) => p.vida > 0 && p.tipo === 'pared' && Math.abs(p.x - b.x) < 20 && Math.abs(p.y - b.y) < 20);
         if (pieza) sala.enviar({ t: 'danarPieza', id: pieza.id, dano: b.dano });
+        else {
+          // le pegó a un árbol, una roca, un auto o una caja: se va rompiendo
+          const o = mundo.obstaculos.find((o) => !o.roto && o.vida < 5000 && Math.hypot(o.x - b.x, o.y - b.y) < o.r + 4);
+          if (o && performance.now() - (tiroFuente.get(o.id) || 0) > 90) { tiroFuente.set(o.id, performance.now()); vista.golpe(o.x, o.y, o.tipo === 'arbol' ? '#6aa84f' : '#d6dbd8'); sala.enviar({ t: 'dispararFuente', id: o.id, dano: b.dano }); }
+        }
       }
     }
     balas = balas.filter((b) => b.viva);
@@ -1032,6 +1047,16 @@ function abrirSala(code) {
       red.actual?.enviar('#' + [...botsSim.values()].map((b) => `${b.p.id}:${codificarP(b.p)}`).join(';'));
     }
 
+    // el que ganó: baila, la cámara se acerca y hay fuegos artificiales
+    if (fase === 'fin' && est.ganador) {
+      const g = est.ganador === yoId() ? yo : [...blancos, ...listaBots].find((x) => x.id === est.ganador);
+      if (g) {
+        if (est.ganador === yoId() && yo?.vivo) { yo.gesto = 'baila'; yo.gestoT = 99; }
+        fuegoT -= dt;
+        if (fuegoT <= 0) { fuegoT = 0.35 + Math.random() * 0.3; vista.fuego(g.x + (Math.random() - 0.5) * 120, g.y + (Math.random() - 0.5) * 80); }
+      }
+      vista.acercar = est.ganador === yoId() ? 0.7 : 1;
+    } else vista.acercar = 1;
     // ---------------------------------------------------------------- dibujo
     let foco = yo && (yo.vivo || fase !== 'partida') ? yo : null;
     const esp = $('[data-espectar]');

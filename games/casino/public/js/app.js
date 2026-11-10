@@ -67,7 +67,7 @@ async function salon() {
     <div class="salon-hero">
       <div><span class="etq">Fichas de mentira · emoción de verdad</span><h1>El casino <em>de Dobro.</em></h1>
       <p>Ruleta, blackjack y tragamonedas en mesas compartidas: todos apuestan al mismo tiempo, en la misma partida.</p></div>
-      <div class="saldo-grande"><span class="etq">Tus fichas</span><b data-saldo>—</b><button class="btn btn-chico hidden" data-ayuda style="margin-top:8px">Pedirle a la casa</button></div>
+      <div class="saldo-grande"><span class="etq">Tus fichas</span><b data-saldo>—</b><button class="btn btn-chico hidden" data-ayuda style="margin-top:8px">Pedirle a la casa</button><a class="btn btn-chico" href="/tienda" style="margin-top:8px;background:#ffd36a;color:#2a1a04">Gastalas en la tienda</a></div>
     </div>
     <div class="mesas-grid">
       ${Object.entries(TIPO).map(([tipo, t]) => {

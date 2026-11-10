@@ -7,6 +7,11 @@ import { NPCS } from '/comun/npcs.js';
 import { GESTOS } from '/comun/gestos.js';
 import { LOOK_BASE, VESTIMENTAS, ESTILOS_PELO, CUERPOS, PRENDAS, BARBAS, LENTES, PALETAS, limpiarLook, lookParaDibujo, aplicarVestimenta, lookAlAzar } from '/comun/look.js';
 import { iniciarPagina, api, yo, esc, toast } from './comun.js';
+import { pid } from '/comun/sala.js';
+
+// las skins del elenco se compran en la tienda (con las fichas del casino)
+let tienda = { mias: [], skins: [], rarezas: {} };
+api('/api/club/tienda?pid=' + encodeURIComponent(pid())).then((d) => { tienda = d; pintar(); }).catch(() => {});
 
 iniciarPagina();
 const $ = (s) => document.querySelector(s);
@@ -133,7 +138,13 @@ const bloque = (titulo, cuerpo, abierto = false) => `<details class="bloque" ${a
 function pintar() {
   const abiertos = [...document.querySelectorAll('.bloque')].map((d) => d.open);
   const casillero = bloque('Casillero: jugá con alguien del elenco', `<p class="ayuda">Elegí un personaje y entrás a los juegos con él (con su modelo, sus gestos y sus travesuras).</p>
-    <div class="vestimentas casillero">${NPCS.map((n) => `<button class="vest ${look.npc === n.id ? 'on' : ''}" data-npc="${n.id}"><span class="av">${avatarSvg(lookDeNombre(n.nombre))}</span><b>${esc(n.nombre)}</b></button>`).join('')}</div>
+    <div class="vestimentas casillero">${NPCS.map((n) => {
+      const s = tienda.skins.find((x) => x.id === n.id), r = tienda.rarezas[s?.rareza];
+      const mia = !s || tienda.mias.includes(n.id);
+      return mia ? `<button class="vest ${look.npc === n.id ? 'on' : ''}" data-npc="${n.id}" style="--r:${r?.color || 'transparent'}"><span class="av">${avatarSvg(lookDeNombre(n.nombre))}</span><b>${esc(n.nombre)}</b></button>`
+        : `<a class="vest bloqueada" href="/tienda" style="--r:${r?.color || '#888'}" title="Comprala en la tienda"><span class="av">${avatarSvg(lookDeNombre(n.nombre))}</span><b>${esc(n.nombre)}</b><small>${esc(r?.nombre || '')} · ${Number(s.precio).toLocaleString('es-AR')} fichas</small></a>`;
+    }).join('')}</div>
+    <p class="ayuda">Las que tienen candado se compran en la <a href="/tienda">tienda</a> con las fichas del casino.</p>
     ${look.npc ? `<p class="ayuda">Estás jugando como <b>${esc(NPCS.find((n) => n.id === look.npc)?.nombre || '')}</b>. <button class="btn btn-chico" data-npc="">Volver a mi personaje</button></p>` : ''}`, true);
   const html = [
     casillero,
