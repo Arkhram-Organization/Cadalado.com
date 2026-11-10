@@ -21,7 +21,7 @@ const colorDe = (id) => AV[parseInt(String(id).slice(0, 6), 36) % AV.length];
 const RAREZA_N = ['comun', 'poco_comun', 'rara', 'epica', 'legendaria'];
 const nombreItem = (tipo) => OBJETOS[tipo]?.nombre || ARMAS[tipo]?.nombre || CAJAS[tipo]?.nombre || MATERIALES[tipo]?.nombre || (tipo === 'cofre' ? 'Cofre' : '');
 const iconoItem = (tipo) => ICONOS[tipo] || (CAJAS[tipo] ? ICONOS.balas : ICONOS[MATERIALES[tipo] ? tipo : 'balas']);
-const imagenItem = (tipo) => ARMAS[tipo] ? `<img src="/royale/img/armas/${tipo}.webp" alt="${esc(ARMAS[tipo].nombre)}" draggable="false">` : ICONOS[tipo] || '';
+const imagenItem = (tipo) => ARMAS[tipo] ? `<img src="/royale/img/armas/${tipo}.webp" alt="${esc(ARMAS[tipo].nombre)}" draggable="false">` : OBJETOS[tipo] ? `<img src="/royale/img/objetos/${tipo}.webp" alt="${esc(OBJETOS[tipo].nombre)}" draggable="false">` : ICONOS[tipo] || '';
 const BOTS = [0, 3, 5, 7, 9, 11, 15];
 const cuenta = await marco({ juego: 'Battle Shmitz', color: COLOR, volver: '/royale/' });
 let limpiar = [];
@@ -600,18 +600,27 @@ function abrirSala(code) {
   let ultimoGolpe = 0;
   let cofreActual = null;
   const ABRIR_COFRE_MS = 1500;
+  // Al completarse la barra el cofre se abre en el acto (en tu pantalla); el aviso al servidor se reintenta
+  // solo hasta que lo confirma (antes, si la respuesta tardaba, quedaba "Abriendo el cofre…" para siempre).
+  const cofresPorConfirmar = new Map(); // id → último envío
   function abrirCofreYa(a) {
     a.enviado = true;
-    sala.enviar({ t: 'abrirCofre', id: a.id }).then((r) => {
-      if (!r || !r.error || /no está disponible/.test(r.error)) {
-        if (!abiertos.has(a.id)) { abiertos.add(a.id); if (!r?.error) aviso('¡Abriste un cofre!'); }
-        if (cofreActual === a) cofreActual = null;
-        return;
-      }
-      if (++a.intentos < 4) setTimeout(() => { a.enviado = false; }, 350);
-      else { if (cofreActual === a) cofreActual = null; aviso(r.error, true); }
-    });
+    if (!abiertos.has(a.id)) { abiertos.add(a.id); aviso('¡Abriste un cofre!'); }
+    if (cofreActual === a) cofreActual = null;
+    cofresPorConfirmar.set(a.id, 0);
   }
+  function confirmarCofres(ms) {
+    for (const [id, ultimo] of cofresPorConfirmar) {
+      if (est?.abiertos?.includes(id) || fase !== 'partida') { cofresPorConfirmar.delete(id); continue; }
+      if (ms - ultimo < 1500) continue;
+      cofresPorConfirmar.set(id, ms);
+      sala.enviar({ t: 'abrirCofre', id }).then((r) => {
+        if (!r) return; // sin respuesta: se reintenta en el próximo turno
+        if (!r.error || /no está disponible/.test(r.error)) cofresPorConfirmar.delete(id);
+      });
+    }
+  }
+
   let tactilE = false;
   let mira = false;
   let recogiendo = false;
@@ -803,17 +812,17 @@ function abrirSala(code) {
     // inventario: el pico aparte y los cinco casilleros con el color de la rareza
     const d = ARMAS[yo.arma.tipo];
     const slots = `<button data-pico class="ranura pico ${picoActivo ? 'on' : ''}"><i>${ICONOS.pico}</i><small>C</small></button>` + yo.slots.map((s, i) => {
-      const r = s ? RAREZAS[s.rareza || 'comun'] : null;
+      const r = s ? RAREZAS[s.rareza || OBJETOS[s.tipo]?.rareza || 'comun'] : null;
       const datos = s && (OBJETOS[s.tipo] || ARMAS[s.tipo]);
       const pie = !s ? '' : OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala}`;
-      return `<button data-slot="${i}" class="ranura ${s ? 'r-' + (s.rareza || 'comun') : 'vacia'} ${i === yo.actual && !picoActivo && !modoConstruccion ? 'on' : ''} ${i === slotNuevo.i && performance.now() < slotNuevo.hasta ? 'nuevo' : ''}" style="--r:${r?.color || '#55605a'}" title="${esc(datos?.nombre || 'Libre')}"><small>${i + 1}</small>${s ? `<i>${imagenItem(s.tipo)}</i><span>${pie}</span>` : ''}</button>`;
+      return `<button data-slot="${i}" class="ranura ${s ? 'r-' + (s.rareza || OBJETOS[s.tipo]?.rareza || 'comun') : 'vacia'} ${i === yo.actual && !picoActivo && !modoConstruccion ? 'on' : ''} ${i === slotNuevo.i && performance.now() < slotNuevo.hasta ? 'nuevo' : ''}" style="--r:${r?.color || '#55605a'}" title="${esc(datos?.nombre || 'Libre')}"><small>${i + 1}</small>${s ? `<i>${imagenItem(s.tipo)}</i><span>${pie}</span>` : ''}</button>`;
     }).join('');
     // en modo construcción, el inventario se cambia por las piezas y los materiales (con cuánto tenés de cada uno)
     const mats = yo.materiales || {};
     const obra = `<button class="ranura obra ${tipoPieza === 'pared' ? 'on' : ''}" data-pieza="pared"><i>${ICONOS.pared}</i><small>F</small><span>Pared</span></button><button class="ranura obra ${tipoPieza === 'escalera' ? 'on' : ''}" data-pieza="escalera"><i>${ICONOS.escalera}</i><small>F</small><span>Escalera</span></button><span class="ranura-sep"></span>` +
       ['madera', 'piedra', 'metal'].map((k, i) => `<button class="ranura mat m-${k} ${materialPieza === k ? 'on' : ''} ${(mats[k] || 0) < COSTO_PIEZA ? 'falta' : ''}" data-material="${k}"><i>${ICONOS[k]}</i><small>${i + 1}</small><span>${mats[k] || 0}</span></button>`).join('');
     poner('[data-slots]', modoConstruccion ? obra : slots);
-    if (inventarioAbierto) poner('[data-inventario-panel]', `<div class="bs-inv-caja"><header><div><small>Battle Shmitz · mochila</small><h2>Tu inventario</h2></div><button data-cerrar-inv aria-label="Cerrar inventario">×</button></header><div class="bs-inv-grid">${yo.slots.map((s, i) => `<button data-inv-slot="${i}" class="bs-inv-item ${i === yo.actual ? 'activo' : ''}" style="--r:${RAREZAS[s?.rareza || 'comun'].color}"><small>CASILLERO ${i + 1}</small><i>${s ? imagenItem(s.tipo) : ''}</i><b>${esc(s ? nombreItem(s.tipo) : 'Libre')}</b><span>${s ? OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala} balas · ${RAREZAS[s.rareza || 'comun'].nombre}` : '—'}</span></button>`).join('')}</div><footer><div><b>Materiales</b>${['madera','piedra','metal'].map(k => `<span>${ICONOS[k]} ${yo.materiales?.[k] || 0}</span>`).join('')}</div><div><b>Munición</b>${Object.entries(yo.municion).map(([k,n]) => `<span>${esc(k)} ${n}</span>`).join('')}</div></footer><p><kbd>1–5</kbd> equipar · <kbd>F</kbd> usar · <kbd>Tab</kbd> cerrar</p></div>`);
+    if (inventarioAbierto) poner('[data-inventario-panel]', `<div class="bs-inv-caja"><header><div><small>Battle Shmitz · mochila</small><h2>Tu inventario</h2></div><button data-cerrar-inv aria-label="Cerrar inventario">×</button></header><div class="bs-inv-grid">${yo.slots.map((s, i) => `<button data-inv-slot="${i}" class="bs-inv-item ${i === yo.actual ? 'activo' : ''}" style="--r:${RAREZAS[s?.rareza || OBJETOS[s?.tipo]?.rareza || 'comun'].color}"><small>CASILLERO ${i + 1}</small><i>${s ? imagenItem(s.tipo) : ''}</i><b>${esc(s ? nombreItem(s.tipo) : 'Libre')}</b><span>${s ? OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala} balas · ${RAREZAS[s.rareza || 'comun'].nombre}` : '—'}</span></button>`).join('')}</div><footer><div><b>Materiales</b>${['madera','piedra','metal'].map(k => `<span>${ICONOS[k]} ${yo.materiales?.[k] || 0}</span>`).join('')}</div><div><b>Munición</b>${Object.entries(yo.municion).map(([k,n]) => `<span>${esc(k)} ${n}</span>`).join('')}</div></footer><p><kbd>1–5</kbd> equipar · <kbd>F</kbd> usar · <kbd>Tab</kbd> cerrar</p></div>`);
     const nombreArma = picoActivo ? 'Pico' : modoConstruccion ? `Construir ${tipoPieza}` : d ? `${d.nombre}` : OBJETOS[yo.arma.tipo]?.nombre || 'Mano vacía';
     poner('[data-arma-n]', `${esc(nombreArma)}${d && !picoActivo && !modoConstruccion ? ` <em style="color:${RAREZAS[yo.arma.rareza || 'comun'].color}">${RAREZAS[yo.arma.rareza || 'comun'].nombre}</em>` : ''}`);
     poner('[data-arma-balas]', d && !picoActivo && !modoConstruccion ? (yo.recargando > 0 ? '<b class="recarga">Recargando…</b>' : `<b>${yo.arma.bala}</b><small>${yo.municion[d.municion] || 0}</small>`) : OBJETOS[yo.arma.tipo] ? `<b>×${yo.arma.cantidad}</b><small>F usar</small>` : '');
@@ -862,7 +871,7 @@ function abrirSala(code) {
       ctx.fillStyle = '#141413'; ctx.fillText('E', x0 + 14 * dpr, y0 + 34 * dpr);
       ctx.fillStyle = '#e8ece4'; ctx.font = `700 ${11 * dpr}px Barlow, sans-serif`;
       const lleno = ARMAS[b.tipo] || OBJETOS[b.tipo] ? yo?.slots.every(Boolean) : false;
-      ctx.fillText(b.tipo === 'cofre' ? 'Mantené para abrir' : auto ? 'Pasá por encima' : lleno ? `Cambiar por ${nombreItem(yo.arma.tipo) || 'lo que tenés'}` : 'Agarrar', x0 + 32 * dpr, y0 + 34 * dpr);
+      ctx.fillText(b.tipo === 'cofre' ? 'Tocá E para abrir' : auto ? 'Pasá por encima' : lleno ? `Cambiar por ${nombreItem(yo.arma.tipo) || 'lo que tenés'}` : 'Agarrar', x0 + 32 * dpr, y0 + 34 * dpr);
     }
   }
 
@@ -965,7 +974,7 @@ function abrirSala(code) {
         }
         // Balas y materiales no ocupan casilleros: se juntan al pasar (al instante; si el servidor dice que no, se devuelve).
         if (yo.altura <= 0) for (const b of mundo.botin) {
-          if (tomados.has(b.id) || (b.cofre !== undefined && !abiertos.has(b.cofre)) || (!CAJAS[b.tipo] && !MATERIALES[b.tipo]) || Math.hypot(b.x - yo.x, b.y - yo.y) > 15) continue;
+          if (tomados.has(b.id) || (b.cofre !== undefined && (!abiertos.has(b.cofre) || cofresPorConfirmar.has(b.cofre))) || (!CAJAS[b.tipo] && !MATERIALES[b.tipo]) || Math.hypot(b.x - yo.x, b.y - yo.y) > 15) continue;
           tomados.add(b.id); vista.agarrar(b.id, yo);
           const c = CAJAS[b.tipo];
           if (c) yo.municion[c.municion] = Math.min(999, (yo.municion[c.municion] || 0) + c.cantidad);
@@ -986,13 +995,14 @@ function abrirSala(code) {
           if (!c || abiertos.has(c.id) || Math.hypot(c.x - yo.x, c.y - yo.y) > 45) cofreActual = null;
           else if (ms - cofreActual.desde >= ABRIR_COFRE_MS && !cofreActual.enviado) abrirCofreYa(cofreActual);
         }
+        confirmarCofres(ms);
         // Los objetos de inventario se agarran con E (el más cercano). Si estás lleno, cambia el de la mano.
         // Mantener E junta solo lo que entra sin cambiar nada; cambiar el arma de la mano pide apretar E de nuevo.
         // Lo que acabás de soltar no se vuelve a agarrar enseguida (antes iba y venía y te cambiaba el arma).
         const mantiene = (teclas.has('KeyE') || tactilE) && ms - ultimoAgarre > 200;
         if ((pedirAgarrar || mantiene) && !cercaCofre) {
           const recien = (x) => String(x.id).startsWith('drop-' + yoId() + '-') && Date.now() - Number(String(x.id).split('-').pop()) < 2500;
-          const b = mundo.botin.filter((b) => !tomados.has(b.id) && b.tipo !== 'cofre' && !CAJAS[b.tipo] && !MATERIALES[b.tipo] && !recien(b) && (b.cofre === undefined || abiertos.has(b.cofre)) && Math.hypot(b.x - yo.x, b.y - yo.y) < 30).sort((a, c) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(c.x - yo.x, c.y - yo.y))[0];
+          const b = mundo.botin.filter((b) => !tomados.has(b.id) && b.tipo !== 'cofre' && !CAJAS[b.tipo] && !MATERIALES[b.tipo] && !recien(b) && (b.cofre === undefined || (abiertos.has(b.cofre) && !cofresPorConfirmar.has(b.cofre))) && Math.hypot(b.x - yo.x, b.y - yo.y) < 30).sort((a, c) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(c.x - yo.x, c.y - yo.y))[0];
           let vale = !!b;
           if (b && !pedirAgarrar) {
             const prueba = { slots: yo.slots.map((x) => (x ? { ...x } : null)), actual: yo.actual };

@@ -374,7 +374,9 @@ export function generarMapa(semilla) {
     return n < 0.62 ? 'comun' : n < 0.89 ? 'poco_comun' : n < 0.975 ? 'rara' : n < 0.997 ? 'epica' : 'legendaria';
   };
   const agregarBotin = (x, y, tipo, cofre = null, mejor = false) => {
-    const rareza = tipo === 'rpg' ? (botines() < 0.06 ? 'legendaria' : 'epica') : ARMAS[tipo] ? rarezaAleatoria(mejor) : 'comun';
+    // curaciones con la rareza de siempre: vendas gris, botiquín verde, minis y escudo grande azules
+    const RAREZA_CURA = { venda: 'comun', botiquin: 'poco_comun', mini: 'rara', escudo: 'rara', granada: 'poco_comun' };
+    const rareza = tipo === 'rpg' ? (botines() < 0.06 ? 'legendaria' : 'epica') : ARMAS[tipo] ? rarezaAleatoria(mejor) : RAREZA_CURA[tipo] || 'comun';
     const b = { id: botin.length, x: Math.round(x), y: Math.round(y), tipo, rareza };
     if (cofre !== null) b.cofre = cofre;
     botin.push(b);

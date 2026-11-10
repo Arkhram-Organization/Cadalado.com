@@ -1,9 +1,9 @@
 export const OBJETOS = {
-  venda: { nombre: 'Vendas', cantidad: 5, max: 10, tiempo: 2.2, vida: 15, limite: 75, color: '#f2e7cf' },
-  botiquin: { nombre: 'Botiquín', cantidad: 1, max: 3, tiempo: 5, vida: 100, limite: 100, color: '#f4746b' },
-  mini: { nombre: 'Mini escudo', cantidad: 3, max: 6, tiempo: 2, escudo: 25, limite: 50, color: '#60ded3' },
-  escudo: { nombre: 'Escudo grande', cantidad: 1, max: 3, tiempo: 4, escudo: 50, limite: 100, color: '#6e9dff' },
-  granada: { nombre: 'Granadas', cantidad: 3, max: 6, tiempo: 0, color: '#cfcd6b' },
+  venda: { rareza: 'comun', nombre: 'Vendas', cantidad: 5, max: 10, tiempo: 2.2, vida: 15, limite: 75, color: '#f2e7cf' },
+  botiquin: { rareza: 'poco_comun', nombre: 'Botiquín', cantidad: 1, max: 3, tiempo: 5, vida: 100, limite: 100, color: '#f4746b' },
+  mini: { rareza: 'rara', nombre: 'Mini escudo', cantidad: 3, max: 6, tiempo: 2, escudo: 25, limite: 50, color: '#60ded3' },
+  escudo: { rareza: 'rara', nombre: 'Escudo grande', cantidad: 1, max: 3, tiempo: 4, escudo: 50, limite: 100, color: '#6e9dff' },
+  granada: { rareza: 'poco_comun', nombre: 'Granadas', cantidad: 3, max: 6, tiempo: 0, color: '#cfcd6b' },
 };
 export const CASILLEROS = 5;
 export function recoger(p, tipo, armas, item = null) {
@@ -15,11 +15,11 @@ export function recoger(p, tipo, armas, item = null) {
     if(capacidad<cantidad) {
       const anterior = p.slots[p.actual];
       if (!anterior) return false;
-      p.slots[p.actual] = { tipo, cantidad, id: item?.id };
+      p.slots[p.actual] = { tipo, cantidad, id: item?.id, rareza: d.rareza };
       return { soltado: anterior };
     }
     for(const s of p.slots)if(s?.tipo===tipo){const n=Math.min(cantidad,d.max-s.cantidad);s.cantidad+=n;cantidad-=n;}
-    for(let i=0;i<p.slots.length&&cantidad;i++)if(!p.slots[i]){const n=Math.min(cantidad,d.max);p.slots[i]={tipo,cantidad:n,id:item?.id};cantidad-=n;}
+    for(let i=0;i<p.slots.length&&cantidad;i++)if(!p.slots[i]){const n=Math.min(cantidad,d.max);p.slots[i]={tipo,cantidad:n,id:item?.id,rareza:d.rareza};cantidad-=n;}
     return { soltado: null };
   }
   const libre = p.slots.findIndex(s => !s);
