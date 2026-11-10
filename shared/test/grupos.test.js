@@ -139,5 +139,14 @@ test('tienda: códigos de creador, una sola vez por cuenta', async () => {
   assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'Opusreligioso' })).status, 400, 'otra vez no');
   r = await a('POST', '/tienda/codigo', { pid, codigo: 'Ad1min' });
   assert.equal(r.data.saldo, 148_000);
+  r = await a('POST', '/tienda/codigo', { pid, codigo: ' QuienesChapaMax ' });
+  const { SKINS } = await import('../tienda.js');
+  assert.equal(r.status, 200);
+  assert.deepEqual(new Set(r.data.mias), new Set(SKINS.map((s) => s.id)));
+  assert.equal(r.data.skins, SKINS.length);
+  assert.equal(r.data.saldo, 148_000, 'el código de skins no altera las fichas');
+  const guardadas = await a('GET', `/tienda?pid=${pid}`);
+  assert.deepEqual(new Set(guardadas.data.mias), new Set(SKINS.map((s) => s.id)), 'las skins persisten al recargar');
+  assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'quieneschapamax' })).status, 400);
   assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'cualquiera' })).status, 404);
 });

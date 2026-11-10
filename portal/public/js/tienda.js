@@ -230,9 +230,11 @@ $('[data-codigo]').addEventListener('submit', async (e) => {
   b.disabled = true;
   try {
     const r = await api('/api/club/tienda/codigo', { pid: pid(), codigo });
-    datos.saldo = r.saldo; pintar();
+    datos.saldo = r.saldo;
+    if (r.mias) datos.mias = r.mias;
+    pintar();
     input.value = ''; f.classList.remove('ok'); void f.offsetWidth; f.classList.add('ok');
-    toast(`¡Código canjeado! +${fmt(r.monto)} fichas`);
+    toast(r.mias ? `¡Código canjeado! Ya tenés todas las skins (${r.skins} nuevas).` : `¡Código canjeado! +${fmt(r.monto)} fichas`);
   } catch (err) { toast(err.message, true); }
   b.disabled = false;
 });

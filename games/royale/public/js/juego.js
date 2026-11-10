@@ -79,9 +79,9 @@ export class Peleador {
     if (this.enColectivo || this.altura > 0) return;
     const n = Math.hypot(dx, dy);
     this.mueve = n > 0.1;
-    if(this.mueve) this.usando = null;
     if (!this.mueve) return;
-    const v = (tipoEn(mundo, this.x, this.y) === T.AGUA ? VEL_AGUA : VEL) * factor * (this.agachado ? 0.5 : 1);
+    // Curarse permite avanzar; el objeto sigue visible en la mano mientras dura el uso.
+    const v = (tipoEn(mundo, this.x, this.y) === T.AGUA ? VEL_AGUA : VEL) * factor * (this.agachado ? 0.5 : 1) * (this.usando ? 0.8 : 1);
     const p = moverCirculo(mundo, this.x, this.y, (dx / n) * v * dt, (dy / n) * v * dt, RADIO);
     this.x = p.x;
     this.y = p.y;
@@ -221,7 +221,11 @@ export class CerebroBot {
     const salida = { balas: [], agarra: null };
     if (!p.vivo) return salida;
     p.tiempo(dt);
-    if (p.usando) { p.mueve = false; return salida; }
+    if (p.usando) {
+      const objetivo = this.destino || zona(semilla, t).siguiente;
+      p.mover(mundo, objetivo.x - p.x, objetivo.y - p.y, dt, 0.65);
+      return salida;
+    }
     if (!ARMAS[p.arma.tipo]) { const arma = p.slots.findIndex(s => ARMAS[s?.tipo]); if (arma >= 0) p.cambiar(arma); }
     this.pensar -= dt;
     const z = zona(semilla, t);
@@ -271,7 +275,11 @@ export class CerebroBot {
       const e = this.objetivo;
       const dx = e.x - p.x;
       const dy = e.y - p.y;
-      const d = Math.hypot(dx, dy);
+      const d = Math.max(1, Math.hypot(dx, dy));
+      // Si dos NPC quedaron en la misma coordenada, cada uno sale en una dirección estable.
+      const anguloSeparacion = String(p.id).split('').reduce((n, c) => n + c.charCodeAt(0), 0) * 2.39996;
+      const ux = Math.hypot(dx, dy) < 1 ? Math.cos(anguloSeparacion) : dx / d;
+      const uy = Math.hypot(dx, dy) < 1 ? Math.sin(anguloSeparacion) : dy / d;
       const armas = p.slots.map((s,i)=>({s,i})).filter(x=>ARMAS[x.s?.tipo]);
       const elegida = armas.sort((a,b) => {
         const puntaje = x => (x.s.tipo === 'francotirador' ? d > 250 ? 4 : 0 : x.s.tipo === 'escopeta' ? d < 100 ? 4 : 0 : x.s.tipo === 'rifle' ? 3 : 1) + (RAREZAS[x.s.rareza]?.dano || 1);
@@ -281,8 +289,8 @@ export class CerebroBot {
       const ideal = p.arma.tipo === 'escopeta' ? 60 : p.arma.tipo === 'rifle' ? 190 : 120;
       // se mueve de costado y regula la distancia
       const adelante = d > ideal + 20 ? 1 : d < ideal - 30 ? -1 : 0;
-      const mx = (dx / d) * adelante + (-dy / d) * this.lado * 0.8;
-      const my = (dy / d) * adelante + (dx / d) * this.lado * 0.8;
+      const mx = ux * adelante - uy * this.lado * 0.8;
+      const my = uy * adelante + ux * this.lado * 0.8;
       p.mover(mundo, mx, my, dt, 0.85);
       if (r() < dt * 0.4) this.lado *= -1;
       p.ang = Math.atan2(dy, dx) + (r() - 0.5) * this.errorPunteria * 2;
@@ -299,6 +307,14 @@ export class CerebroBot {
         } else p.mueve = false;
       }
       if (p.arma.bala < ARMAS[p.arma.tipo].cargador * 0.5) p.recargar();
+    }
+    // Separación física suave: los NPC siguen peleando, pero no ocupan el mismo punto.
+    for (const e of enemigos) {
+      if (!e.vivo || e.id === p.id) continue;
+      const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy);
+      if (d >= 16) continue;
+      const a = String(p.id).split('').reduce((n, c) => n + c.charCodeAt(0), 0) * 2.39996;
+      p.mover(mundo, d < 0.1 ? Math.cos(a) : dx / d, d < 0.1 ? Math.sin(a) : dy / d, dt, 0.8);
     }
     // botín al pasar por arriba
     for (const b of botin) if (Math.hypot(b.x - p.x, b.y - p.y) < 12) {

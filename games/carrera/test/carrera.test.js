@@ -2,7 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { carrera } from '../lib/carrera.js';
 import { Jugador } from '../public/js/fisica.js';
-import { rutaBot, posBot, moviles, estaticos, MAPAS, ordenLargada, posLargada } from '../public/js/pista.js';
+import { rutaBot, posBot, moviles, estaticos, MAPAS, ordenLargada, posLargada, puedeMoverAhora } from '../public/js/pista.js';
+
+test('el reloj libera a la persona en cuenta aunque el servidor todavía no cambió de fase', () => {
+  assert.equal(puedeMoverAhora('cuenta', -0.01), false);
+  assert.equal(puedeMoverAhora('cuenta', 0), true);
+  assert.equal(puedeMoverAhora('carrera', 0, true), false);
+});
 import { NPCS, POR_ID, elegirNpcs, charlas } from '../../../shared/public/npcs.js';
 import { getStore } from '../../../shared/store.js';
 

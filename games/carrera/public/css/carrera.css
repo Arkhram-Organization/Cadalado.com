@@ -71,6 +71,41 @@ kbd { font: 700 11px var(--mono); padding: 2px 6px; border-radius: 5px; backgrou
 @media (max-width: 760px) { .panel-flota { top: 58px; left: 8px; padding: 14px; } .puesto { font-size: 32px; } .chat-mini { display: none; } }
 .chat-mini .log .bot b { color: #ffd166; }
 
+/* El chat muestra los últimos mensajes sin capturar las teclas de la carrera. */
+.juego .chat-mini, .juego.en-show .chat-mini { display: block; right: auto; left: 12px; bottom: 12px; z-index: 9; pointer-events: none; }
+.chat-mini .log { max-height: 112px; overflow: hidden; background: linear-gradient(90deg, rgba(20,20,19,.73), rgba(20,20,19,.35)); border: 1px solid rgba(255,255,255,.12); pointer-events: none; }
+.chat-mini form { display: none; pointer-events: auto; }
+.chat-mini form.escribiendo { display: block; }
+.chat-mini .chat-ayuda { display: inline-block; padding: 3px 8px; border-radius: 7px; background: rgba(20,20,19,.58); color: #dce8d2; font: 700 11px var(--mono); }
+.chat-mini:has(form.escribiendo) .chat-ayuda { display: none; }
+
+/* La escena 3D ocupa el centro: las tarjetas de resultados descansan en los bordes. */
+.juego .podio-flota { inset: 0; width: 100%; max-width: none; max-height: none; padding: 0; transform: none; border: 0; background: transparent; box-shadow: none; overflow: visible; pointer-events: none; display: block; }
+.juego .podio-flota.hidden { display: none; }
+.podio-titulo { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: min(600px, calc(100% - 24px)); padding: 10px 18px; text-align: center; border: 2px solid #141413; border-radius: 14px; background: linear-gradient(125deg, #c5f04a, #f9dc6b); box-shadow: 5px 5px 0 #141413; color: #141413; animation: late .65s ease-out; }
+.podio-titulo small { display: block; text-transform: uppercase; letter-spacing: .16em; font-weight: 900; }
+.podio-titulo h2 { margin: 2px 0; font: 900 clamp(32px, 5vw, 62px)/.9 var(--titulo); color: #141413; }
+.podio-titulo span { font-weight: 800; }
+.podio-nombres { position: absolute; left: 50%; bottom: 94px; transform: translateX(-50%); width: min(780px, 92%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+.podio-nombres > div { min-width: 0; padding: 7px 8px; color: #fff; background: rgba(20,20,19,.85); border: 2px solid #d7e0d1; border-radius: 12px; box-shadow: 0 5px 0 #141413; }
+.podio-nombres .p1 { border-color: #ffd34e; background: rgba(66,40,5,.9); transform: translateY(-8px); }
+.podio-nombres strong, .podio-nombres b, .podio-nombres small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.podio-nombres strong { color: #ffd34e; font: 900 22px var(--titulo); }
+.podio-nombres b { font: 900 17px var(--titulo); }
+.podio-nombres small { color: #d3d9cb; }
+.podio-acciones { position: absolute; bottom: 16px; right: 18px; display: flex; align-items: end; gap: 10px; color: #fff; }
+.podio-acciones > * { pointer-events: auto; }
+.podio-resultados { position: relative; background: rgba(20,20,19,.88); border: 1px solid #718064; border-radius: 10px; padding: 8px 12px; }
+.podio-resultados summary { cursor: pointer; font-weight: 800; }
+.podio-resultados .tabla-res { position: absolute; right: 0; bottom: calc(100% + 8px); width: min(380px, 90vw); max-height: 48vh; overflow: auto; padding: 8px; background: #141413; border-radius: 10px; }
+@media (max-width: 760px) { .juego .chat-mini { display: block; width: min(240px, 70%); bottom: 8px; } .chat-mini .log { max-height: 66px; font-size: 11px; } .podio-titulo { top: 8px; } .podio-nombres { bottom: 110px; gap: 3px; } .podio-nombres b { font-size: 12px; } .podio-acciones { right: 8px; bottom: 8px; flex-direction: column; } }
+.juego.en-show .panel-flota:not(.podio-flota) { top: auto; bottom: 14px; left: 14px; width: min(420px, calc(100% - 28px)); max-height: 40vh; padding: 12px 16px; }
+.juego.en-show .panel-flota:not(.podio-flota) h2 { font-size: 22px; }
+.juego.en-show .panel-flota:not(.podio-flota) p { margin: 2px 0 7px; }
+.ronda-resultados summary { cursor: pointer; color: #171b14; font-weight: 900; }
+.ronda-resultados .tabla-res { max-height: 23vh; overflow: auto; }
+.juego.en-show .chat-mini { left: auto; right: 12px; }
+
 /* paneles con onda de juego */
 .panel-flota { background: #fffaf0; color: #16101f; border: 3px solid #16101f; box-shadow: 7px 7px 0 #16101f; backdrop-filter: none; }
 .panel-flota h2 { color: #16101f; text-transform: uppercase; }
@@ -146,4 +181,9 @@ body:has(.menu) .menu .sala-fila .q small, body:has(.menu) .menu .vacio { color:
 .juego.en-show .podio-flota { left: auto; right: 16px; top: 70px; transform: none; width: min(360px, calc(100% - 32px)); max-height: calc(100% - 90px); background: rgba(20, 10, 40, .8); border-color: rgba(255, 210, 63, .45); }
 .juego.en-show .podio-flota .podio-top { display: none; }
 @media (max-width: 760px) { .juego.en-show .podio-flota { top: auto; bottom: 8px; max-height: 40vh; } }
-.juego.en-show .chat-mini { display: none; }
+.juego.en-show .chat-mini { display: block; left: 12px; right: auto; top: 68px; bottom: auto; width: min(260px, 34vw); }
+.chat-mini .chat-ayuda { border: 0; cursor: pointer; pointer-events: auto; }
+@media (max-width: 760px) {
+  .juego .chat-mini { bottom: 158px; }
+  .juego.en-show .chat-mini { top: 54px; left: 8px; width: min(185px, 52vw); }
+}
