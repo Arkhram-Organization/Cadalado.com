@@ -14,7 +14,7 @@ export const NPCS = [
   },
   {
     id: 'batata', nombre: 'Batata',
-    look: { modelo: 'batata', clips: { festeja: 'FunnyDancing_01', baila: 'FunnyDancing_01' }, piel: '#e4bf9d', pelo: { estilo: 'corto', color: '#403023' }, ropa: { remera: '#84bedd', pantalon: '#f3eee4' } },
+    look: { modelo: 'batata', clips: { quieto: 'Idle_15', festeja: 'Hip_Hop_Dance_4', baila: 'Hip_Hop_Dance_1', corre: 'Running', salto: 'Run_and_Leap' }, piel: '#e4bf9d', pelo: { estilo: 'corto', color: '#403023' }, ropa: { remera: '#84bedd', pantalon: '#f3eee4' } },
     frases: ['Soy católico, apostólico y romano. ¡Amén!', '¡Qué alegría sería recibir al papa León XIV en Argentina!', 'Primero la misa, después alentar al Gasolero.', '¡Vamos Temperley, carajo!', 'Jugadores, pónganse las pilas, la puta madre.', 'Dios nos da paciencia, pero esa defensa me la gasta toda.', 'A mí me gusta Milei: banco que ponga las cuentas en orden.', '¡Peronismo del orto, dejen de vender humo!', 'Que la Virgen nos acompañe. Y que Temperley meta un gol.'],
   },
   {
