@@ -3,7 +3,7 @@ import { MAPAS, estaticos, moviles, alturaRampa } from './pista.js';
 
 const RADIO = 0.42;
 const ALTO = 1.8;
-const VEL = 6.4; // caminar más tranquilo que antes
+const VEL = 7.1;
 const ACEL_SUELO = 40;
 const ACEL_AIRE = 13;
 const SALTO = 9.4;
@@ -208,9 +208,10 @@ export class Jugador {
     for (const p of mov.pistones) empujar(p, p.vx);
 
     // obstáculos que te voltean (más suave que antes)
+    // los golpes de los obstáculos empujan bastante más fuerte (te pueden tirar de la pista)
     const golpe = (vx, vy, vz) => {
       if (this.aturdido > 0) return;
-      this.voltear(vx, vy, vz);
+      this.voltear(vx * 1.45, vy * 1.2, vz * 1.45);
       ev.push('golpe');
     };
     for (const b of mov.barras) {

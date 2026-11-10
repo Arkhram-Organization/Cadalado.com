@@ -40,7 +40,7 @@ function cupoDe(r) {
   if (n <= 1) return 1;
   if (r.ronda >= r.rondas.length) return 1; // la final: gana el primero
   const quedan = r.rondas.length - r.ronda; // rondas que faltan después de esta
-  const k = quedan >= 2 ? 0.65 : 0.5;
+  const k = quedan >= 2 ? 0.55 : 0.4; // clasifican menos: cada ronda pesa
   return Math.max(2, Math.min(n - 1, Math.ceil(n * k)));
 }
 

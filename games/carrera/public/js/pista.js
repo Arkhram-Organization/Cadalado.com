@@ -22,7 +22,7 @@ const bordes = (z0, z1, ancho, top = 0) => [caja(-ancho / 2 - 0.3, top + 0.4, (z
 export const alturaRampa = (r, z) => r.y0 + ((r.z0 - z) / (r.z0 - r.z1)) * (r.y1 - r.y0);
 
 // Bolas que bajan por una rampa: aparece una por carril cada `periodo` segundos.
-function bolasRampa(rampa, t, fases, periodo = 3.4, vel = 7) {
+function bolasRampa(rampa, t, fases, periodo = 2.2, vel = 6.6) {
   const out = [];
   [-4, 0, 4].forEach((x, i) => {
     for (let k = 0; k < 3; k++) {
@@ -228,7 +228,14 @@ export function estaticos(mapaId) {
   if (!cacheE.has(mapaId)) cacheE.set(mapaId, MAPAS[mapaId].estaticos());
   return cacheE.get(mapaId);
 }
-export const moviles = (mapaId, t, semilla) => MAPAS[mapaId].moviles(t, semilla);
+// Ritmo de los obstáculos: más alto = todo se mueve más rápido (más difícil y más caótico).
+export const RITMO = 1.38;
+// (las baldosas que se caen siguen a su ritmo: los bots las cruzan en los momentos firmes)
+export const moviles = (mapaId, t, semilla) => {
+  const m = MAPAS[mapaId].moviles(t * RITMO, semilla);
+  if (m.baldosas) m.baldosas = MAPAS[mapaId].moviles(t, semilla).baldosas;
+  return m;
+};
 
 // ---------------------------------------------------------------- bots
 // Cada bot recorre la ruta del mapa con su velocidad, a veces se cae o lo golpean.
@@ -236,7 +243,7 @@ export const moviles = (mapaId, t, semilla) => MAPAS[mapaId].moviles(t, semilla)
 export function rutaBot(mapaId, semilla, i) {
   const mapa = MAPAS[mapaId];
   const r = rng((semilla * 31 + i * 7919 + mapaId * 104729) >>> 0);
-  const v = 4.7 + r() * 0.9;
+  const v = 5.3 + r() * 1.0; // bots más rápidos: hay que correr de verdad
   let carril = (r() - 0.5) * 6;
   const segs = [];
   let t = 0;
@@ -270,7 +277,7 @@ export function rutaBot(mapaId, semilla, i) {
         for (let espera = 0; espera < 14 && elegida == null; espera++) {
           const opciones = [col, col - 1, col + 1].filter((c) => c >= 0 && c <= 6).sort((x, y) => Math.abs(x - 3) - Math.abs(y - 3) + (r() - 0.5) * 2.5);
           // si cambia de columna, primero se corre de costado en su fila (que también tiene que aguantar)
-          elegida = opciones.find((c) => firme(fila, c, t, tiempoFila * 2 + 0.4) && (c === col || fila === 0 || firme(fila - 1, c, t, tiempoFila + 0.3))) ?? null;
+          elegida = opciones.find((c) => firme(fila, c, t, tiempoFila * 2 + 0.4) && (c === col || fila === 0 || (firme(fila - 1, c, t, tiempoFila + 0.3) && firme(fila - 1, col, t, tiempoFila * 0.7)))) ?? null;
           if (elegida == null) {
             if (fila > 0 && !firme(fila - 1, col, t, 0.4)) break;
             seg({ ...pos }, 0.3, 'quieto');

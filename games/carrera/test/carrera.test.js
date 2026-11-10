@@ -120,7 +120,7 @@ test('sala: rondas con eliminación, NPC como bots, piñas solo al destinatario 
   assert.equal(v.estado.fase, 'cuenta');
   assert.equal(v.estado.rondas.length, 3);
   assert.equal(v.estado.rondas[2], 3, 'la final es el mapa de baldosas');
-  assert.equal(v.estado.cupo, 6); // ceil(8 * .65)
+  assert.equal(v.estado.cupo, 5); // ceil(8 * .55)
   assert.equal(v.estado.vivos.length, 3);
   await tocar(code, { inicio: Date.now() - 1000 });
   v = await ver(code, A);
@@ -135,17 +135,17 @@ test('sala: rondas con eliminación, NPC como bots, piñas solo al destinatario 
   await tocar(code, { inicio: Date.now() - 200_000 });
   v = await ver(code, A);
   assert.equal(v.estado.fase, 'ronda');
-  assert.equal(v.estado.clasificacion.filter((x) => x.paso).length, 6);
+  assert.equal(v.estado.clasificacion.filter((x) => x.paso).length, 5);
   assert.ok(v.estado.clasificacion.find((x) => x.nombre === 'Ana').paso);
   assert.ok(!v.estado.clasificacion.find((x) => x.nombre === 'Caro').paso, 'Caro no llegó: afuera');
   assert.equal(v.estado.vivos.length, 2);
-  assert.equal(v.estado.botsVivos.length, 4);
+  assert.equal(v.estado.botsVivos.length, 3);
   // siguiente ronda
   await tocar(code, { fin: Date.now() - 1 });
   v = await ver(code, A);
   assert.equal(v.estado.fase, 'cuenta');
   assert.equal(v.estado.ronda, 2);
-  assert.equal(v.estado.cupo, 3); // ceil(6 * .5)
+  assert.equal(v.estado.cupo, 2); // ceil(5 * .4)
   assert.equal((await accion(code, C, { t: 'meta' })).data.error, undefined);
   await tocar(code, { inicio: Date.now() - 25_000, fase: 'carrera' });
   await accion(code, B, { t: 'meta' });
