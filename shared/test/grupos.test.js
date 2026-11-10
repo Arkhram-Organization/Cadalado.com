@@ -127,3 +127,17 @@ test('premios: cada partida deja fichas, más si ganás, con tope diario', async
   for (let i = 2; i < TOPE_DIARIO; i++) await premiar(pid, null, 'derrota');
   assert.equal(await premiar(pid, null, 'victoria'), 0, 'pasado el tope no paga');
 });
+
+test('tienda: códigos de creador, una sola vez por cuenta', async () => {
+  const a = cliente('11.0.0.31');
+  const pid = 'pidcodigo' + rnd();
+  assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'Opusreligioso' })).status, 401, 'sin cuenta no');
+  await a('POST', '/registro', { usuario: 'cod' + rnd(), nombre: 'Coco', clave: 'clave123' });
+  let r = await a('POST', '/tienda/codigo', { pid, codigo: ' opusRELIGIOSO ' });
+  assert.equal(r.data.monto, 40_000);
+  assert.equal(r.data.saldo, 8_000 + 40_000);
+  assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'Opusreligioso' })).status, 400, 'otra vez no');
+  r = await a('POST', '/tienda/codigo', { pid, codigo: 'Ad1min' });
+  assert.equal(r.data.saldo, 148_000);
+  assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'cualquiera' })).status, 404);
+});

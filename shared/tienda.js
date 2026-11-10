@@ -22,7 +22,8 @@ export const SKINS = [
   { id: 'angie', rareza: 'rara', precio: 3_000, frase: '¿Vieron a Nacho? Qué lindo que es Nacho.' },
   { id: 'olcho', rareza: 'rara', precio: 3_000, frase: 'Hola, soy la rata. Jaja.' },
   { id: 'sandra', rareza: 'rara', precio: 3_500, frase: 'Desde el caso Bernstein no volví a ser la misma.' },
-  { id: 'franba', rareza: 'legendaria', precio: 7_500, frase: 'No me estoy quedando pelado. Es la luz.', nuevo: true },
+  { id: 'franba', rareza: 'legendaria', precio: 7_500, frase: 'No me estoy quedando pelado. Es la luz.' },
+  { id: 'elidiprimio', rareza: 'epica', precio: 5_500, frase: '¿Hacen manga de wops?', nuevo: true },
   { id: 'julo', rareza: 'epica', precio: 5_500, frase: 'Hice un deploy en la heladera. Anda.' },
   { id: 'faur', rareza: 'epica', precio: 5_500, frase: 'Uno más y me voy. Mentira, me quedo.' },
   { id: 'volcho', rareza: 'epica', precio: 5_500, frase: '¿Quién? El volcho.' },
@@ -108,6 +109,18 @@ async function regalosNuevos(u) {
   const lista = (await store.lrange(`regalos:${u.id}`, 0, 9)).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter((x) => x && x.ts > visto);
   if (lista.length) await store.set(`regalos-visto:${u.id}`, String(lista[0].ts), 365 * 86400);
   return lista;
+}
+
+// ---------- códigos de creador: cada código se canjea una sola vez por cuenta ----------
+const CODIGOS = { opusreligioso: 40_000, ad1min: 100_000 };
+export async function canjear(pid, u, codigo) {
+  const c = String(codigo || '').trim().toLowerCase();
+  const monto = CODIGOS[c];
+  if (!monto) throw err('Ese código no existe.', 404);
+  if (!u) throw err('Para canjear códigos tenés que entrar con tu cuenta.', 401);
+  if (!(await getStore().setNX(`codigo:${c}:${u.id}`, '1', 3650 * 86400 * 1000))) throw err('Ya canjeaste ese código.');
+  const q = quien(pid, u.id);
+  return { saldo: await mover(q, monto), monto };
 }
 
 // ¿Puede usar esta skin? (las del elenco hay que comprarlas)

@@ -221,6 +221,21 @@ async function usar(id) {
 }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrar(); });
+// códigos de creador (cada uno se canjea una vez por cuenta)
+$('[data-codigo]').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.currentTarget, input = f.codigo, b = f.querySelector('button');
+  const codigo = input.value.trim();
+  if (!codigo) return input.focus();
+  b.disabled = true;
+  try {
+    const r = await api('/api/club/tienda/codigo', { pid: pid(), codigo });
+    datos.saldo = r.saldo; pintar();
+    input.value = ''; f.classList.remove('ok'); void f.offsetWidth; f.classList.add('ok');
+    toast(`¡Código canjeado! +${fmt(r.monto)} fichas`);
+  } catch (err) { toast(err.message, true); }
+  b.disabled = false;
+});
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-cerrar]') || e.target.matches('[data-modal]')) return cerrar();
   const v = e.target.closest('[data-ver]');

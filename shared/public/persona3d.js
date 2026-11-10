@@ -5,8 +5,12 @@ import { PERFILES } from './caras/perfiles.js';
 import { pintarCara, siluetaCabeza } from './caras/pintar.js';
 import { crearPersonaModelo } from './modelo3d.js';
 import { travieso, voltereta } from './gestos.js';
+import { enganchar } from './wooop.js';
 
 export function crearPersona(THREE, look = {}, opciones = {}) {
+  return enganchar(crearPersonaBase(THREE, look, opciones), !!look.contagia);
+}
+function crearPersonaBase(THREE, look = {}, opciones = {}) {
   // Personajes del elenco con modelo propio (hechos en Meshy): cara y torso de sus capturas.
   // Personajes con su modelo de Meshy (GLB con esqueleto y animaciones).
   if (look.modelo) return crearPersonaModelo(THREE, look, opciones, { sprite, liberarSprite });

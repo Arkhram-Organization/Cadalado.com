@@ -1,6 +1,6 @@
 // Genera las portadas de la tienda: cada personaje en su pose, con un fondo distinto (del color de su rareza;
 // las míticas tienen el suyo) y su nombre gigante atrás.
-// Necesita el servidor de desarrollo en :8787. Uso: node scripts/portadas-tienda.cjs portal/public/img/tienda
+// Necesita el servidor de desarrollo en :8787. Uso: node scripts/portadas-tienda.cjs portal/public/img/tienda [id,id]
 const { chromium } = require('playwright'); const fs = require('fs');
 const OUT = process.argv[2];
 const P = [
@@ -9,6 +9,7 @@ const P = [
   ['dobro', 'El casino de', 'DOBRO', 'quieto', 1, 0.15, 'casino', ['#2a0508', '#8a0f1a', '#ffd23f']],
   ['angeles', 'Ángeles', 'PEÑA', 'g-baila', 1.3, 0.3, 'rayos', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['franba', 'El hijo del', 'CIBER', 'g-habla', 0.9, -0.15, 'ciber', ['#3a1a02', '#e08a10', '#ffe08a']],
+  ['elidiprimio', 'Elidiprimio', 'WOOOP', 'g-baila', 1.1, 0.25, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['julo', 'Julo', 'DEPLOY', 'g-musculos', 1.1, 0.25, 'codigo', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['glinsky', 'Profe', 'GLINSKY', 'g-habla', 1.2, -0.25, 'exponencial', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['faur', 'Una más y me', 'QUEDO', 'g-baila', 1.6, 0.2, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
@@ -84,7 +85,7 @@ const P = [
       const pr = crearPersona(THREE, look, { sombras: false }); await pr.listo;
       esc.add(pr.grupo); pr.grupo.rotation.y = rot;
       const pasos = Math.round(t * 30); for (let i = 0; i < pasos; i++) pr.animar(pose, 1 / 30);
-      pr.grupo.traverse((o) => { if (o.isMesh && o.geometry?.type === 'CircleGeometry') o.visible = false; });
+      const fuera = []; pr.grupo.traverse((o) => { if ((o.isMesh && o.geometry?.type === 'CircleGeometry') || o.isSprite) fuera.push(o); }); fuera.forEach((o) => o.removeFromParent());
       const caja = new THREE.Box3().setFromObject(pr.grupo); const cc = caja.getCenter(new THREE.Vector3()); const sz = caja.getSize(new THREE.Vector3());
       const cam = new THREE.PerspectiveCamera(24, 720 / 960, .1, 50); const d = Math.max(sz.y, sz.x * 960 / 720) * 1.0 / 2 / Math.tan(12 * Math.PI / 180);
       cam.position.set(cc.x, cc.y + .15, cc.z - d); cam.lookAt(cc.x, cc.y + .05, cc.z);
@@ -103,7 +104,8 @@ const P = [
     window.listo = true;` });
   await p.waitForFunction(() => window.listo);
   await p.evaluate(() => document.fonts.ready);
-  for (const a of P) {
+  const solo = process.argv[3]?.split(','); // opcional: solo estos ids
+  for (const a of P.filter((x) => !solo || solo.includes(x[0]))) {
     const url = await p.evaluate((a) => window.portada(...a), a);
     fs.writeFileSync(`${OUT}/${a[0]}.webp`, Buffer.from(url.split(',')[1], 'base64'));
     console.log('ok', a[0]);

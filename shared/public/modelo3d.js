@@ -11,7 +11,7 @@ const cache = new Map();
 let qMuslo = null, qRodilla = null; // giros para sentarse (sobre la pose de los huesos)
 
 // Biblioteca común: las animaciones de cada modelo de Meshy sirven para todos (mismo esqueleto Mixamo).
-const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra', 'anim-franba'];
+const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra', 'anim-franba', 'anim-elidiprimio'];
 let biblioteca = null;
 function cargarBiblioteca() {
   biblioteca ??= Promise.all(BIBLIOTECA.map((n) => cargar(new URL(`./modelos/${n}.glb`, import.meta.url).href).catch(() => ({ animations: [] }))))
@@ -196,7 +196,11 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
         if (transcurrido > 6.4 && acciones.despierta) clip = 'despierta';
         if (!zzz) { zzz = true; api.decir('Zzz… zzz…', 6.2); }
       } else zzz = false;
-      if (estado !== estadoActual) { transcurrido = 0; estadoActual = estado; } else transcurrido += dt;
+      if (estado !== estadoActual) {
+        transcurrido = 0; estadoActual = estado;
+        // algunos dicen algo cuando arrancan a bailar (Elidiprimio: "dale MXD")
+        if (estado === 'baila' && look.alBailar?.length) api.decir(look.alBailar[Math.floor(Math.random() * look.alBailar.length)], 3);
+      } else transcurrido += dt;
       if (mixer) {
         if (clip) { poner(clip); mixer.update(dt); }
         else { mixer.stopAllAction(); actual = null; }
