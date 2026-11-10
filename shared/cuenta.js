@@ -80,7 +80,10 @@ export async function usuarioActual(request) {
   const store = getStore();
   const id = await store.get(`ses:${token}`);
   const u = await usuarioPorId(id);
-  if (u) await store.set(`visto:${u.id}`, String(Date.now()), 30 * 86400);
+  if (u) {
+    await store.set(`visto:${u.id}`, String(Date.now()), 30 * 86400);
+    await store.hset('enlinea', u.id, String(Date.now()), 2 * 86400); // para "en línea ahora" al agregar amigos
+  }
   return u;
 }
 
@@ -297,7 +300,13 @@ export async function sugeridos(u) {
   }
   const top = [...comunes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   const conocidos = (await Promise.all(top.map(([id, n]) => ficha(id, { comunes: n })))).filter(Boolean);
-  return { recientes, conocidos };
+  // en línea ahora: todos los que usaron el club en los últimos minutos (menos vos y tus amigos)
+  const todos = await s.hgetall('enlinea');
+  const viejos = Object.entries(todos).filter(([, ts]) => Date.now() - Number(ts) > 86400_000).map(([id]) => id);
+  if (viejos.length) await s.hdel('enlinea', viejos);
+  const vivos = Object.entries(todos).filter(([id, ts]) => id !== u.id && rel[id] !== 'amigo' && !recientes.some((r) => r.id === id) && !conocidos.some((c) => c.id === id) && Date.now() - Number(ts) < ONLINE_MS).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 40);
+  const enLinea = (await Promise.all(vivos.map(([id]) => ficha(id)))).filter(Boolean);
+  return { recientes, conocidos, enLinea };
 }
 
 export async function accionAmistad(u, accion, usuario) {

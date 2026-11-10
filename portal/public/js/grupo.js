@@ -115,12 +115,13 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
     : `<button class="gr-btn" data-amigo="pedir" data-u="${esc(p.usuario)}">Agregar</button>`;
   const filaSugerido = (p, detalle) => `<div class="gr-fila">${cara(p)}<div class="gr-txt"><b>${esc(p.nombre)}</b><small>@${esc(p.usuario)} · ${detalle}${p.enLinea ? ' · en línea' : ''}</small></div>${botonAmigo(p)}</div>`;
   function seccionAgregar() {
-    const sug = listas.sugeridos || { recientes: [], conocidos: [] };
+    const sug = { recientes: [], conocidos: [], enLinea: [], ...(listas.sugeridos || {}) };
     return `<section><h3>Agregar amigos</h3>
       <form class="gr-agregar" data-agregar><input name="usuario" placeholder="Usuario de tu amigo" autocomplete="off" maxlength="24" spellcheck="false"><button class="gr-btn lima">Agregar</button></form>
       ${sug.recientes.length ? `<h4 class="gr-sub">Jugaste hace poco</h4>${sug.recientes.map((p) => filaSugerido(p, hace(p.cuando))).join('')}` : ''}
       ${sug.conocidos.length ? `<h4 class="gr-sub">Quizás los conozcas</h4>${sug.conocidos.map((p) => filaSugerido(p, `${p.comunes} ${p.comunes === 1 ? 'amigo' : 'amigos'} en común`)).join('')}` : ''}
-      ${!sug.recientes.length && !sug.conocidos.length ? '<p class="gr-vacio">Cuando juegues con gente del club, te la vamos a sugerir acá.</p>' : ''}
+      ${sug.enLinea.length ? `<h4 class="gr-sub">En línea ahora (${sug.enLinea.length})</h4>${sug.enLinea.map((p) => filaSugerido({ ...p, enLinea: false }, 'en línea')).join('')}` : ''}
+      ${!sug.recientes.length && !sug.conocidos.length && !sug.enLinea.length ? '<p class="gr-vacio">Cuando juegues con gente del club, te la vamos a sugerir acá.</p>' : ''}
     </section>`;
   }
   async function pedirAmistad(accionA, usuarioOtro) {

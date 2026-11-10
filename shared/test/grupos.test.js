@@ -198,3 +198,17 @@ test('amigos sugeridos: los que jugaron juntos y los amigos de tus amigos', asyn
   const caro = r.data.conocidos.find((x) => x.usuario === uc);
   assert.ok(caro && caro.comunes === 1, 'Caro: amiga de un amigo');
 });
+
+test('amigos sugeridos: también todos los que están en línea ahora (menos vos y tus amigos)', async () => {
+  const a = cliente('11.0.0.51'), b = cliente('11.0.0.52');
+  const ua = 'onla' + rnd(), ub = 'onlb' + rnd();
+  await a('POST', '/registro', { usuario: ua, nombre: 'Ana', clave: 'clave123' });
+  await b('POST', '/registro', { usuario: ub, nombre: 'Beto', clave: 'clave123' });
+  await b('GET', '/yo'); // Beto anda por el club
+  let r = await a('GET', '/sugeridos');
+  assert.ok(r.data.enLinea.some((x) => x.usuario === ub), 'Beto aparece en línea');
+  assert.ok(!r.data.enLinea.some((x) => x.usuario === ua), 'vos no');
+  await a('POST', '/amigos', { accion: 'pedir', usuario: ub }); await b('POST', '/amigos', { accion: 'aceptar', usuario: ua });
+  r = await a('GET', '/sugeridos');
+  assert.ok(!r.data.enLinea.some((x) => x.usuario === ub), 'los amigos no se repiten');
+});
