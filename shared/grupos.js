@@ -38,7 +38,7 @@ async function guardar(g) {
 }
 const vista = (g, yo) => g && {
   id: g.id, abierto: g.abierto, juego: g.juego, config: g.config || CONFIG_INICIAL[g.juego] || {}, ir: g.ir, soyLider: g.lider === yo.k,
-  miembros: g.miembros.map((m) => ({ nombre: m.nombre, usuario: m.usuario || null, look: m.look, lider: m.k === g.lider, yo: m.k === yo.k })),
+  miembros: g.miembros.map((m) => ({ nombre: m.nombre, usuario: m.usuario || null, look: m.look, lider: m.k === g.lider, yo: m.k === yo.k, gesto: m.gesto && Date.now() - m.gesto.ts < 10_000 ? m.gesto : null })),
 };
 
 async function entrar(yo, id) {
@@ -142,6 +142,14 @@ export async function accionGrupo(yo, body) {
       if (!lider) throw err('Solo el líder puede sacar gente.', 403);
       g.miembros = g.miembros.filter((m) => m.nombre !== body.nombre || m.k === yo.k);
       break;
+    case 'gesto': {
+      // el gesto que hace cada uno en la lobby: los demás lo ven
+      const id = String(body.gesto || '');
+      if (!/^[a-z]{3,12}$/.test(id)) throw err('Gesto inválido.');
+      const m = g.miembros.find((x) => x.k === yo.k);
+      if (m) m.gesto = { id, ts: Date.now() };
+      break;
+    }
     case 'invitar': {
       if (!yo.uid) throw err('Para invitar amigos tenés que entrar con tu cuenta.', 401);
       const otro = await s.get(`uname:${String(body.usuario || '').trim().toLowerCase()}`);

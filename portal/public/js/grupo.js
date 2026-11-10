@@ -160,12 +160,13 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
     } else await refrescar();
     alCambiar?.(grupo);
   })();
-  setInterval(() => { if (!document.hidden) refrescar(); }, 2500);
+  setInterval(() => { if (!document.hidden) refrescar(); }, 1500);
   setInterval(() => { if (!document.hidden && abierto) cargarListas(); }, 8000);
 
   return {
     mostrar, jugar,
     get grupo() { return grupo; },
+    gesto: (id) => grupo?.miembros.length > 1 && accion({ accion: 'gesto', gesto: id }),
     elegirJuego: (id) => grupo?.soyLider && grupo.miembros.length > 1 && accion({ accion: 'juego', juego: id }),
   };
 }

@@ -149,7 +149,8 @@ export async function montarLobby(raiz) {
     const p = personas.find((x) => { let o = toc.object; while (o) { if (o === x.grupo) return true; o = o.parent; } return false; });
     if (p) { p.decir(frase(p.npc.id, Math.random, miNombre), 4); p.gesto?.(['saluda', 'festeja', 'baila'][Math.floor(Math.random() * 3)]); }
   });
-  ruedaGestos({ alElegir: (id) => yoP.gesto?.(id) });
+  const QUE_HACE = { baila: '¡Bailando!', festeja: '¡Festejando!', saluda: '¡Hola!', voltereta: '¡Voltereta!', habla: 'Charlando…', flexiones: 'Haciendo flexiones', duerme: 'Zzz…', musculos: '¡Mirá estos músculos!' };
+  ruedaGestos({ alElegir: (id) => { yoP.gesto?.(id); yoP.decir?.(QUE_HACE[id] || '', 2.5); grupoApi?.gesto?.(id); } });
 
   // ---------------- lobby compartida: los del grupo aparecen al lado tuyo
   const compas = new Map(); // nombre → persona
@@ -165,6 +166,8 @@ export async function montarLobby(raiz) {
         escena.add(p.grupo); compas.set(m.nombre, p);
         p.decir('¡Llegué!', 2.5);
       }
+      // si hizo un gesto, se ve acá también (y qué está haciendo)
+      if (m.gesto && m.gesto.ts !== p.ultimoGesto) { p.ultimoGesto = m.gesto.ts; p.gesto?.(m.gesto.id); p.decir(QUE_HACE[m.gesto.id] || '', 3); }
       const [x, z] = LUGARES[i % LUGARES.length];
       p.grupo.position.set(x, 0, z); p.grupo.rotation.y = -x * .12;
     });

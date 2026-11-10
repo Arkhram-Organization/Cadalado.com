@@ -13,7 +13,7 @@ function ponerEstilos() {
   .rueda-gestos svg{width:min(78vmin,420px);height:min(78vmin,420px);pointer-events:auto;filter:drop-shadow(0 10px 30px rgba(0,0,0,.5))}
   .rueda-gestos .sector{fill:rgba(20,22,30,.82);stroke:rgba(255,255,255,.18);stroke-width:1.5;cursor:pointer;transition:fill .08s}
   .rueda-gestos .sector.on{fill:rgba(197,240,74,.92)}
-  .rueda-gestos text{font:800 15px Barlow,Arial,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:middle;pointer-events:none;text-transform:uppercase;letter-spacing:.5px}
+  .rueda-gestos text{font:800 13px Barlow,Arial,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:middle;pointer-events:none;text-transform:uppercase;letter-spacing:.5px}
   .rueda-gestos .on + text, .rueda-gestos text.on{fill:#1b2213}
   .rueda-gestos .tecla{font:700 11px Barlow,Arial,sans-serif;fill:rgba(255,255,255,.6)}
   .rueda-gestos .centro{fill:rgba(12,13,18,.92);stroke:rgba(255,255,255,.25);stroke-width:2}
@@ -66,15 +66,23 @@ export function ruedaGestos({ alElegir, puede = () => true } = {}) {
     }
   };
   const arriba = (e) => { if (e.code === 'KeyB') cerrar(true); };
-  // el ángulo del mouse desde donde estaba al apretar la B elige el gesto (anda con el puntero bloqueado también)
+  // el gesto es el que queda en la dirección del mouse, medida desde el centro de la rueda
+  // (con el puntero bloqueado, desde donde estaba al apretar la B)
   const mover = (e) => {
     if (!abierta) return;
-    dx += e.movementX || 0; dy += e.movementY || 0;
-    if (Math.hypot(dx, dy) < 18) return marcar(-1);
-    const a = Math.atan2(dy, dx) + Math.PI / 2 + paso / 2;
+    let x, y, muerto;
+    if (document.pointerLockElement) { dx += e.movementX || 0; dy += e.movementY || 0; x = dx; y = dy; muerto = 18; }
+    else {
+      const r = $('svg').getBoundingClientRect();
+      x = e.clientX - (r.left + r.width / 2); y = e.clientY - (r.top + r.height / 2);
+      muerto = (r.width / 400) * (r0 - 8);
+      // si el mouse arrancó lejos del centro, también vale mover en la dirección del gesto
+      if (Math.hypot(x, y) > r.width / 2 + 40) { dx += e.movementX || 0; dy += e.movementY || 0; if (Math.hypot(dx, dy) > 18) { x = dx; y = dy; } }
+    }
+    if (Math.hypot(x, y) < muerto) return marcar(-1);
+    const a = Math.atan2(y, x) + Math.PI / 2 + paso / 2;
     marcar(((Math.floor(a / paso) % n) + n) % n);
   };
-  el.addEventListener('pointerover', (e) => { const s = e.target.closest('.sector'); if (s && abierta) marcar(+s.dataset.i); });
   el.addEventListener('click', (e) => { const s = e.target.closest('.sector'); if (s) { marcar(+s.dataset.i); cerrar(true); } });
   addEventListener('keydown', abajo); addEventListener('keyup', arriba); addEventListener('mousemove', mover);
   addEventListener('blur', () => cerrar(false));

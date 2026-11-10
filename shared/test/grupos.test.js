@@ -24,6 +24,11 @@ test('grupos: sin cuenta, lobby abierta, otro se une con la flechita, el líder 
   assert.ok(r.data.abiertos.some((g) => g.id === id), 'se ve en las lobbys abiertas');
   r = await b('POST', '/grupo', { pid: pb, nombre: 'Beto', accion: 'unirse', id });
   assert.equal(r.data.grupo.miembros.length, 2);
+  // los gestos de cada uno los ven los demás
+  await b('POST', '/grupo', { pid: pb, accion: 'gesto', gesto: 'baila' });
+  r = await a('GET', `/grupo?pid=${pa}&nombre=Ana`);
+  assert.equal(r.data.grupo.miembros.find((m) => m.nombre === 'Beto').gesto.id, 'baila');
+  assert.equal((await b('POST', '/grupo', { pid: pb, accion: 'gesto', gesto: '<script>' })).status, 400);
   assert.equal((await b('POST', '/grupo', { pid: pb, accion: 'jugar', url: '/royale/' })).status, 403);
   assert.equal((await b('POST', '/grupo', { pid: pb, accion: 'config', bots: 4 })).status, 403);
   assert.equal((await a('POST', '/grupo', { pid: pa, accion: 'jugar', url: '/haxball/sala/ABCDE' })).status, 400);
@@ -54,4 +59,20 @@ test('grupos: con cuenta se invita a un amigo y ve la lobby del amigo', async ()
   assert.equal(r.data.invitaciones[0].grupo, id);
   r = await b('GET', '/grupos');
   assert.equal(r.data.amigos[0].grupo.id, id);
+});
+
+test('tienda: se compra una skin con las fichas del casino y no se puede pagar dos veces', async () => {
+  const a = cliente('11.0.0.9');
+  const pid = 'pidtienda' + rnd();
+  let r = await a('GET', `/tienda?pid=${pid}`);
+  assert.equal(r.data.saldo, 10_000);
+  assert.ok(r.data.skins.find((s) => s.id === 'mati').precio > r.data.skins.find((s) => s.id === 'capitan').precio, 'la mítica es la más cara');
+  r = await a('POST', '/tienda/comprar', { pid, skin: 'olcho' });
+  assert.equal(r.data.saldo, 10_000 - 3_500);
+  assert.deepEqual(r.data.mias, ['olcho']);
+  r = await a('POST', '/tienda/comprar', { pid, skin: 'olcho' });
+  assert.equal(r.data.saldo, 6_500, 'comprarla otra vez no cobra');
+  r = await a('POST', '/tienda/comprar', { pid, skin: 'mati' });
+  assert.equal(r.status, 400, 'no alcanza para la mítica');
+  assert.equal((await a('GET', `/tienda?pid=${pid}`)).data.saldo, 6_500);
 });
