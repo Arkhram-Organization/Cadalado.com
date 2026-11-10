@@ -14,6 +14,10 @@ export function iniciales(nombre) {
   const partes = String(nombre || '?').trim().split(/\s+/);
   return esc(((partes[0]?.[0] || '?') + (partes[1]?.[0] || '')).toUpperCase());
 }
+// con foto de perfil si la subió; si no, sus iniciales
+export const avatarDe = (u, clase = '') => (u?.perfil?.foto
+  ? `<img class="avatar ${clase}" src="/api/club/perfil/imagen?usuario=${encodeURIComponent(u.usuario)}&tipo=foto&v=${u.perfil.foto}" alt="" style="object-fit:cover;padding:0">`
+  : avatar(u?.nombre || '?', clase));
 export const avatar = (nombre, clase = '') => `<span class="avatar ${clase}" style="--av:${colorDe(nombre)}" aria-hidden="true">${iniciales(nombre)}</span>`;
 
 export async function api(ruta, body) {
@@ -140,7 +144,7 @@ async function pintarCuenta() {
   if (!el) return;
   const u = await yo();
   el.innerHTML = u
-    ? `<a class="cuenta-link" href="/club" title="Tu cuenta">${avatar(u.nombre)}<span>${esc(u.nombre)}</span></a>`
+    ? `<a class="cuenta-link" href="/perfil" title="Tu perfil">${avatarDe(u)}<span>${esc(u.nombre)}</span></a>`
     : `<a class="cuenta-link" href="/entrar?volver=${encodeURIComponent(location.pathname)}" style="padding:7px 14px"><span style="display:inline">Entrar</span></a>`;
 }
 

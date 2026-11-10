@@ -1,5 +1,5 @@
 import { JUEGOS } from './datos.js';
-import { iniciarPagina, api, yo, esc, avatar, toast, hace, pidDe } from './comun.js';
+import { iniciarPagina, api, yo, esc, avatar, avatarDe, toast, hace, pidDe } from './comun.js';
 
 iniciarPagina();
 const $ = (s) => document.querySelector(s);
@@ -32,7 +32,7 @@ if (!u) {
 
 // ---------------------------------------------------------------- perfil
 function pintarPerfil() {
-  $('[data-avatar]').innerHTML = avatar(yoMismo.nombre);
+  $('[data-avatar]').innerHTML = avatarDe(yoMismo);
   $('[data-nombre]').textContent = yoMismo.nombre;
   $('[data-usuario]').textContent = '@' + yoMismo.usuario + ' · en cadalado desde ' + new Date(yoMismo.creado).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
 }
@@ -129,8 +129,8 @@ async function cargarAmigos() {
 
   $('[data-amigos]').innerHTML = amigos.length
     ? amigos.map((a) => `
-      <div class="fila amigo">${avatar(a.nombre)}
-        <span class="quien"><b><span class="online ${a.enLinea ? 'si' : ''}"></span> ${esc(a.nombre)}</b>
+      <div class="fila amigo">${avatarDe(a)}
+        <span class="quien"><b><span class="online ${a.enLinea ? 'si' : ''}"></span> <a href="/perfil?u=${encodeURIComponent(a.usuario)}">${esc(a.nombre)}</a></b>
           <small>@${esc(a.usuario)} · ${a.enLinea ? 'en línea' : a.visto ? 'visto ' + hace(a.visto) : 'sin conexión'}</small></span>
         <span class="acciones">
           <button class="btn btn-lima btn-chico" data-desafiar="ajedrez" data-u="${esc(a.usuario)}">Ajedrez</button>

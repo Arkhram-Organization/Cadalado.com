@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Perfil · cadalado</title>
+  <meta name="description" content="Tu perfil en cadalado: foto, portada, bio, tu personaje y tus partidas.">
+  <meta name="theme-color" content="#141413">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/perfil.css">
+</head>
+<body>
+  <div id="cabecera"></div>
+  <main class="pf" data-pf>
+    <div class="contenedor">
+      <div data-pf-estado class="vacio" style="padding:60px 20px"><div class="cargando"></div></div>
+      <div data-pf-contenido class="hidden">
+        <section class="pf-portada" data-portada>
+          <div class="pf-portada-deco"></div>
+          <button class="pf-btn-img hidden" data-cambiar="portada" type="button">Cambiar portada</button>
+        </section>
+        <section class="pf-cabeza">
+          <div class="pf-foto" data-foto>
+            <button class="pf-btn-img hidden" data-cambiar="foto" type="button" aria-label="Cambiar foto">Foto</button>
+          </div>
+          <div class="pf-nombre">
+            <h1 data-nombre></h1>
+            <div class="pf-sub"><span data-usuario></span><span data-linea></span></div>
+            <div class="pf-estado hidden" data-estado-txt></div>
+          </div>
+          <div class="pf-acciones" data-acciones></div>
+        </section>
+        <div class="pf-grilla">
+          <div class="pf-col">
+            <section class="pf-card" data-sobre>
+              <h3>Sobre mí</h3>
+              <p class="pf-bio" data-bio></p>
+              <blockquote class="pf-frase hidden" data-frase></blockquote>
+              <ul class="pf-datos" data-datos></ul>
+            </section>
+            <section class="pf-card pf-fav hidden" data-fav></section>
+            <section class="pf-card">
+              <h3>Últimas partidas</h3>
+              <div class="filas" data-ultimas></div>
+            </section>
+          </div>
+          <div class="pf-col">
+            <section class="pf-card pf-pj hidden" data-pj>
+              <canvas></canvas>
+              <span class="pf-pj-ayuda">Arrastrá para girar</span>
+            </section>
+            <section class="pf-stats" data-stats></section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <dialog class="pf-editor" data-editor>
+    <form method="dialog" data-form>
+      <header><h2>Editar perfil</h2><button class="pf-x" value="cancelar" aria-label="Cerrar">✕</button></header>
+      <div class="pf-ed-cuerpo">
+        <div class="pf-ed-imgs">
+          <label class="pf-subir pf-subir-foto"><span data-prev-foto></span><input type="file" accept="image/*" data-archivo="foto"><b>Cambiar foto</b></label>
+          <label class="pf-subir pf-subir-portada"><span data-prev-portada></span><input type="file" accept="image/*" data-archivo="portada"><b>Cambiar portada</b></label>
+          <div class="pf-sacar"><button type="button" class="btn btn-chico btn-borde" data-sacar="foto">Sacar foto</button><button type="button" class="btn btn-chico btn-borde" data-sacar="portada">Sacar portada</button></div>
+        </div>
+        <label class="pf-campo"><span>Nombre</span><input class="entrada" name="nombre" maxlength="24" required></label>
+        <label class="pf-campo"><span>Estado <small data-cuenta-estado></small></span><input class="entrada" name="estado" maxlength="60" placeholder="¿En qué andás?"></label>
+        <label class="pf-campo"><span>Bio <small data-cuenta-bio></small></span><textarea class="entrada" name="bio" maxlength="280" rows="3" placeholder="Contá algo de vos"></textarea></label>
+        <label class="pf-campo"><span>Tu frase</span><input class="entrada" name="frase" maxlength="80" placeholder="La que decís siempre"></label>
+        <div class="pf-dos">
+          <label class="pf-campo"><span>De dónde sos</span><input class="entrada" name="lugar" maxlength="40" placeholder="Barrio, ciudad…"></label>
+          <label class="pf-campo"><span>Juego favorito</span><select class="entrada" name="favorito" data-favoritos></select></label>
+        </div>
+        <div class="pf-campo"><span>Fondo de la portada</span><div class="pf-fondos" data-fondos></div></div>
+        <div class="pf-campo"><span>Tu color</span><div class="pf-colores" data-colores></div></div>
+        <label class="pf-check"><input type="checkbox" name="personaje"> Mostrar mi personaje 3D</label>
+      </div>
+      <footer><button class="btn btn-borde btn-chico" value="cancelar">Cancelar</button><button class="btn btn-lima btn-chico" value="guardar" data-guardar>Guardar</button></footer>
+    </form>
+  </dialog>
+
+  <div id="pie"></div>
+  <script type="module" src="/js/perfil.js"></script>
+</body>
+</html>
