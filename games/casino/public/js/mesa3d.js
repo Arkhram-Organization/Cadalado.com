@@ -1,3 +1,4 @@
+import { armarSalon } from './salon3d.js';
 // Mesa de blackjack en 3D: paño, cartas que salen del zapato, fichas apiladas, las personas sentadas
 // y Dobro repartiendo (de smoking y con lentes). La cámara se mueve arrastrando, como en el truco.
 import * as THREE from '/comun/vendor/three.module.min.js';
@@ -209,8 +210,6 @@ export class MesaBJ {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x120d0a);
-    this.scene.fog = new THREE.Fog(0x120d0a, 18, 42);
     this.camara = new THREE.PerspectiveCamera(42, 1, 0.05, 60);
     this.cartas = new Map(); // clave → { grupo, codigo, anim }
     this.fichas = []; // por asiento: { grupo, monto }
@@ -233,49 +232,8 @@ export class MesaBJ {
     this.scene.add(pantalla);
     this.pantalla = pantalla;
 
-    // salón visible detrás de la mesa: paredes, cartel, máquinas y luces cálidas
-    const piso = new THREE.Mesh(new THREE.CircleGeometry(16, 48), new THREE.MeshStandardMaterial({ color: 0x3a1418, roughness: 0.95 }));
-    piso.rotation.x = -Math.PI / 2;
-    piso.receiveShadow = true;
-    this.scene.add(piso);
-    const pared = new THREE.MeshStandardMaterial({ color: 0x321b22, roughness: 0.9 });
-    const dorado = new THREE.MeshStandardMaterial({ color: 0xb88a38, metalness: 0.6, roughness: 0.35 });
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(20, 7, 0.35), pared);
-    panel.position.set(0, 3.5, -9); this.scene.add(panel);
-    for (const x of [-8.8, -4.4, 4.4, 8.8]) {
-      const moldura = new THREE.Mesh(new THREE.BoxGeometry(0.13, 6.5, 0.14), dorado);
-      moldura.position.set(x, 3.3, -8.76); this.scene.add(moldura);
-    }
-    const franja = new THREE.Mesh(new THREE.BoxGeometry(20, 0.12, 0.2), dorado);
-    franja.position.set(0, 1.2, -8.75); this.scene.add(franja);
-    const senal = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.4), new THREE.MeshBasicMaterial({ map: cartelCasino() }));
-    senal.position.set(0, 3.9, -8.78); this.scene.add(senal);
-    const maquina = new THREE.MeshStandardMaterial({ color: 0x4b1227, metalness: 0.32, roughness: 0.4 });
-    const pantallaSlot = new THREE.MeshStandardMaterial({ color: 0xe0ad53, emissive: 0x9a5a13, emissiveIntensity: 0.55 });
-    for (const x of [-7.4, -6.2, 6.2, 7.4]) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.85, 2.15, 0.75), maquina);
-      m.position.set(x, 1.08, -7.6); this.scene.add(m);
-      const pantalla = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.8, 0.05), pantallaSlot);
-      pantalla.position.set(x, 1.35, -7.19); this.scene.add(pantalla);
-      const luz = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), pantallaSlot);
-      luz.position.set(x, 2.25, -7.6); this.scene.add(luz);
-    }
-    for (const x of [-3.5, 3.5]) {
-      const aplique = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 8), new THREE.MeshStandardMaterial({ color: 0xffdda3, emissive: 0xffbd60, emissiveIntensity: 1.5 }));
-      aplique.position.set(x, 3.45, -8.65); this.scene.add(aplique);
-      const luz = new THREE.PointLight(0xffb65c, 8, 8);
-      luz.position.set(x, 3.45, -8.2); this.scene.add(luz);
-    }
-    for (let i = 0; i < 6; i++) {
-      // columnas con luz cálida a lo lejos
-      const a = (i / 6) * Math.PI * 2;
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 4, 16), new THREE.MeshStandardMaterial({ color: 0x2a1c12, roughness: 0.6 }));
-      col.position.set(Math.sin(a) * 8, 2, Math.cos(a) * 8);
-      this.scene.add(col);
-      const l = new THREE.PointLight(0xffb060, 3, 6);
-      l.position.set(Math.sin(a) * 7.4, 2.6, Math.cos(a) * 7.4);
-      this.scene.add(l);
-    }
+    // el salón alrededor: alfombra, tragamonedas, neones y pantallas, como un casino de verdad
+    this.salon = armarSalon(this.scene, { centroZ: CENTRO_Z });
 
     // la mesa: media luna de madera con paño verde
     const madera = new THREE.MeshStandardMaterial({ color: 0x5a3820, roughness: 0.45, metalness: 0.1 });
@@ -635,6 +593,7 @@ export class MesaBJ {
       this.marca.position.set(p.x, MESA_Y + 0.004, p.z);
       this.marca.scale.setScalar(1 + Math.sin(this.reloj * 6) * 0.08);
     }
+    this.salon?.animar(this.reloj);
     this.renderer.render(this.scene, this.camara);
   }
 

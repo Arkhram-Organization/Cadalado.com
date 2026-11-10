@@ -2,7 +2,6 @@
 
 /* ---------- salón ---------- */
 .salon { max-width: 1160px; margin: 0 auto; padding: 30px 16px 70px; }
-.salon .menu-fondo::after { background: linear-gradient(180deg, rgba(20, 6, 8, .72) 0%, rgba(20, 6, 8, .45) 40%, rgba(20, 6, 8, .85) 100%); }
 .salon-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }
 .salon-hero h1 { font-size: clamp(44px, 7vw, 86px); }
 .salon-hero h1 em { font-style: normal; color: var(--oro); }
@@ -296,3 +295,7 @@ body.casino-full { overflow: hidden; }
 .casino-cargando-ficha { display: grid; place-items: center; width: 72px; height: 72px; border: 5px dashed #f2c94c; border-radius: 50%; color: #f2c94c; font: 900 34px var(--titulo); animation: gira-ficha 2s linear infinite; }
 .casino-cargando small { color: #d8c9ac; }
 @keyframes gira-ficha { to { transform: rotate(360deg); } }
+
+/* el salón 3D de fondo en el salón y en las mesas de ruleta y tragamonedas */
+.salon .menu-fondo::after, .mesa .menu-fondo::after { background: linear-gradient(180deg, rgba(8, 3, 6, .55) 0%, rgba(8, 3, 6, .25) 40%, rgba(8, 3, 6, .75) 100%); }
+.mesa.sobre-juego { position: relative; z-index: 1; }
