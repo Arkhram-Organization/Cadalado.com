@@ -10,26 +10,31 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 
 | Qué | Carpeta | Dirección |
 |---|---|---|
-| Portal (inicio, personaje, equipo, entrar, club) | [`portal`](portal) | `cadalado.com` |
+| Portal (inicio con lobby, perfil, personaje, equipo, entrar, club) | [`portal`](portal) | `cadalado.com` |
 | Ajedrez | [`games/chessort`](games/chessort) | `cadalado.com/ajedrez` |
 | Truco | [`games/truco`](games/truco) | `cadalado.com/truco` |
 | Ángeles Peña (carrera de obstáculos 3D) | [`games/carrera`](games/carrera) | `cadalado.com/carrera` |
 | El casino de Dobro (ruleta, blackjack, slots) | [`games/casino`](games/casino) | `cadalado.com/casino` |
 | Make it Meme | [`games/memes`](games/memes) | `cadalado.com/memes` |
-| Último en pie (battle royale 3D) | [`games/royale`](games/royale) | `cadalado.com/royale` |
+| Último en pie (battle royale 3D; se viene Battle Shmitz) | [`games/royale`](games/royale) | `cadalado.com/royale` |
+| Haxball (fútbol 2D por equipos) | [`games/haxball`](games/haxball) | `cadalado.com/haxball` |
 | Cuentas, historial, amigos y chats | [`shared`](shared) | `cadalado.com/club` |
 
 ```
-portal/public/         el portal: inicio, /personaje, /equipo, /entrar, /club (HTML, CSS y JS sin frameworks)
+portal/public/         el portal: inicio (lobby y muro), /perfil, /personaje, /equipo, /entrar, /club (HTML, CSS y JS sin frameworks)
   js/datos.js          catálogo: juegos, ideas y novedades (lo único que hay que tocar para sumar algo)
 games/chessort/        ajedrez: public/ (navegador), api.js + lib/ (servidor), test/
 games/truco/           truco:   public/ (navegador, 3D), api.js + lib/sala.js (servidor), test/
-games/memes|casino|carrera/   los juegos nuevos: public/, api.js, lib/ (reglas), test/
-shared/                lo común: store.js (Redis), cuenta.js (cuentas, historial, amigos, chats), http.js,
-                       salas.js (motor de salas que usan memes, casino y carrera)
-shared/public/         se publica en /comun: logo, estilos y cliente de salas de los juegos nuevos
+games/memes|casino|carrera|royale|haxball/   los juegos nuevos: public/, api.js, lib/ (reglas), test/
+shared/                lo común: store.js (Redis), cuenta.js (cuentas, perfil, historial, amigos, chats), http.js,
+                       salas.js (motor de salas), grupos.js (lobbys compartidas), muro.js (muro y sugerencias)
+shared/public/         se publica en /comun: logo, estilos, cliente de salas, red.js (WebRTC), personajes 3D
+                       (persona3d.js, modelo3d.js, modelos/*.glb de Meshy), npcs.js, dichos.js, gestos
 api/                   funciones de Vercel: juegos/<juego>.js (una por juego) y club.js
-scripts/build.mjs      arma dist/: portal en la raíz y cada juego en /<ruta>
+scripts/build.mjs      arma dist/: portal en la raíz y cada juego en /<ruta> (lo que usa Vercel)
+scripts/build-sites.mjs   además arma el Worker (npm run build): worker/, wrangler.json, db/, drizzle/ y .openai/
+                       son la versión para hosting en Workers con base D1 (no se usan en Vercel)
+docs/                  planes y prompts (por ejemplo, el rediseño Battle Shmitz)
 vercel.json            rutas del sitio
 dev-server.js          todo el sitio en tu compu (npm run dev)
 ```
@@ -41,7 +46,7 @@ las jugadas por POST. Las partidas, cuentas y chats se guardan en **Redis** (Ups
 antes hacían las "alarmas" (bots, pausas entre manos, tiempos) lo hace el servidor en esas consultas,
 y `public/js/polling-socket.js` imita un WebSocket para que el código del juego casi no cambie.
 
-### Motor de salas (memes, casino, carrera)
+### Motor de salas (memes, casino, carrera, royale, haxball)
 
 `shared/salas.js` resuelve lo común de cualquier juego por salas: código e invitación, candado en Redis
 para que dos acciones no se pisen, presencia, chat, eventos numerados y un "tick" para los tiempos.
@@ -62,6 +67,10 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
 - **Amigos** por nombre de usuario, **chat privado** entre amigos y un **chat general** del club.
 - Desde el club se **desafía** a un amigo: se crea la mesa y le llega el link por chat.
 - Para jugar no hace falta cuenta.
+- **Perfil** (`/perfil`, o `/perfil?u=usuario` para ver el de otro): foto, portada, fondo, color, estado, bio, frase,
+  juego favorito y tu personaje 3D. Las imágenes se achican en el navegador y se guardan en Redis.
+- **Lobbys compartidas** (`shared/grupos.js`): te unís a la lobby de un amigo o a una abierta, invitás con el `+`
+  y cuando el líder entra a un juego, el grupo lo sigue (`shared/public/seguir-grupo.js`).
 
 ### Muro y sugerencias (portada)
 
@@ -75,12 +84,13 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
 
 ## Cómo trabajamos
 
-Hay **dos ramas**, nada más:
+Hay **tres ramas**, nada más:
 
 | Rama | Para qué |
 |---|---|
 | `chessort` | **Todo el trabajo.** Acá se programa y se prueba (Vercel arma un preview con su propia dirección). |
-| `main` | **Producción** (`cadalado.com`). Solo recibe lo que ya anda en `chessort`, por Pull Request o merge. No se programa directo. |
+| `main` | **Producción** (`cadalado.com`) y rama por defecto del repo. Solo recibe lo que ya anda en `chessort`. No se programa directo. |
+| `archivo` | Historia vieja de la época de Cloudflare (el truco de Theo y el primer ajedrez). Solo lectura. |
 
 ```bash
 git checkout chessort
@@ -91,8 +101,7 @@ git pull origin chessort
 ```
 
 Cuando algo queda estable, se abre un Pull Request de `chessort` hacia `main` (o se hace merge directo si
-`main` no tiene nada distinto). Las ramas viejas de la época de Cloudflare (`truco`, `claude/...`) quedaron guardadas en la rama
-`archivo` (no se trabaja ahí); lo del truco ya estaba integrado en `games/truco`.
+`main` no tiene nada distinto).
 
 ### Sumar un juego nuevo
 
