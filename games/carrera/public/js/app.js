@@ -10,7 +10,7 @@ import { Show } from './show.js';
 import { fondoMenu } from '/comun/fondo-menu.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
 import { Red } from './red.js';
-import { rutaBot, posBot, ordenLargada, posLargada, COLORES, MAPAS, LIMITE_S } from './pista.js';
+import { rutaBot, posBot, ordenLargada, posLargada, puedeMoverAhora, COLORES, MAPAS, LIMITE_S } from './pista.js';
 
 const app = document.querySelector('#app');
 const COLOR = '#c5f04a';
@@ -154,7 +154,7 @@ function abrirSala(code) {
     <div class="capa gestos-tip" style="position:absolute;right:16px;bottom:70px;color:#fff;font-size:12px;opacity:.75;z-index:5">Mantené <kbd>B</kbd> para los gestos</div>
     <div class="capa pina-hud" data-pina><kbd>E</kbd><span>Piña</span><i><b></b></i></div>
     <div class="capa panel-flota podio-flota hidden" data-podio></div>
-    <div class="capa chat-mini"><div class="log" data-log></div><form data-chat><input class="entrada" maxlength="200" placeholder="Chat…" autocomplete="off"></form></div>
+    <div class="capa chat-mini"><div class="log" data-log aria-live="polite"></div><form data-chat><input class="entrada" maxlength="200" placeholder="Escribí y pulsá Enter · Esc cierra" autocomplete="off"></form><button type="button" class="chat-ayuda" data-chat-abrir>T para hablar</button></div>
     <div class="capa tactil" data-tactil><div class="joy" data-joy><i></i></div><div class="botones-t"><button class="chico" data-boton="golpe">PIÑA</button><button class="chico" data-boton="buceo">TIRARSE</button><button data-boton="salto">SALTAR</button></div></div>
   </div>`;
   const $ = (s) => app.querySelector(s);
@@ -363,7 +363,7 @@ function abrirSala(code) {
       const t = (ms) => (ms == null ? 'no llegó' : `${(ms / 1000).toFixed(2)} s`);
       lob.innerHTML = `<h2>${mio ? (mio.paso ? '¡Clasificaste!' : 'Quedaste afuera') : `Terminó la ronda ${e.ronda}`}</h2>
         <p>${mio && !mio.paso ? 'Podés quedarte mirando cómo sigue. ' : ''}Próxima: <b>${esc(sig?.nombre || '')}</b>${e.ronda + 1 === e.rondas.length ? ' (la final)' : ''}.</p>
-        <div class="tabla-res">${e.clasificacion.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''} ${x.paso ? '' : 'afuera'}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' <small style="color:var(--gris)">bot</small>' : ''}</span><span class="mono">${x.paso ? 'pasa' : 'afuera'} · ${t(x.tiempo)}</span></div>`).join('')}</div>`;
+        <details class="ronda-resultados"><summary>Ver quiénes pasaron y quiénes quedaron afuera</summary><div class="tabla-res">${e.clasificacion.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''} ${x.paso ? '' : 'afuera'}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' <small style="color:var(--gris)">bot</small>' : ''}</span><span class="mono">${x.paso ? 'pasa' : 'afuera'} · ${t(x.tiempo)}</span></div>`).join('')}</div></details>`;
     }
     // podio
     const pod = $('[data-podio]');
@@ -375,10 +375,10 @@ function abrirSala(code) {
       const det = (x) => (x.paso ? (x.tiempo != null ? `${(x.tiempo / 1000).toFixed(2)} s` : 'final') : `afuera en ronda ${x.ronda}`);
       const miPuesto = r.findIndex((x) => x.id === e.yo) + 1;
       const gane = miPuesto === 1 && r[0]?.paso;
-      pod.innerHTML = `<span class="etq">Full Gays · final</span><h2>${gane ? '¡Ganaste Full Gays!' : miPuesto ? `Terminaste ${miPuesto}º` : 'Resultados'}</h2>
-        <div class="podio-top">${top.map((x, i) => (x ? `<div class="p${[2, 1, 3][i]}"><span class="podio-avatar">${avatarSvg(x.bot ? lookBot(x.npc) : lookDe(x.id))}</span><span class="mono" style="font-size:24px">${['2º', '1º', '3º'][i]}</span><b>${esc(x.nombre)}</b><span class="mono">${det(x)}</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
-        <div class="tabla-res">${r.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' <small style="color:var(--gris)">bot</small>' : ''}</span><span class="mono">${det(x)}</span></div>`).join('')}</div>
-        ${esHost ? '<button class="btn btn-lima btn-grande" data-otra style="width:100%;margin-top:14px">Otra partida</button>' : '<p style="margin-top:12px">En unos segundos vuelven a la largada.</p>'}`;
+      pod.innerHTML = `<div class="podio-titulo"><small>Full Gays · final</small><h2>${gane ? '¡SOS EL CAMPEÓN!' : `¡GANÓ ${esc(r[0]?.nombre || 'ALGUIEN').toUpperCase()}!`}</h2><span>${miPuesto ? `Tu puesto: ${miPuesto}º` : 'Así terminó la partida'}</span></div>
+        <div class="podio-nombres">${top.map((x, i) => x ? `<div class="p${[2, 1, 3][i]}"><strong>${['2º', '1º', '3º'][i]}</strong><b>${esc(x.nombre)}</b><small>${det(x)}</small></div>` : '<div></div>').join('')}</div>
+        <div class="podio-acciones"><details class="podio-resultados"><summary>Ver clasificación completa</summary><div class="tabla-res">${r.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}</span><span class="mono">${det(x)}</span></div>`).join('')}</div></details>
+        ${esHost ? '<button class="btn btn-lima" data-otra>Otra partida</button>' : '<span>Vuelven a la largada en unos segundos</span>'}</div>`;
       pod.querySelector('[data-otra]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
     }
   }
@@ -392,6 +392,9 @@ function abrirSala(code) {
   });
   limpiar.push(() => rueda.destruir());
   const abajo = (e) => {
+    if ((e.code === 'KeyT' || e.code === 'Enter') && !e.target.closest('input, select, textarea')) {
+      e.preventDefault(); teclas.clear(); $('[data-chat]').classList.add('escribiendo'); $('[data-chat] input').focus(); return;
+    }
     if (e.target.closest('input, select, textarea')) return;
     const k = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) e.preventDefault();
@@ -475,7 +478,10 @@ function abrirSala(code) {
     if (i.value.trim()) sala.enviar({ t: 'chat', texto: i.value });
     i.value = '';
     i.blur();
+    $('[data-chat]').classList.remove('escribiendo');
   };
+  $('[data-chat] input').addEventListener('keydown', (e) => { if (e.code === 'Escape') { e.stopPropagation(); e.preventDefault(); e.currentTarget.blur(); $('[data-chat]').classList.remove('escribiendo'); } });
+  $('[data-chat-abrir]').onclick = () => { teclas.clear(); $('[data-chat]').classList.add('escribiendo'); $('[data-chat] input').focus(); };
 
   // un bot habla: globito arriba de su muñeco y también en el chat
   function botDice(id, nombre, texto) {
@@ -567,7 +573,8 @@ function abrirSala(code) {
   const reloj0 = performance.now();
   function cuadro(ahoraMs) {
     raf = requestAnimationFrame(cuadro);
-    const dt = Math.min(0.1, (ahoraMs - ultimo) / 1000);
+    const transcurrido = Math.min(0.6, (ahoraMs - ultimo) / 1000);
+    const dt = Math.min(0.1, transcurrido);
     ultimo = ahoraMs;
     if (!est) return escena.render(dt);
     const enRonda = fase === 'carrera' || fase === 'cuenta' || fase === 'ronda';
@@ -596,7 +603,8 @@ function abrirSala(code) {
     camYaw += (camYawObj - camYaw) * (1 - Math.exp(-dt * 7));
 
     // mi personaje
-    const puedeMover = !jugador.espectador && (fase === 'lobby' || fase === 'podio' || (fase === 'carrera' && t >= 0));
+    // El reloj compartido libera a todos a la vez, aunque el cambio de fase llegue un poll después.
+    const puedeMover = puedeMoverAhora(fase, t, jugador.espectador);
     entrada.x = (teclas.has('KeyD') || teclas.has('ArrowRight') ? 1 : 0) - (teclas.has('KeyA') || teclas.has('ArrowLeft') ? 1 : 0) + joy.x;
     entrada.z = (teclas.has('KeyW') || teclas.has('ArrowUp') ? 1 : 0) - (teclas.has('KeyS') || teclas.has('ArrowDown') ? 1 : 0) + joy.z;
     if (!jugador.espectador) {
@@ -605,7 +613,9 @@ function abrirSala(code) {
       const otros = [...remotos.entries()].filter(([id]) => enJuego(id)).map(([, r]) => r.obj);
       if (enRonda) for (const b of botsRonda) otros.push(posBot(mapa, b.ruta, tp, semilla));
       if (fase === 'lobby') charlasLobby.forEach((_, i) => otros.push(posLobby(i)));
-      acumulado += dt;
+      // Los bots siguen el reloj de la sala. Recuperamos los fotogramas lentos para que
+      // una persona que mantiene W desde la cuenta no quede atrás por la carga 3D.
+      acumulado += transcurrido;
       while (acumulado >= 1 / 60) {
         acumulado -= 1 / 60;
         const ent = puedeMover ? entrada : { x: 0, z: 0 };

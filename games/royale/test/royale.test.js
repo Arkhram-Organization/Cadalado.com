@@ -73,6 +73,15 @@ test('bots: se mueven, buscan pelea y disparan', () => {
   assert.ok(balas > 0, 'disparó');
 });
 
+test('dos bots en la misma posición se separan sin coordenadas inválidas', () => {
+  const m = generarMapa(55), s = m.salidas[0];
+  const a = new Peleador('bot0', s.x, s.y), b = new Peleador('bot1', s.x, s.y);
+  const cerebro = new CerebroBot(a, () => 0.4);
+  for (let i = 0; i < 30; i++) cerebro.paso(1 / 60, m, 55, 10 + i / 60, [b], []);
+  assert.ok(Number.isFinite(a.x) && Number.isFinite(a.y));
+  assert.ok(Math.hypot(a.x - b.x, a.y - b.y) > 0);
+});
+
 test('partida: arranca, botín de a uno, bajas, el bot habla y termina con un ganador', async () => {
   const A = 'pidRoyaleAA1';
   const B = 'pidRoyaleBB2';

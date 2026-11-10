@@ -80,7 +80,7 @@ export async function comprar(pid, u, id) {
   if (!enVenta().includes(id)) throw Object.assign(new Error('Hoy no está en la tienda. Volvé mañana.'), { status: 400 });
   const restan = await mover(q, -skin.precio); // si no alcanza, tira error y no descuenta
   const nuevas = [...tengo, id];
-  await getStore().set(clave(q), JSON.stringify(nuevas), 365 * 86400);
+  await getStore().set(clave(q), JSON.stringify(nuevas));
   return { saldo: restan, mias: nuevas };
 }
 
@@ -99,7 +99,7 @@ export async function regalar(pid, u, id, para) {
   if (suyas.includes(id)) throw err(`${otro.nombre} ya la tiene.`);
   const q = quien(pid, u.id);
   const restan = await mover(q, -skin.precio);
-  await getStore().set(clave(qOtro), JSON.stringify([...suyas, id]), 365 * 86400);
+  await getStore().set(clave(qOtro), JSON.stringify([...suyas, id]));
   await getStore().lpush(`regalos:${otro.id}`, JSON.stringify({ de: u.nombre, usuario: u.usuario, skin: id, ts: Date.now() }), 50, 365 * 86400);
   return { saldo: restan, mias: await mias(q), para: otro.nombre };
 }
@@ -112,15 +112,27 @@ async function regalosNuevos(u) {
 }
 
 // ---------- códigos de creador: cada código se canjea una sola vez por cuenta ----------
-const CODIGOS = { opusreligioso: 40_000, ad1min: 100_000 };
+const CODIGOS = { opusreligioso: 40_000, ad1min: 100_000, quieneschapamax: 'todas-las-skins' };
 export async function canjear(pid, u, codigo) {
   const c = String(codigo || '').trim().toLowerCase();
-  const monto = CODIGOS[c];
-  if (!monto) throw err('Ese código no existe.', 404);
+  const premio = CODIGOS[c];
+  if (!premio) throw err('Ese código no existe.', 404);
   if (!u) throw err('Para canjear códigos tenés que entrar con tu cuenta.', 401);
-  if (!(await getStore().setNX(`codigo:${c}:${u.id}`, '1', 3650 * 86400 * 1000))) throw err('Ya canjeaste ese código.');
+  const store = getStore(), marca = `codigo:${c}:${u.id}`;
+  if (!(await store.setNX(marca, '1', 3650 * 86400 * 1000))) throw err('Ya canjeaste ese código.');
   const q = quien(pid, u.id);
-  return { saldo: await mover(q, monto), monto };
+  try {
+    if (premio === 'todas-las-skins') {
+      const tengo = await mias(q);
+      const miasNuevas = [...new Set([...tengo, ...SKINS.map((s) => s.id)])];
+      await store.set(clave(q), JSON.stringify(miasNuevas));
+      return { saldo: await saldo(q), mias: miasNuevas, skins: miasNuevas.length - tengo.length };
+    }
+    return { saldo: await mover(q, premio), monto: premio };
+  } catch (e) {
+    await store.del(marca).catch(() => {});
+    throw e;
+  }
 }
 
 // ¿Puede usar esta skin? (las del elenco hay que comprarlas)

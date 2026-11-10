@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generarMapa, LUGARES, LADO, TAM, T, ARMAS, RAREZAS, danoRareza, danoArea, zona } from '../public/js/mundo.js';
-import { DURACION_COLECTIVO, posicionColectivo, saltoAutomatico, tiempoParaLugar } from '../public/js/colectivo.js';
+import { DURACION_COLECTIVO, posicionColectivo, saltoAutomatico, tiempoParaLugar, puntosAterrizaje } from '../public/js/colectivo.js';
 import { alinearPieza, validarPieza, vidaEnConstruccion, COSTO_PIEZA, VIDA_PIEZA } from '../public/js/construccion.js';
 
 test('geografía fija, ocho lugares separados y botín variable por semilla', () => {
@@ -43,6 +43,20 @@ test('colectivo determinista y salto automático al final', () => {
   assert.equal(saltoAutomatico(DURACION_COLECTIVO - .01), false);
   assert.equal(saltoAutomatico(DURACION_COLECTIVO), true);
   assert.ok(tiempoParaLugar(42, LUGARES[0]) > 0);
+});
+
+test('los NPC aterrizan separados y el botín natural está en los lugares', () => {
+  const m = generarMapa(73);
+  const a = puntosAterrizaje(m, 73, 15);
+  assert.deepEqual(a, puntosAterrizaje(m, 73, 15));
+  assert.equal(a.length, 15);
+  for (const p of a) {
+    assert.ok(p.x >= p.lugar.x * 16 && p.x < (p.lugar.x + p.lugar.w) * 16);
+    assert.ok(p.y >= p.lugar.y * 16 && p.y < (p.lugar.y + p.lugar.h) * 16);
+    assert.ok(![T.AGUA, T.PARED].includes(m.t[Math.floor(p.y / 16) * TAM + Math.floor(p.x / 16)]));
+  }
+  for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++) if (a[i].lugar.id === a[j].lugar.id) assert.ok(Math.hypot(a[i].x - a[j].x, a[i].y - a[j].y) >= 48);
+  for (const b of m.botin) assert.ok(LUGARES.some(l => b.x >= l.x * 16 && b.x < (l.x + l.w) * 16 && b.y >= l.y * 16 && b.y < (l.y + l.h) * 16), `botín ${b.id} fuera de una ciudad`);
 });
 
 test('rarezas, explosión y vida de las piezas siguen las tablas', () => {
