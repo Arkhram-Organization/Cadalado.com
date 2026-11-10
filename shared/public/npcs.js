@@ -247,13 +247,13 @@ export const NPCS = [
   {
     id: 'elidiprimio',
     nombre: 'Elidiprimio',
-    // Le dice "wop" a todo el mundo (como "amigo"), pregunta si hacen manga de wops, banca a Maxdream (MXD),
+    // Le dice "wop" a todo el mundo (como "amigo"), saluda con «¿Qué hacen, manga de wops?», banca a Maxdream (MXD),
     // manda a todos a desayunar y avisa que se van los micros. Su WOOOOOP es contagioso (ver wooop.js).
     // Modelo de Meshy: modelos/elidiprimio.glb. Cuando baila (su baile, Hip_Hop_Dance) dice "dale MXD".
     look: { modelo: 'elidiprimio', contagia: true, alBailar: ['¡Dale MXD, dale dale MXD!', 'Dale MXD dale dale MXD'], clips: { baila: 'Hip_Hop_Dance' }, travesuras: { quieto: ['baila', 'habla', 'baila', 'festeja', 'saluda'], corre: ['voltereta', 'festeja'] }, estilo: 'meshy', piel: '#efc7a8', pelo: { estilo: 'corto', color: '#4a2e1c' }, ojos: '#3a2a1e', cuerpo: 'normal', ropa: { remera: '#1b2440', pantalon: '#16161c', zapatillas: '#f4f1ea' }, genero: 'h' },
     frases: [
-      '¿Hacen manga de wops?',
-      'Wops, ¿hacen manga o no?',
+      '¿Qué hacen, manga de wops?',
+      '¿Qué hacen, wops?',
       'WOOOOOOOOOPP',
       'WOOOOOOOOOOOOP',
       'Qué hacés, wop.',

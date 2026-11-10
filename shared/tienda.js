@@ -25,7 +25,7 @@ export const SKINS = [
   { id: 'olcho', rareza: 'rara', precio: 3_000, frase: 'Hola, soy la rata. Jaja.' },
   { id: 'sandra', rareza: 'rara', precio: 3_500, frase: 'Desde el caso Bernstein no volví a ser la misma.' },
   { id: 'franba', rareza: 'legendaria', precio: 7_500, frase: 'No me estoy quedando pelado. Es la luz.' },
-  { id: 'elidiprimio', rareza: 'epica', precio: 5_500, frase: '¿Hacen manga de wops?', nuevo: true },
+  { id: 'elidiprimio', rareza: 'epica', precio: 5_500, frase: '¿Qué hacen, manga de wops?', nuevo: true },
   { id: 'julo', rareza: 'epica', precio: 5_500, frase: 'Hice un deploy en la heladera. Anda.' },
   { id: 'faur', rareza: 'epica', precio: 5_500, frase: 'Uno más y me voy. Mentira, me quedo.' },
   { id: 'volcho', rareza: 'epica', precio: 5_500, frase: '¿Quién? El volcho.' },

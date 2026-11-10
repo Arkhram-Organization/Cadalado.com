@@ -88,7 +88,7 @@ const DICHOS = {
     turno: ['¿Me toca? Estaba escribiéndole a Nacho.', 'Pará que le pregunto a Chicha.'],
   },
   elidiprimio: {
-    saludo: ['¿Qué hacés, wop? ¿Hacen manga de wops?', 'WOOOOOOOOOPP', 'Llegó el wop. Dale MXD.'],
+    saludo: ['¿Qué hacés, wop? ¿Qué hacen, manga de wops?', 'WOOOOOOOOOPP', 'Llegó el wop. Dale MXD.'],
     gana: ['WOOOOOOOOOOOP', '¡Dale MXD, dale dale MXD!', 'Ganamos, wop. Ahora bajen a desayunar.'],
     pierde: ['Tranqui, wop. Vamos que se van los micros.', 'Perdimos, wops. Igual MXD.', 'WOOOP… bueno, no tanto.'],
     turno: ['Dale wop, que se van los micros.', '¡Bajen a desayunar!', 'Dale MXD dale dale MXD.'],
