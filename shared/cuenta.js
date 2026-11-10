@@ -265,6 +265,41 @@ export async function amigos(u) {
   return out;
 }
 
+// ---------- sugeridos: con quién jugaste hace poco y amigos de tus amigos ----------
+const recientesKey = (id) => `recientes:${id}`;
+// Anota que estas cuentas compartieron una sala o una lobby (para sugerirlas como amigos).
+export async function anotarJuntos(uids) {
+  const lista = [...new Set((uids || []).filter(Boolean))].slice(0, 16);
+  if (lista.length < 2) return;
+  const s = getStore(), ahora = String(Date.now());
+  for (const a of lista) for (const b of lista) if (a !== b) await s.hset(recientesKey(a), b, ahora, 30 * 86400);
+}
+export async function sugeridos(u) {
+  const s = getStore();
+  const rel = await s.hgetall(amigosKey(u.id));
+  const ficha = async (id, extra) => {
+    const otro = await usuarioPorId(id);
+    if (!otro) return null;
+    const visto = Number(await s.get(`visto:${id}`)) || 0;
+    return { ...publico(otro), enLinea: Date.now() - visto < ONLINE_MS, estado: rel[id] || '', ...extra };
+  };
+  // jugaste hace poco (lo más nuevo primero), sin los que ya son amigos
+  const rec = Object.entries(await s.hgetall(recientesKey(u.id))).filter(([id]) => id !== u.id && rel[id] !== 'amigo').sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 8);
+  const recientes = (await Promise.all(rec.map(([id, ts]) => ficha(id, { cuando: Number(ts) })))).filter(Boolean);
+  // quizás los conozcas: amigos de tus amigos, por cantidad de amigos en común
+  const comunes = new Map();
+  for (const [f, e] of Object.entries(rel)) {
+    if (e !== 'amigo') continue;
+    for (const [x, e2] of Object.entries(await s.hgetall(amigosKey(f)))) {
+      if (e2 !== 'amigo' || x === u.id || rel[x] === 'amigo' || recientes.some((r) => r.id === x)) continue;
+      comunes.set(x, (comunes.get(x) || 0) + 1);
+    }
+  }
+  const top = [...comunes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const conocidos = (await Promise.all(top.map(([id, n]) => ficha(id, { comunes: n })))).filter(Boolean);
+  return { recientes, conocidos };
+}
+
 export async function accionAmistad(u, accion, usuario) {
   const otro = await usuarioPorNombre(usuario);
   if (!otro) throw new ErrorCuenta('No existe ese usuario.', 404);

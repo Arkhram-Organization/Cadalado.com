@@ -169,3 +169,8 @@
 @media (prefers-reduced-motion:reduce){.lb-luces i{animation:none;display:none}.lb-fondo-capa{transition:opacity .3s}}
 
 .brand .brand-logo{width:34px;height:34px;display:block;flex:none}
+/* Agregar amigos (panel de Lobbys) */
+.gr-agregar{display:flex;gap:8px;margin-bottom:10px}
+.gr-agregar input{flex:1;min-width:0;background:#141713;border:1px solid var(--line);border-radius:6px;color:var(--paper);font:600 14px Barlow,sans-serif;padding:8px 10px}
+.gr-agregar input:focus{outline:none;border-color:#c5f04a99}
+.gr-sub{margin:12px 0 6px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:#a7ad9e}

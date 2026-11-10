@@ -177,3 +177,24 @@ test('lobby: descarta una sala borrada en lugar de redirigir de nuevo', async ()
   await getStore().set(`grupo:${id}`, JSON.stringify(g));
   assert.equal((await a('GET', `/grupo?pid=${pid}`)).data.grupo.ir, null);
 });
+
+test('amigos sugeridos: los que jugaron juntos y los amigos de tus amigos', async () => {
+  const a = cliente('11.0.0.41'), b = cliente('11.0.0.42'), c = cliente('11.0.0.43');
+  const ua = 'suga' + rnd(), ub = 'sugb' + rnd(), uc = 'sugc' + rnd();
+  await a('POST', '/registro', { usuario: ua, nombre: 'Ana', clave: 'clave123' });
+  await b('POST', '/registro', { usuario: ub, nombre: 'Beto', clave: 'clave123' });
+  await c('POST', '/registro', { usuario: uc, nombre: 'Caro', clave: 'clave123' });
+  assert.equal((await cliente('11.0.0.44')('GET', '/sugeridos')).status, 401, 'pide cuenta');
+  // Ana y Beto comparten lobby
+  const id = (await a('GET', `/grupo?pid=pidsugA${rnd()}`)).data.grupo.id;
+  await b('POST', '/grupo', { pid: 'pidsugB' + rnd(), accion: 'unirse', id });
+  let r = await a('GET', '/sugeridos');
+  assert.ok(r.data.recientes.some((x) => x.usuario === ub), 'Beto: jugaron juntos');
+  // Beto se hace amigo de Caro: Caro aparece como "quizás la conozcas" para Ana... si Ana es amiga de Beto
+  await b('POST', '/amigos', { accion: 'pedir', usuario: uc }); await c('POST', '/amigos', { accion: 'aceptar', usuario: ub });
+  await a('POST', '/amigos', { accion: 'pedir', usuario: ub }); await b('POST', '/amigos', { accion: 'aceptar', usuario: ua });
+  r = await a('GET', '/sugeridos');
+  assert.ok(!r.data.recientes.some((x) => x.usuario === ub), 'los amigos ya no se sugieren');
+  const caro = r.data.conocidos.find((x) => x.usuario === uc);
+  assert.ok(caro && caro.comunes === 1, 'Caro: amiga de un amigo');
+});

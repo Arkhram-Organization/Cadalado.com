@@ -82,8 +82,13 @@
   "redirects": [
     {
       "source": "/creadores",
-      "destination": "/equipo",
-      "permanent": true
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/equipo",
+      "destination": "/",
+      "permanent": false
     }
   ]
 }

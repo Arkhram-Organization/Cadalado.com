@@ -17,7 +17,7 @@
 //   rutas(ruta, request, util) → (opcional, async) rutas extra de la API
 import { limpiarLook } from './public/look.js';
 import { getStore } from './store.js';
-import { usuarioActual } from './cuenta.js';
+import { usuarioActual, anotarJuntos } from './cuenta.js';
 import { json, readJson, serverError, subruta } from './http.js';
 
 const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -246,6 +246,8 @@ export function crearJuego(def) {
       if (res.noExiste) return json({ noExiste: true }, 404);
       error = res.error;
       if (res.r) ({ r, pres } = res);
+      // para "jugaste hace poco": quiénes con cuenta compartieron esta sala
+      if (msg.t === 'join' && u && res.r) await anotarJuntos([u.id, ...Object.values(res.r.jugadores).map((j) => j.uid)]).catch(() => {});
     }
 
     const now = Date.now();

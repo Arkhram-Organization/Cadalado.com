@@ -104,7 +104,7 @@ function cabecera() {
     <div class="contenedor">
       <a class="logo" href="/" data-logo aria-label="cadalado, inicio"><img src="/marca.svg" alt=""><span>cadalado</span></a>
       <nav class="nav" id="nav" aria-label="Principal">
-        ${link('/#muro', 'Muro')}${link('/#juegos', 'Juegos')}${link('/personaje', 'Casillero')}${link('/tienda', 'Tienda')}${link('/equipo', 'Equipo')}${link('/club', 'Club')}
+        ${link('/#muro', 'Muro')}${link('/#juegos', 'Juegos')}${link('/personaje', 'Casillero')}${link('/tienda', 'Tienda')}${link('/club', 'Club')}
       </nav>
       <div class="cabecera-der">
         <span data-cuenta></span>
@@ -131,7 +131,7 @@ function pie() {
       </div>
       <div>
         <h4>Club</h4>
-        <ul><li><a href="/club">Tu cuenta</a></li><li><a href="/personaje">Casillero</a></li><li><a href="/club#amigos">Amigos</a></li><li><a href="/club#chats">Chats</a></li><li><a href="/equipo">Equipo</a></li><li><a href="/#sugerencias">Sugerencias</a></li></ul>
+        <ul><li><a href="/club">Tu cuenta</a></li><li><a href="/personaje">Casillero</a></li><li><a href="/club#amigos">Amigos</a></li><li><a href="/club#chats">Chats</a></li><li><a href="/#sugerencias">Sugerencias</a></li></ul>
       </div>
       <div>
         <h4>Créditos</h4>

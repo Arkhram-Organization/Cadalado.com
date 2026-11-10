@@ -599,6 +599,19 @@ function abrirSala(code) {
   let pedirColocar = false;
   let ultimoGolpe = 0;
   let cofreActual = null;
+  const ABRIR_COFRE_MS = 1500;
+  function abrirCofreYa(a) {
+    a.enviado = true;
+    sala.enviar({ t: 'abrirCofre', id: a.id }).then((r) => {
+      if (!r || !r.error || /no está disponible/.test(r.error)) {
+        if (!abiertos.has(a.id)) { abiertos.add(a.id); if (!r?.error) aviso('¡Abriste un cofre!'); }
+        if (cofreActual === a) cofreActual = null;
+        return;
+      }
+      if (++a.intentos < 4) setTimeout(() => { a.enviado = false; }, 350);
+      else { if (cofreActual === a) cofreActual = null; aviso(r.error, true); }
+    });
+  }
   let tactilE = false;
   let mira = false;
   let recogiendo = false;
@@ -615,7 +628,7 @@ function abrirSala(code) {
       if (e.code === 'KeyR') { if (modoConstruccion) rotacionPieza = (rotacionPieza + 1) % 4; else yo?.recargar(); }
       if (e.code === 'KeyM' && (fase === 'partida' || fase === 'cuenta')) mapa.alternar(yo);
       if (e.code === 'Space') pedirSalto = true;
-      if (e.code === 'KeyE') pedirAgarrar = true;
+      if (e.code === 'KeyE' && !e.repeat) pedirAgarrar = true; // la autorepetición del teclado no cuenta como otro toque
       if (e.code === 'KeyQ') { modoConstruccion = !modoConstruccion; picoActivo = false; }
       if (e.code === 'KeyC') { picoActivo = !picoActivo; modoConstruccion = false; }
       if ((e.code === 'ControlLeft' || e.code === 'KeyZ') && yo?.vivo && !yo.enColectivo && !(yo.altura > 0)) { yo.agachado = !yo.agachado; aviso(yo.agachado ? 'Agachado: más lento y más preciso' : 'De pie'); }
@@ -962,23 +975,31 @@ function abrirSala(code) {
           sala.enviar({ t: 'agarrar', id: b.id }).then((r) => { if (r?.error) { tomados.delete(b.id); if (c) yo.municion[c.municion] = Math.max(0, yo.municion[c.municion] - c.cantidad); } });
         }
         const cercaCofre = mundo.botin.find((b) => b.tipo === 'cofre' && !abiertos.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 22);
-        if (cercaCofre && (teclas.has('KeyE') || tactilE)) {
-          if (cofreActual?.id !== cercaCofre.id) { cofreActual = { id: cercaCofre.id, desde: ms, abriendo: false }; sala.enviar({ t: 'iniciarCofre', id: cercaCofre.id }); }
-          if (ms - cofreActual.desde >= 1000 && !cofreActual.abriendo) {
-            const cofre = cercaCofre, actual = cofreActual;
-            actual.abriendo = true;
-            // al completar la barra se abre solo; si el servidor todavía no estaba listo, reintenta enseguida
-            sala.enviar({ t: 'abrirCofre', id: cofre.id }).then((r) => {
-              if (!r?.error) { abiertos.add(cofre.id); aviso('¡Abriste un cofre!'); return; }
-              if (/no está disponible/.test(r.error)) { abiertos.add(cofre.id); return; }
-              if (cofreActual === actual) { actual.abriendo = false; actual.desde = performance.now() - 850; }
-            }).catch(() => { if (cofreActual === actual) actual.abriendo = false; });
-          }
-        } else cofreActual = null;
+        // Cofres: tocás E una vez y arranca la barra; al llenarse se abre solo (mantengas E o no).
+        // Si te alejás, se corta. Si el servidor no contesta bien, reintenta un par de veces y no se queda trabado.
+        if (cercaCofre && !cofreActual && (pedirAgarrar || teclas.has('KeyE') || tactilE)) {
+          cofreActual = { id: cercaCofre.id, desde: ms, enviado: false, intentos: 0 };
+          sala.enviar({ t: 'iniciarCofre', id: cercaCofre.id });
+        }
+        if (cofreActual) {
+          const c = mundo.botin.find((b) => b.id === cofreActual.id);
+          if (!c || abiertos.has(c.id) || Math.hypot(c.x - yo.x, c.y - yo.y) > 45) cofreActual = null;
+          else if (ms - cofreActual.desde >= ABRIR_COFRE_MS && !cofreActual.enviado) abrirCofreYa(cofreActual);
+        }
         // Los objetos de inventario se agarran con E (el más cercano). Si estás lleno, cambia el de la mano.
-        if ((pedirAgarrar || ((teclas.has('KeyE') || tactilE) && ms - ultimoAgarre > 200)) && !cercaCofre) {
-          const b = mundo.botin.filter((b) => !tomados.has(b.id) && b.tipo !== 'cofre' && !CAJAS[b.tipo] && !MATERIALES[b.tipo] && (b.cofre === undefined || abiertos.has(b.cofre)) && Math.hypot(b.x - yo.x, b.y - yo.y) < 30).sort((a, c) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(c.x - yo.x, c.y - yo.y))[0];
-          if (b) { agarrarYa(b); ultimoAgarre = ms; }
+        // Mantener E junta solo lo que entra sin cambiar nada; cambiar el arma de la mano pide apretar E de nuevo.
+        // Lo que acabás de soltar no se vuelve a agarrar enseguida (antes iba y venía y te cambiaba el arma).
+        const mantiene = (teclas.has('KeyE') || tactilE) && ms - ultimoAgarre > 200;
+        if ((pedirAgarrar || mantiene) && !cercaCofre) {
+          const recien = (x) => String(x.id).startsWith('drop-' + yoId() + '-') && Date.now() - Number(String(x.id).split('-').pop()) < 2500;
+          const b = mundo.botin.filter((b) => !tomados.has(b.id) && b.tipo !== 'cofre' && !CAJAS[b.tipo] && !MATERIALES[b.tipo] && !recien(b) && (b.cofre === undefined || abiertos.has(b.cofre)) && Math.hypot(b.x - yo.x, b.y - yo.y) < 30).sort((a, c) => Math.hypot(a.x - yo.x, a.y - yo.y) - Math.hypot(c.x - yo.x, c.y - yo.y))[0];
+          let vale = !!b;
+          if (b && !pedirAgarrar) {
+            const prueba = { slots: yo.slots.map((x) => (x ? { ...x } : null)), actual: yo.actual };
+            const plan = recoger(prueba, b.tipo, ARMAS, { ...b.item, id: b.id, rareza: b.rareza });
+            vale = !!plan && !plan.soltado; // manteniendo, nunca suelta lo que tenés
+          }
+          if (vale) { agarrarYa(b); ultimoAgarre = ms; }
         }
       }
       if (yo.vivo && fase === 'partida' && t >= 0) {
@@ -1196,7 +1217,7 @@ function abrirSala(code) {
         cerca.sort((a, c) => (a[0] === elegido ? -1 : c[0] === elegido ? 1 : a[1] - c[1]));
         for (const [b] of cerca.slice(0, 6)) { if (adentro(b)) continue; const p = vista.proyectar(b.x, b.y, 15); tarjeta(b, p.x * overlay.width, p.y * overlay.height, dpr, b === elegido); }
         if (elegido?.tipo === 'cofre' && cofreActual?.id === elegido.id) {
-          const p = vista.proyectar(elegido.x, elegido.y, 15), k = Math.min(1, (ms - cofreActual.desde) / 1000);
+          const p = vista.proyectar(elegido.x, elegido.y, 15), k = Math.min(1, (ms - cofreActual.desde) / ABRIR_COFRE_MS);
           ctx.strokeStyle = '#ffc84a'; ctx.lineWidth = 4 * dpr; ctx.beginPath(); ctx.arc(p.x * overlay.width, p.y * overlay.height - 70 * dpr, 13 * dpr, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke();
         }
       }
@@ -1240,7 +1261,7 @@ function abrirSala(code) {
     }
     // pista de la acción (abajo, al centro)
     const cercaCofre = yo?.vivo && mundo.botin.find((b) => b.tipo === 'cofre' && !abiertos.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 22);
-    const pista = !yo?.vivo || fase !== 'partida' ? '' : yo.enColectivo ? '' : yo.altura > 0 ? (yo.paracaidas ? 'Dirigí el planeador con <kbd>W A S D</kbd>' : '<kbd>Espacio</kbd> abrí el planeador') : cercaCofre ? `<kbd>E</kbd> Pulsá para abrir el cofre` : '';
+    const pista = !yo?.vivo || fase !== 'partida' ? '' : yo.enColectivo ? '' : yo.altura > 0 ? (yo.paracaidas ? 'Dirigí el planeador con <kbd>W A S D</kbd>' : '<kbd>Espacio</kbd> abrí el planeador') : cercaCofre ? (cofreActual ? 'Abriendo el cofre…' : `<kbd>E</kbd> Pulsá para abrir el cofre`) : '';
     poner('[data-pista]', pista); ver('[data-pista]', !!pista);
     pintarHud(t, z, ms, colectivo);
     // minimapa y mapa grande

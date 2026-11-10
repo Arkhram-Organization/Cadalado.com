@@ -87,7 +87,11 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
     } catch {} finally { consultando = false; }
   }
   async function cargarListas() {
-    try { listas = await api('/api/club/grupos?' + q()); pintar(); } catch {}
+    try {
+      const [l, sug] = await Promise.all([api('/api/club/grupos?' + q()), usuario ? api('/api/club/sugeridos').catch(() => null) : null]);
+      listas = { ...l, sugeridos: sug };
+      if (!panel.contains(document.activeElement) || !document.activeElement.matches('input')) pintar();
+    } catch {}
   }
   function invitacion(inv) {
     const t = document.createElement('div');
@@ -104,6 +108,30 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
       <div class="gr-txt"><b>${esc(etiqueta || 'Lobby de ' + g.lider)}</b><small>${g.miembros.length} ${g.miembros.length === 1 ? 'persona' : 'personas'} · ${esc(g.juego || '')}${g.lleno ? ' · llena' : ''}</small></div>
       <button class="gr-flecha" data-unirse="${g.id}" ${g.lleno ? 'disabled' : ''} title="Meterme a esta lobby" aria-label="Meterme a la lobby de ${esc(g.lider)}">${flecha}</button></div>`;
   }
+  // Agregar amigos: por usuario, o de los sugeridos (con quién jugaste hace poco y amigos de tus amigos)
+  const hace = (ts) => { const m = Math.round((Date.now() - ts) / 60000); return m < 60 ? `hace ${Math.max(1, m)} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`; };
+  const botonAmigo = (p) => p.estado === 'enviada' ? '<button class="gr-btn" disabled>Enviada</button>'
+    : p.estado === 'recibida' ? `<button class="gr-btn lima" data-amigo="aceptar" data-u="${esc(p.usuario)}">Aceptar</button>`
+    : `<button class="gr-btn" data-amigo="pedir" data-u="${esc(p.usuario)}">Agregar</button>`;
+  const filaSugerido = (p, detalle) => `<div class="gr-fila">${cara(p)}<div class="gr-txt"><b>${esc(p.nombre)}</b><small>@${esc(p.usuario)} · ${detalle}${p.enLinea ? ' · en línea' : ''}</small></div>${botonAmigo(p)}</div>`;
+  function seccionAgregar() {
+    const sug = listas.sugeridos || { recientes: [], conocidos: [] };
+    return `<section><h3>Agregar amigos</h3>
+      <form class="gr-agregar" data-agregar><input name="usuario" placeholder="Usuario de tu amigo" autocomplete="off" maxlength="24" spellcheck="false"><button class="gr-btn lima">Agregar</button></form>
+      ${sug.recientes.length ? `<h4 class="gr-sub">Jugaste hace poco</h4>${sug.recientes.map((p) => filaSugerido(p, hace(p.cuando))).join('')}` : ''}
+      ${sug.conocidos.length ? `<h4 class="gr-sub">Quizás los conozcas</h4>${sug.conocidos.map((p) => filaSugerido(p, `${p.comunes} ${p.comunes === 1 ? 'amigo' : 'amigos'} en común`)).join('')}` : ''}
+      ${!sug.recientes.length && !sug.conocidos.length ? '<p class="gr-vacio">Cuando juegues con gente del club, te la vamos a sugerir acá.</p>' : ''}
+    </section>`;
+  }
+  async function pedirAmistad(accionA, usuarioOtro) {
+    try {
+      const r = await api('/api/club/amigos', { accion: accionA, usuario: usuarioOtro });
+      toast(r.estado === 'amigo' ? `¡Ahora son amigos!` : 'Solicitud enviada');
+      cargarListas();
+      return true;
+    } catch (e) { toast(e.message, true); return false; }
+  }
+
   function pintar() {
     if (!abierto || !grupo) return;
     const link = `${location.origin}/?lobby=${grupo.id}`;
@@ -128,13 +156,20 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
       <section><h3>Amigos</h3>
         ${usuario ? (amigos.length ? amigos.map((a) => `<div class="gr-fila">${cara(a)}<div class="gr-txt"><b>${esc(a.nombre)}</b><small>${a.grupo ? (a.grupo.id === grupo.id ? 'En tu lobby' : `En una lobby de ${a.grupo.miembros.length}`) : a.enLinea ? 'En línea' : 'Desconectado'}</small></div>
           ${a.grupo && a.grupo.id !== grupo.id ? `<button class="gr-flecha" data-unirse="${a.grupo.id}" title="Meterme a su lobby" aria-label="Meterme a la lobby de ${esc(a.nombre)}">${flecha}</button>` : ''}
-          ${!a.grupo || a.grupo.id !== grupo.id ? `<button class="gr-btn" data-invitar="${esc(a.usuario)}">Invitar</button>` : ''}</div>`).join('') : '<p class="gr-vacio">Todavía no sumaste amigos. <a href="/club#amigos">Agregalos en el club</a>.</p>')
+          ${!a.grupo || a.grupo.id !== grupo.id ? `<button class="gr-btn" data-invitar="${esc(a.usuario)}">Invitar</button>` : ''}</div>`).join('') : '<p class="gr-vacio">Todavía no sumaste amigos. Agregalos acá abajo.</p>')
           : '<p class="gr-vacio"><a href="/entrar">Entrá con tu cuenta</a> para ver a tus amigos e invitarlos. Mientras, mandales el link.</p>'}
       </section>
+      ${usuario ? seccionAgregar() : ''}
       <section><h3>Lobbys abiertas</h3>
         ${(listas.abiertos || []).length ? listas.abiertos.map((g) => filaLobby(g)).join('') : '<p class="gr-vacio">No hay lobbys abiertas ahora. Abrí la tuya y que se sume gente.</p>'}
       </section>`;
     panel.querySelector('[data-cerrar]').onclick = () => mostrar(false);
+    panel.querySelector('[data-agregar]')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = e.currentTarget.usuario.value.trim().replace(/^@/, '');
+      if (v && (await pedirAmistad('pedir', v))) e.currentTarget.usuario.value = '';
+    });
+    panel.querySelectorAll('[data-amigo]').forEach((b) => (b.onclick = async () => { b.disabled = true; if (!(await pedirAmistad(b.dataset.amigo, b.dataset.u))) b.disabled = false; }));
     panel.querySelector('[data-abierto]')?.addEventListener('change', (e) => accion({ accion: 'abierto', valor: e.target.checked }));
     panel.querySelector('[data-gr-juego]')?.addEventListener('change',e=>accion({accion:'juego',juego:e.target.value}));
     panel.querySelectorAll('[data-gr-config]').forEach(el=>el.addEventListener('change',()=>accion({accion:'config',[el.dataset.grConfig]:el.type==='number'?Number(el.value):el.value})));

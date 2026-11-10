@@ -2,7 +2,7 @@
 // el líder elige el juego y cuando aprieta JUGAR se van todos a la misma sala.
 // Funciona con y sin cuenta: la clave de cada uno es su cuenta ('u:<id>') o su dispositivo ('p:<pid>').
 import { getStore } from './store.js';
-import { ErrorCuenta } from './cuenta.js';
+import { ErrorCuenta, anotarJuntos } from './cuenta.js';
 import { limpiarLook } from './public/look.js';
 
 const TTL = 3 * 3600;
@@ -55,6 +55,7 @@ async function entrar(yo, id) {
   if (ya) Object.assign(ya, { ...yo, visto: Date.now() });
   else g.miembros.push({ ...yo, visto: Date.now() });
   await s.set(`grupo-de:${yo.k}`, id, TTL);
+  if (!ya && yo.uid) await anotarJuntos([yo.uid, ...g.miembros.map((m) => m.uid)]).catch(() => {});
   return guardar(g);
 }
 

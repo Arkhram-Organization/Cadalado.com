@@ -222,7 +222,9 @@ export class CerebroBot {
     if (!p.vivo) return salida;
     p.tiempo(dt);
     if (p.usando) {
-      const objetivo = this.destino || zona(semilla, t).siguiente;
+      const zu = zona(semilla, t);
+      const afuera = Math.hypot(p.x - zu.x, p.y - zu.y) > zu.r - 20;
+      const objetivo = afuera ? zu.siguiente : this.destino || zu.siguiente;
       p.mover(mundo, objetivo.x - p.x, objetivo.y - p.y, dt, 0.65);
       return salida;
     }
@@ -266,7 +268,9 @@ export class CerebroBot {
       else this.atascado = 0;
       this.ultimo = { x: p.x, y: p.y };
       if (this.atascado > 3) {
-        this.destino = { x: p.x + (r() - 0.5) * 160, y: p.y + (r() - 0.5) * 160 };
+        // trabado: rodea el obstáculo para un costado, pero siempre acercándose a la zona si está afuera
+        const hacia = enZona ? { x: p.x, y: p.y } : { x: p.x + (z.siguiente.x - p.x) * 0.3, y: p.y + (z.siguiente.y - p.y) * 0.3 };
+        this.destino = { x: hacia.x + (r() - 0.5) * 160, y: hacia.y + (r() - 0.5) * 160 };
         this.lado *= -1;
         this.atascado = 0;
       }
@@ -289,9 +293,11 @@ export class CerebroBot {
       const ideal = p.arma.tipo === 'escopeta' ? 60 : p.arma.tipo === 'rifle' ? 190 : 120;
       // se mueve de costado y regula la distancia
       const adelante = d > ideal + 20 ? 1 : d < ideal - 30 ? -1 : 0;
-      const mx = ux * adelante - uy * this.lado * 0.8;
-      const my = uy * adelante + ux * this.lado * 0.8;
-      p.mover(mundo, mx, my, dt, 0.85);
+      let mx = ux * adelante - uy * this.lado * 0.8;
+      let my = uy * adelante + ux * this.lado * 0.8;
+      // la tormenta manda: si estoy afuera, corro hacia la zona (y disparo mientras tanto)
+      if (!enZona) { const zx = z.siguiente.x - p.x, zy = z.siguiente.y - p.y, zd = Math.max(1, Math.hypot(zx, zy)); mx = zx / zd + mx * 0.2; my = zy / zd + my * 0.2; }
+      p.mover(mundo, mx, my, dt, !enZona ? 1 : 0.85);
       if (r() < dt * 0.4) this.lado *= -1;
       p.ang = Math.atan2(dy, dx) + (r() - 0.5) * this.errorPunteria * 2;
       this.reaccion -= dt;

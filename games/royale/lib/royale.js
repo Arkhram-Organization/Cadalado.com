@@ -282,6 +282,10 @@ export const royale = crearJuego({
       r.chequeo = ctx.now;
       // los que se fueron quedan afuera
       for (const p of r.participantes) if (!ctx.online.has(p) && r.vivos.includes(idPublico(p))) baja(r, idPublico(p), 'afuera', ctx);
+      // red de seguridad: con la tormenta cerrada del todo (20 de daño por segundo) nadie aguanta 25 s;
+      // si algún bot figura vivo es porque nadie lo estaba simulando: queda afuera
+      if (r.fase === 'partida' && ctx.now >= r.inicio + (DURACION_MAX - 60 + 25) * 1000)
+        for (const b of r.vivos.filter((x) => String(x).startsWith('bot'))) if (r.fase === 'partida') baja(r, b, 'zona', ctx);
       if (r.fase === 'partida' && ctx.now >= r.inicio + DURACION_MAX * 1000) terminar(r, ctx);
     } else if (r.fase === 'fin' && ctx.now >= r.fin) {
       r.fase = 'lobby';

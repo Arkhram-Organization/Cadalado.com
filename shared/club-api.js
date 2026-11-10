@@ -83,6 +83,9 @@ export async function handle(request) {
       if (!img) return new Response('No encontrada', { status: 404 });
       return new Response(img.bytes, { headers: { 'content-type': img.tipo, 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
     }
+    if (ruta === '/sugeridos' && metodo === 'GET') {
+      return json(await c.sugeridos(await necesitaCuenta(request)));
+    }
     if (ruta === '/amigos' && metodo === 'GET') {
       return json(await c.amigos(await necesitaCuenta(request)));
     }

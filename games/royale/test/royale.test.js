@@ -180,3 +180,15 @@ test('si muere la única persona, la partida termina aunque queden bots (no se t
   v = (await ver(code, pid)).estado;
   assert.equal(v.fase, 'fin', 'sin personas vivas se termina');
 });
+
+test('con la tormenta cerrada del todo, los bots que nadie simula quedan afuera y gana la persona', async () => {
+  const { DURACION_MAX } = await import('../public/js/mundo.js');
+  const pid = 'pidTormentaFin1';
+  const { code } = (await req('POST', '/crear', { pid, nombre: 'Marti', opciones: { bots: 3 } })).data;
+  await accion(code, pid, { t: 'join', nombre: 'Marti' });
+  await accion(code, pid, { t: 'empezar' });
+  await tocar(code, { fase: 'partida', inicio: Date.now() - (DURACION_MAX - 30) * 1000, chequeo: 0 });
+  const v = (await ver(code, pid)).estado;
+  assert.equal(v.fase, 'fin');
+  assert.equal(v.ganador, v.yo);
+});
