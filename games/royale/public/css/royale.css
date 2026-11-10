@@ -269,3 +269,34 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
   .bs-lobby { grid-template-columns: 1fr; background: rgba(10, 14, 12, .7); }
   .hud-feed { top: 60px; }
 }
+
+/* celular: todo más chico y sin pisarse */
+.isla.es-tactil .hud-teclas, .isla.es-tactil .hud-municion { display: none; }
+.isla.es-tactil .btn-t { width: 64px; height: 38px; font-size: 12px; border-radius: 10px; }
+@media (max-height: 520px) {
+  .hud-mapa { width: 118px; right: 8px; top: 8px; gap: 4px; }
+  .mini-marco { width: 118px; height: 118px; border-width: 2px; }
+  .mini-lugar { padding: 2px 6px; } .mini-lugar b { font-size: 11px; } .mini-lugar small { font-size: 10px; }
+  .hud-info span { padding: 2px; } .hud-info b { font-size: 12px; } .hud-info i { width: 12px; height: 12px; }
+  .hud-mats { grid-auto-flow: column; gap: 2px; } .hud-mat { min-width: 0; padding: 1px 5px; gap: 3px; } .hud-mat i { width: 14px; height: 14px; } .hud-mat b { font-size: 12px; min-width: 0; }
+  .hud-feed { top: 8px; left: 8px; } .hud-feed div { font-size: 11px; padding: 3px 7px; }
+  .hud-tormenta { top: 8px; } .hud-tormenta span { font-size: 12px; padding: 5px 10px; }
+  .isla.es-tactil .hud-salud { left: 8px; top: 34px; bottom: auto; width: 170px; gap: 3px; }
+  .isla.es-tactil .hud-barra { grid-template-columns: 16px 1fr 28px; gap: 5px; } .isla.es-tactil .hud-barra .ico { width: 16px; height: 16px; font-size: 13px; } .isla.es-tactil .hud-barra b { font-size: 14px; } .isla.es-tactil .hud-tubo { height: 10px; }
+  .isla.es-tactil .hud-inv { right: auto; left: 50%; bottom: 6px; transform: translateX(-50%); }
+  .isla.es-tactil .hud-arma { display: none; }
+  .isla.es-tactil .ranura { width: 42px; height: 40px; } .isla.es-tactil .ranura.on { width: 48px; height: 46px; } .isla.es-tactil .ranura i { width: 30px; height: 18px; } .isla.es-tactil .ranura.pico { width: 36px; } .isla.es-tactil .ranura span { font-size: 11px; }
+  .isla.es-tactil .joy { width: 96px; height: 96px; bottom: 12px; } .isla.es-tactil .joy i { width: 40px; height: 40px; margin: -20px; }
+  .isla.es-tactil .btn-t { right: 124px; width: 58px; height: 32px; font-size: 11px; }
+  .isla.es-tactil .btn-t { bottom: 12px; } .isla.es-tactil .btn-t.b2 { bottom: 50px; } .isla.es-tactil .btn-t.b3 { bottom: 88px; } .isla.es-tactil .btn-t.b4 { bottom: 12px; right: 188px; } .isla.es-tactil .btn-t.b5 { bottom: 50px; right: 188px; }
+  .tactil { height: 60%; }
+  .hud-colectivo { top: 12%; } .hud-colectivo b { font-size: 22px; }
+  .hud-lugar b { font-size: 30px; }
+  .hud-altura { right: 136px; } .altimetro { height: 90px; }
+  .hud-uso svg { width: 56px; height: 56px; }
+  .hud-accion { bottom: 60px; font-size: 12px; }
+  .bs-lobby { padding: 8px; } .bs-lobby-caja { padding: 12px; gap: 8px; } .bs-lobby .bs-logo h1 { font-size: 34px; } .bs-gente { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .bs-menu { padding: 10px 16px; } .bs-logo h1 { font-size: 48px; } .bs-menu-caja { gap: 10px; } .bs-panel { padding: 12px; }
+  .bs-jugar { padding: 10px 16px; } .bs-jugar b { font-size: 26px; }
+  .bs-fin-caja { padding: 14px; } .bs-fin-caja h2 { font-size: 40px; } .bs-tabla div { padding: 4px 8px; }
+}

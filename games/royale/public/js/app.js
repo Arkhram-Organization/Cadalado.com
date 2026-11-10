@@ -623,7 +623,7 @@ function abrirSala(code) {
   };
   // táctil: un joystick para moverse y otro para apuntar y disparar
   const tactil = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  $('[data-tactil]').classList.toggle('ver', tactil);
+  // los controles táctiles solo durante la partida
   $('[data-isla]').classList.toggle('es-tactil', tactil);
   const joys = { mov: { x: 0, y: 0 }, tiro: { x: 0, y: 0 } };
   app.querySelectorAll('[data-joy]').forEach((el) => {
@@ -1092,6 +1092,7 @@ function abrirSala(code) {
       }
     }
     $('[data-isla]').classList.toggle('apuntando', !!(yo?.vivo && fase === 'partida'));
+    $('[data-tactil]').classList.toggle('ver', tactil && !!yo?.vivo && fase === 'partida');
     // anuncio al entrar a un lugar caminando
     if (yo?.vivo && !yo.enColectivo && yo.altura === 0 && fase === 'partida') {
       const lugar = lugarEn(yo.x, yo.y);
