@@ -224,8 +224,8 @@ test('los bots siempre pisan algo firme (no caminan por el aire ni sobre baldosa
         const sg = ruta.segs.find((g) => t < g.t1);
         if (!sg || !['camina', 'quieto', 'tirado', 'plataforma'].includes(sg.tipo)) continue;
         const p = posBot(m, ruta, t, sem);
-        const s = j.suelo(p.x, p.z, p.y + 0.6, moviles(m, t, sem));
-        assert.ok(s.y > p.y - 0.6, `mapa ${m} bot ${i}: sin piso en x ${p.x.toFixed(1)} z ${p.z.toFixed(1)} (t ${t.toFixed(1)})`);
+        const s = j.suelo(p.x, p.z, p.yPiso + 0.6, moviles(m, t, sem));
+        assert.ok(s.y > p.yPiso - 0.6, `mapa ${m} bot ${i}: sin piso en x ${p.x.toFixed(1)} z ${p.z.toFixed(1)} (t ${t.toFixed(1)})`);
       }
     }
   }

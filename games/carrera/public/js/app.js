@@ -6,6 +6,7 @@ import { avatarSvg } from '/comun/avatar.js';
 import { GESTOS } from '/comun/gestos.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { Escena } from './escena.js';
+import { Show } from './show.js';
 import { fondoMenu } from '/comun/fondo-menu.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
 import { Red } from './red.js';
@@ -13,7 +14,7 @@ import { rutaBot, posBot, ordenLargada, posLargada, COLORES, MAPAS, LIMITE_S } f
 
 const app = document.querySelector('#app');
 const COLOR = '#c5f04a';
-const cuenta = await marco({ juego: 'Ángeles Peña', color: COLOR, volver: '/carrera/' });
+const cuenta = await marco({ juego: 'Full Gays', color: COLOR, volver: '/carrera/' });
 let limpiar = [];
 
 function ir(ruta) {
@@ -60,10 +61,10 @@ function carreraDeFondo(canvas) {
 }
 
 function menu() {
-  document.title = 'Ángeles Peña · cadalado';
+  document.title = 'Full Gays · cadalado';
   app.innerHTML = `
   <div class="menu">
-    <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · rondas con eliminación · hasta 16</span><h1>Ángeles <em>Peña.</em></h1>
+    <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · rondas con eliminación · hasta 16</span><h1>Full <em>Gays.</em></h1>
       <p>Cinco mapas con barras, martillos, molinos, pistones, cintas, baldosas y huecos de doble salto. El recorrido cambia en cada partida. En cada ronda clasifican los primeros; con <b>E</b> le pegás una piña al de al lado.</p></div></div>
     <section class="panel">
       <h2>Armar una partida</h2>
@@ -135,7 +136,7 @@ const lookBot = (npc) => ({ ...POR_ID[npc]?.look });
 
 // ---------------------------------------------------------------- sala y partida
 function abrirSala(code) {
-  document.title = `Ángeles Peña ${code} · cadalado`;
+  document.title = `Full Gays ${code} · cadalado`;
   document.body.classList.add('en-carrera');
   app.innerHTML = `
   <div class="juego">
@@ -159,6 +160,11 @@ function abrirSala(code) {
   const $ = (s) => app.querySelector(s);
   const escena = new Escena($('[data-lienzo]'));
   escena.construirMapa(1, 1);
+  const show = new Show(escena.renderer);
+  let eliminadoYa = false;
+  // Esc: el que armó la sala puede reiniciar la partida
+  window.__reiniciar = { puede: () => !!est && est.host === est.yo && est.fase !== 'lobby', hacer: () => sala.enviar({ t: 'reiniciar' }) };
+  limpiar.push(() => { delete window.__reiniciar; });
 
   let est = null;
   let fase = null;
@@ -228,7 +234,7 @@ function abrirSala(code) {
       ir('/carrera/');
     },
   });
-  recordar('carrera', `/carrera/sala/${code}`, `Ángeles Peña ${code}`);
+  recordar('carrera', `/carrera/sala/${code}`, `Full Gays ${code}`);
   limpiar.push(() => {
     sala.cerrar();
     red.actual?.cerrar();
@@ -300,22 +306,24 @@ function abrirSala(code) {
     if (nueva === 'cuenta' || nueva === 'carrera' || ((nueva === 'ronda' || nueva === 'podio') && clave === 'lobby' && est.ronda)) armarRonda();
     if (nueva === 'lobby') armarLobby();
     if (nueva === 'ronda') {
+      const pasan = est.clasificacion.filter((x) => x.paso).length;
+      show.armar('ronda', est.clasificacion.map((x) => ({ id: x.id, nombre: x.nombre, paso: x.paso, look: x.bot ? lookBot(x.npc) : lookDe(x.id) })), { titulo: `RONDA ${est.ronda} · CLASIFICAN ${pasan}` });
       const mio = est.clasificacion.find((x) => x.id === yo());
       if (mio) {
         sonar(mio.paso ? 'gana' : 'pierde');
         aviso(mio.paso ? '¡CLASIFICASTE!' : 'Quedaste afuera', !mio.paso);
-        if (!mio.paso) mostrarEliminacion(est.clasificacion.filter(x => !x.paso));
       }
     }
-    if (nueva === 'podio') { sonar('gana'); const mio = est.resultados.find(x => x.id === yo()); if (mio && est.resultados[0]?.id !== yo()) mostrarEliminacion(est.clasificacion.filter(x => !x.paso)); }
-    if (nueva === 'cuenta' || nueva === 'lobby') $('[data-eliminacion]').classList.add('hidden');
+    if (nueva === 'podio') { const g = est.resultados[0]; show.armar('podio', est.resultados.slice(0, 12).map((x) => ({ id: x.id, nombre: x.nombre, paso: true, look: x.bot ? lookBot(x.npc) : lookDe(x.id) })), { titulo: g?.paso ? `¡GANÓ ${g.nombre.toUpperCase()}!` : 'FIN' }); sonar('gana'); }
+    if (nueva === 'cuenta' || nueva === 'lobby') { $('[data-eliminacion]').classList.add('hidden'); eliminadoYa = false; }
+    $('.juego').classList.toggle('en-show', nueva === 'ronda' || nueva === 'podio');
     $('[data-hud]').classList.toggle('hidden', !(nueva === 'carrera' || nueva === 'cuenta'));
   }
 
-  function mostrarEliminacion(lista) {
+  function mostrarEliminacion(lista, sub = 'La pista sigue sin vos') {
     const el = $('[data-eliminacion]');
-    el.innerHTML = `<div class="elim-cinta"><small>Ángeles Peña · ronda ${est.ronda}</small><strong>¡ELIMINADO!</strong><span>La pista sigue sin vos</span></div>
-      <div class="elim-lista"><b>Quedaron afuera</b>${lista.slice(0, 6).map(x => `<span>${esc(x.nombre)}</span>`).join('')}</div>`;
+    el.innerHTML = `<div class="elim-cinta"><small>Full Gays · ronda ${est.ronda}</small><strong>¡ELIMINADO!</strong><span>${sub}</span></div>
+      ${lista.length ? `<div class="elim-lista"><b>Quedaron afuera</b>` : '<div hidden>'}${lista.slice(0, 6).map(x => `<span>${esc(x.nombre)}</span>`).join('')}</div>`;
     el.classList.remove('hidden');
     clearTimeout(mostrarEliminacion.t);
     mostrarEliminacion.t = setTimeout(() => el.classList.add('hidden'), 5200);
@@ -367,7 +375,7 @@ function abrirSala(code) {
       const det = (x) => (x.paso ? (x.tiempo != null ? `${(x.tiempo / 1000).toFixed(2)} s` : 'final') : `afuera en ronda ${x.ronda}`);
       const miPuesto = r.findIndex((x) => x.id === e.yo) + 1;
       const gane = miPuesto === 1 && r[0]?.paso;
-      pod.innerHTML = `<span class="etq">Ángeles Peña · final</span><h2>${gane ? '¡Ganaste Ángeles Peña!' : miPuesto ? `Terminaste ${miPuesto}º` : 'Resultados'}</h2>
+      pod.innerHTML = `<span class="etq">Full Gays · final</span><h2>${gane ? '¡Ganaste Full Gays!' : miPuesto ? `Terminaste ${miPuesto}º` : 'Resultados'}</h2>
         <div class="podio-top">${top.map((x, i) => (x ? `<div class="p${[2, 1, 3][i]}"><span class="podio-avatar">${avatarSvg(x.bot ? lookBot(x.npc) : lookDe(x.id))}</span><span class="mono" style="font-size:24px">${['2º', '1º', '3º'][i]}</span><b>${esc(x.nombre)}</b><span class="mono">${det(x)}</span></div>` : '<div style="visibility:hidden"></div>')).join('')}</div>
         <div class="tabla-res">${r.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}${x.bot ? ' <small style="color:var(--gris)">bot</small>' : ''}</span><span class="mono">${det(x)}</span></div>`).join('')}</div>
         ${esHost ? '<button class="btn btn-lima btn-grande" data-otra style="width:100%;margin-top:14px">Otra partida</button>' : '<p style="margin-top:12px">En unos segundos vuelven a la largada.</p>'}`;
@@ -623,7 +631,7 @@ function abrirSala(code) {
         jugador.llego = false;
         jugador.ubicar(0, 0, -4);
       }
-      escena.personaje(yo(), lookDe(yo()), nombreDe(yo()) + ' (vos)', true);
+      escena.personaje(yo(), lookDe(yo()), '', true); // tu nombre no se ve (ya sabés quién sos)
       escena.mover(yo(), jugador.estado(), dt);
       envio += dt;
       if (envio > 1 / 15) {
@@ -706,6 +714,13 @@ function abrirSala(code) {
       const tt = est.llegadas[yo()] != null ? est.llegadas[yo()] / 1000 : tp;
       $('[data-crono]').textContent = `${tt.toFixed(2)} s`;
       const llegaron = Object.keys(est.llegadas).length + botsRonda.filter((b) => tp >= b.ruta.fin).length;
+      // se llenó el cupo y no llegaste: quedás afuera ya, no se sigue jugando
+      if (!eliminadoYa && fase === 'carrera' && !jugador.espectador && est.llegadas[yo()] == null && !enviadoMeta && llegaron >= est.cupo) {
+        eliminadoYa = true;
+        jugador.espectador = true;
+        sonar('pierde');
+        mostrarEliminacion([], 'Se llenaron los lugares para clasificar');
+      }
       $('[data-cupo]').textContent = final ? 'Gana el primero' : `Clasificados ${Math.min(llegaron, est.cupo)}/${est.cupo}`;
     }
 
@@ -734,8 +749,11 @@ function abrirSala(code) {
       }
       esp.classList.toggle('hidden', !lista.length);
     } else esp.classList.add('hidden');
-    escena.seguir(foco, camYaw, dt);
-    escena.render(dt);
+    if (fase === 'ronda' || fase === 'podio') show.render(dt);
+    else {
+      escena.seguir(foco, camYaw, dt);
+      escena.render(dt);
+    }
   }
   raf = requestAnimationFrame(cuadro);
 }

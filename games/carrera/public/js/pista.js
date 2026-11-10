@@ -1,4 +1,4 @@
-// Los mapas de Ángeles Peña: geometría, obstáculos en movimiento y la ruta de los bots.
+// Los mapas de Full Gays: geometría, obstáculos en movimiento y la ruta de los bots.
 // Todo es determinístico (depende de la "semilla" de la ronda y del tiempo): todos los navegadores
 // ven lo mismo sin mandarse nada, y el servidor sabe cuándo llega cada bot.
 // Unidades: metros y segundos. La pista avanza hacia -Z. El piso arranca en y = 0.
@@ -388,13 +388,29 @@ export function posBot(mapaId, ruta, t, semilla) {
   const x = a.x + (b.x - a.x) * k;
   const z = a.z + (b.z - a.z) * k;
   let y = a.y + (b.y - a.y) * k;
+  const yPiso = y;
   if (s.tipo === 'salto') y += Math.sin(k * Math.PI) * (s.t1 - s.t0 > 0.8 ? 2.4 : 1.6);
-  // Saltitos al correr, además de los saltos grandes entre plataformas.
-  const faseBrinco = t * 1.6 + ruta.v;
-  const brinca = s.tipo === 'camina' && Math.abs(b.z - a.z) > 1.5 && Math.abs(b.y - a.y) < 0.05 && Math.floor(faseBrinco) % 3 === 0;
-  if (brinca) y += Math.sin((faseBrinco % 1) * Math.PI) * 0.45;
+  // Saltitos al correr (como hacen las personas), además de los saltos grandes entre plataformas.
+  const corriendo = s.tipo === 'camina' && Math.abs(b.y - a.y) < 0.05;
+  const faseBrinco = t * 1.5 + ruta.v * 1.7;
+  const enCinta = corriendo && (estaticos(mapaId).cintas || []).some((c) => Math.abs(x - c.x) < c.w / 2 && Math.abs(z - c.z) < c.d / 2);
+  let brinca = corriendo && Math.abs(b.z - a.z) > 1.5 && (enCinta || Math.floor(faseBrinco) % 2 === 0);
+  if (brinca) y += Math.sin((faseBrinco % 1) * Math.PI) * (enCinta ? 1.1 : 0.8);
+  // las barras que barren: el bot salta justo cuando le pasa por abajo
+  if (corriendo || s.tipo === 'quieto') {
+    for (const bar of moviles(mapaId, t, semilla).barras) {
+      const px = x - bar.x, pz = z - bar.z, r = Math.hypot(px, pz);
+      if (r > bar.largo + 0.8 || Math.abs(yPiso - bar.y) > 1.2) continue;
+      let d = Math.atan2(pz, px) - bar.ang;
+      d = ((d % Math.PI) + Math.PI * 1.5) % Math.PI - Math.PI / 2; // la barra es una línea: cada media vuelta
+      const vel = Math.abs(bar.w * RITMO) || 1;
+      const tau = d / (vel * Math.sign(bar.w * RITMO || 1)) / 1; // segundos hasta que la barra llegue
+      const falta = Math.abs(tau);
+      if (falta < 0.34) { y = Math.max(y, yPiso + 1.55 * (1 - (falta / 0.34) ** 2)); brinca = true; }
+    }
+  }
   if (s.tipo === 'cae') y -= Math.min(8, k * 14);
   const ry = Math.atan2(-(b.x - a.x), -(b.z - a.z)) || 0;
   const anim = t > ruta.fin ? 'festeja' : s.tipo === 'salto' || brinca ? 'salto' : s.tipo === 'golpe' || s.tipo === 'cae' ? 'golpe' : s.tipo === 'tirado' ? 'tirado' : s.tipo === 'camina' ? 'corre' : 'quieto';
-  return { x, y, z, ry: s.tipo === 'camina' || s.tipo === 'salto' ? ry : 0, a: anim };
+  return { x, y, z, yPiso, ry: s.tipo === 'camina' || s.tipo === 'salto' ? ry : 0, a: anim };
 }

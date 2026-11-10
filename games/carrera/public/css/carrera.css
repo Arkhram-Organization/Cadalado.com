@@ -138,3 +138,12 @@ body:has(.menu) .menu .sala-fila .q small, body:has(.menu) .menu .vacio { color:
 .elim-lista span { background: #303b29; border-radius: 6px; padding: 4px 9px; }
 @keyframes elim-entra { from { opacity: 0; transform: translateY(-90px) scale(1.4) rotate(-7deg); } }
 @media (max-width: 600px) { .panel-flota { top: 58px; padding: 11px; } .panel-flota .lista-j { max-height: 31vh; } .elim-cinta { padding: 16px; } }
+
+/* la sala del show (entre rondas y podio): los paneles van al costado para que se vea */
+.juego.en-show .hud-arriba, .juego.en-show .pina-hud, .juego.en-show .gestos-tip, .juego.en-show .espectar { display: none !important; }
+.juego.en-show [data-lobby] { top: auto; bottom: 16px; left: 16px; width: min(340px, calc(100% - 32px)); max-height: 42vh; overflow: auto; background: rgba(20, 10, 40, .78); border-color: rgba(255, 255, 255, .18); }
+.juego.en-show [data-lobby] .tabla-res div.afuera { opacity: .55; text-decoration: line-through; }
+.juego.en-show .podio-flota { left: auto; right: 16px; top: 70px; transform: none; width: min(360px, calc(100% - 32px)); max-height: calc(100% - 90px); background: rgba(20, 10, 40, .8); border-color: rgba(255, 210, 63, .45); }
+.juego.en-show .podio-flota .podio-top { display: none; }
+@media (max-width: 760px) { .juego.en-show .podio-flota { top: auto; bottom: 8px; max-height: 40vh; } }
+.juego.en-show .chat-mini { display: none; }

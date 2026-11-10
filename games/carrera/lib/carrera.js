@@ -1,4 +1,4 @@
-// Ángeles Peña: carrera de obstáculos por rondas con eliminación.
+// Full Gays: carrera de obstáculos por rondas con eliminación.
 // El servidor arma la sala, larga cada ronda, ordena las llegadas (con SU reloj), decide quién clasifica
 // y presenta a los jugadores entre sí para que se pasen las posiciones directo (WebRTC).
 // Los bots son los NPC de cadalado y se calculan igual en todos lados (pista.js).
@@ -9,10 +9,10 @@ import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
 import { rutaBot, rng, ordenLargada, LIMITE_S, COLORES, MAPAS } from '../public/js/pista.js';
 
 const CUENTA_MS = 5000;
-const RONDA_MS = 9000; // pantalla de "clasificados" entre rondas
-const PODIO_MS = 18_000;
+const RONDA_MS = 13000; // pantalla de "clasificados" entre rondas
+const PODIO_MS = 22_000;
 const MINIMO_MS = 18_000; // nadie puede terminar un mapa más rápido que esto
-const CIERRE_MS = 2500; // cuando se llena el cupo, la ronda termina un toque después
+const CIERRE_MS = 1200; // cuando se llena el cupo, la ronda termina un toque después
 const MAX_BOTS = 11;
 
 const nombreBot = (r, i) => {
@@ -94,7 +94,7 @@ function cerrarRonda(r, ctx) {
     r.fase = 'podio';
     r.fin = ctx.now + PODIO_MS;
     const g = r.resultados[0];
-    ctx.sistema(g?.paso ? `¡${g.nombre} ganó Ángeles Peña!` : 'Nadie llegó a la meta.');
+    ctx.sistema(g?.paso ? `¡${g.nombre} ganó Full Gays!` : 'Nadie llegó a la meta.');
   } else {
     r.fase = 'ronda';
     r.fin = ctx.now + RONDA_MS;
@@ -153,9 +153,11 @@ export const carrera = crearJuego({
         }
         return {};
       }
+      case 'reiniciar':
       case 'empezar': {
         if (!ctx.esHost) return { error: 'Larga la carrera quien armó la sala' };
-        if (r.fase !== 'lobby' && r.fase !== 'podio') return {};
+        if (msg.t === 'empezar' && r.fase !== 'lobby' && r.fase !== 'podio') return {};
+        if (msg.t === 'reiniciar') ctx.sistema('La partida se reinició.');
         r.participantes = Object.keys(r.jugadores).filter((p) => ctx.online.has(p) || p === pid).slice(0, 16);
         const nBots = Math.min(r.bots, Math.max(0, 16 - r.participantes.length));
         if (r.botNpc.length !== r.bots) r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras);
@@ -252,7 +254,7 @@ export const carrera = crearJuego({
   },
   lobby(r) {
     const host = r.jugadores[r.host];
-    return { titulo: host ? `Ángeles Peña de ${host.nombre}` : 'Ángeles Peña', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
+    return { titulo: host ? `Full Gays de ${host.nombre}` : 'Full Gays', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
   },
   async despues(r, antes) {
     if (r.fase !== 'podio' || antes.fase === 'podio') return;

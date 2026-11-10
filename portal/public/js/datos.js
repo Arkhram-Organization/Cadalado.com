@@ -22,7 +22,7 @@ export const JUEGOS = [
   },
   {
     id: 'carrera',
-    nombre: 'Ángeles Peña',
+    nombre: 'Full Gays',
     estado: 'disponible',
     nuevo: true,
     url: '/carrera/',
@@ -120,7 +120,7 @@ export const EQUIPO = [
 
 export const NOVEDADES = [
   { etiqueta: 'Nuevo', titulo: 'Battle Shmitz', texto: 'Colectivo, ocho lugares, cofres, construcción y partidas con amigos y bots.', juego: 'royale' },
-  { etiqueta: 'Nuevo', titulo: 'Ángeles Peña', texto: 'Obstáculos en 3D, en tiempo real y con bots para llenar la largada.', juego: 'carrera' },
+  { etiqueta: 'Nuevo', titulo: 'Full Gays', texto: 'Obstáculos en 3D, en tiempo real y con bots para llenar la largada.', juego: 'carrera' },
   { etiqueta: 'Nuevo', titulo: 'El casino de Dobro', texto: 'Ruleta, blackjack y tragamonedas con pozo compartido. Fichas de mentira.', juego: 'casino' },
   { etiqueta: 'Nuevo', titulo: 'Make it Meme', texto: '100 plantillas, textos donde quieras y votación anónima.', juego: 'memes' },
   { etiqueta: 'Club', titulo: 'Tu cuenta', texto: 'Historial de todos los juegos, amigos y chat. Desafiá desde el perfil.', enlace: '/club' },
