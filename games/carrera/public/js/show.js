@@ -46,7 +46,7 @@ export class Show {
     // el arcoíris de fondo
     ARCOIRIS.forEach((c, i) => { const arco = new THREE.Mesh(new THREE.TorusGeometry(20 - i * 1.1, 0.55, 8, 64, Math.PI), new THREE.MeshBasicMaterial({ color: c, fog: false })); arco.position.set(0, -2, -18); this.scene.add(arco); });
     this.cartel = this.texto('');
-    this.cartel.position.set(0, 9.5, -6); this.scene.add(this.cartel);
+    this.cartel.position.set(0, 5.5, -11); this.scene.add(this.cartel);
     this.gente = []; this.particulas = []; this.extra = new THREE.Group(); this.scene.add(this.extra);
     this.t = 0;
   }
@@ -75,13 +75,15 @@ export class Show {
     this.limpiar();
     this.modo = modo; this.t = 0;
     this.cartel.userData.poner(titulo, modo === 'podio' ? '#ffd23f' : '#ffffff');
+    this.cartel.visible = modo !== 'podio'; // el título del podio vive en el HUD, sin tapar las caras
+    if (modo === 'podio') lista = [...lista].sort((a, b) => (a.puesto || 99) - (b.puesto || 99));
     const n = lista.length;
     if (modo === 'ronda') {
       // en arco: los que pasan y los que no, mezclados como llegaron
       lista.forEach((x, i) => {
-        const a = n === 1 ? 0 : (-0.5 + i / (n - 1)) * Math.min(2.4, 0.42 * n);
-        const r = 8.5;
-        this.sumar(x, Math.sin(a) * r, 0, -Math.cos(a) * r + 6, Math.atan2(-Math.sin(a), Math.cos(a)) * 0.6, i);
+        const a = n === 1 ? 0 : (-0.5 + i / (n - 1)) * Math.min(1.8, 0.25 * n);
+        const r = n > 10 ? 7 : 5.3;
+        this.sumar(x, Math.sin(a) * r, 0, -Math.cos(a) * r + 5.5, Math.PI - a * 0.5, i);
       });
       // los eliminados se caen de a uno
       let k = 0;
@@ -94,16 +96,17 @@ export class Show {
         const bloque = new THREE.Mesh(new THREE.BoxGeometry(3.2, alturas[i], 3), new THREE.MeshStandardMaterial({ color: colores[i], roughness: 0.3, metalness: 0.5, emissive: colores[i], emissiveIntensity: 0.15 }));
         bloque.position.set(xs[i], alturas[i] / 2, 1); bloque.castShadow = true; bloque.receiveShadow = true; this.extra.add(bloque);
         const num = this.texto(String(i + 1)); num.scale.setScalar(0.25); num.position.set(xs[i], alturas[i] / 2, 2.52); this.extra.add(num);
-        if (lista[i]) this.sumar(lista[i], xs[i], alturas[i], 1, 0, i, i + 1);
+        if (lista[i]) this.sumar(lista[i], xs[i], alturas[i], 1, Math.PI, i, i + 1);
       }
       lista.slice(3).forEach((x, j) => {
         const a = (j / Math.max(1, n - 3)) * Math.PI - Math.PI / 2, r = 7.5;
-        this.sumar(x, Math.sin(a) * r * 1.2, 0, 5.5 - Math.cos(a) * 1.5 + 2, 0, j + 3);
+        this.sumar(x, Math.sin(a) * r * 1.2, 0, -5.5 - Math.cos(a) * 1.5, Math.PI - a * 0.35, j + 3);
       });
     }
   }
   sumar(x, px, py, pz, ry, i, puesto = 0) {
-    const persona = crearPersona(THREE, x.look, { nombre: x.nombre, colorNombre: puesto === 1 ? '#ffd23f' : x.paso === false ? '#ff9a9a' : '#ffffff', sombras: true });
+    const persona = crearPersona(THREE, x.look, { nombre: x.nombre, tamCartel: this.modo === 'podio' ? 0.65 : 0.42, colorNombre: puesto === 1 ? '#ffd23f' : x.paso === false ? '#ff9a9a' : '#ffffff', sombras: true });
+    if (this.modo === 'podio') persona.grupo.scale.setScalar(puesto === 1 ? 1.3 : 1.15);
     const raiz = new THREE.Group(); raiz.add(persona.grupo); raiz.position.set(px, py + 9, pz); raiz.rotation.y = ry;
     this.scene.add(raiz);
     let losa = null;
@@ -132,13 +135,14 @@ export class Show {
     const c = this.renderer.domElement;
     const w = c.clientWidth || innerWidth, h = c.clientHeight || innerHeight;
     this.camara.aspect = w / h; this.camara.updateProjectionMatrix();
-    // cámara: se acerca al principio y después gira despacio
-    const giro = this.modo === 'podio' ? Math.sin(t * 0.25) * 0.5 : Math.sin(t * 0.18) * 0.22;
-    const lejos = Math.max(15, 24 - t * 4);
-    this.camara.position.set(Math.sin(giro) * lejos, 6.5 + Math.max(0, 3 - t), Math.cos(giro) * lejos + 2);
-    this.camara.lookAt(0, this.modo === 'podio' ? 2.6 : 1.4, 1);
+    // La cámara queda enfrente de los personajes y suficientemente cerca para reconocerlos.
+    const estrecho = Math.max(0, 1.4 - this.camara.aspect) * 7;
+    const lejos = (this.modo === 'podio' ? 9.5 : 11.5 + Math.max(0, this.gente.length - 10) * 0.55) + estrecho;
+    const giro = Math.sin(t * 0.28) * 0.06;
+    this.camara.position.set(Math.sin(giro) * lejos, this.modo === 'podio' ? 4.3 : 3.4, Math.cos(giro) * lejos + 2);
+    this.camara.lookAt(0, this.modo === 'podio' ? 2.3 : 1.2, 0);
     this.focos.forEach((f, i) => f.target.position.set(Math.sin(t * (0.7 + i * 0.23) + i) * 7, 0, Math.cos(t * 0.5 + i) * 4 + 1));
-    this.cartel.position.y = 9.5 + Math.sin(t * 1.4) * 0.2;
+    this.cartel.position.y = 5.5 + Math.sin(t * 1.4) * 0.15;
     for (const p of this.gente) {
       const k = Math.max(0, t - p.demora);
       // entrada: caen del cielo y rebotan

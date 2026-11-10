@@ -1,7 +1,7 @@
 // Battle Shmitz: menú, sala y partida. El menú y la sala se ven arriba de la isla (el juego queda de fondo).
 import { Isla3D } from './escena3d.js';
 import { OBJETOS, recoger } from './inventario.js';
-import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
+import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { POR_ID } from '/comun/npcs.js';
 import { avatarSvg, lookDeJugador } from '/comun/avatar.js';
 import { Red } from '/comun/red.js';
@@ -9,7 +9,7 @@ import { GESTOS } from '/comun/gestos.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { generarMapa, zona, ARMAS, RAREZAS, CAJAS, MATERIALES, danoArea, VIDA, ESCUDO_MAX, LADO, TAM, LUGARES, lugarEn, rng } from './mundo.js';
 import { Peleador, CerebroBot, avanzarBala, nuevaBala, danoZona, CODIGO_ARMA, ARMA_DE_CODIGO, ALTURA_SALTO } from './juego.js';
-import { DURACION_COLECTIVO, posicionColectivo, saltoAutomatico, tiempoParaLugar, recorridoColectivo } from './colectivo.js';
+import { DURACION_COLECTIVO, posicionColectivo, saltoAutomatico, tiempoParaLugar, recorridoColectivo, puntosAterrizaje } from './colectivo.js';
 import { alinearPieza, validarPieza, COSTO_PIEZA } from './construccion.js';
 import { ICONOS } from './iconos.js';
 import { imagenMapa, dibujarIsla, MapaGrande, cuadricula } from './mapa2d.js';
@@ -21,6 +21,7 @@ const colorDe = (id) => AV[parseInt(String(id).slice(0, 6), 36) % AV.length];
 const RAREZA_N = ['comun', 'poco_comun', 'rara', 'epica', 'legendaria'];
 const nombreItem = (tipo) => OBJETOS[tipo]?.nombre || ARMAS[tipo]?.nombre || CAJAS[tipo]?.nombre || MATERIALES[tipo]?.nombre || (tipo === 'cofre' ? 'Cofre' : '');
 const iconoItem = (tipo) => ICONOS[tipo] || (CAJAS[tipo] ? ICONOS.balas : ICONOS[MATERIALES[tipo] ? tipo : 'balas']);
+const imagenItem = (tipo) => ARMAS[tipo] ? `<img src="/royale/img/armas/${tipo}.webp" alt="${esc(ARMAS[tipo].nombre)}" draggable="false">` : ICONOS[tipo] || '';
 const BOTS = [0, 3, 5, 7, 9, 11, 15];
 const cuenta = await marco({ juego: 'Battle Shmitz', color: COLOR, volver: '/royale/' });
 let limpiar = [];
@@ -96,7 +97,7 @@ function menu() {
       </section>
       <section class="bs-panel" data-panel="como" hidden>
         <div class="bs-teclas">
-          ${[['Espacio', 'Saltá del colectivo · abrí el planeador'], ['W A S D', 'Movete y dirigí la caída'], ['Mouse', 'Apuntá y dispará · clic derecho: mira'], ['E', 'Agarrá (si estás lleno, cambia) · mantené para abrir cofres'], ['1 – 5', 'Elegí casillero · rueda para pasar'], ['C', 'Sacá el pico y juntá materiales'], ['Q', 'Modo construcción · F pieza · R rotar'], ['F', 'Usá vendas, botiquín o escudos'], ['M', 'Mapa: marcá a dónde ir'], ['B', 'Gestos'], ['Enter', 'Chat'], ['Esc', 'Pausa']].map(([k, d]) => `<kbd>${k}</kbd><span>${d}</span>`).join('')}
+          ${[['Espacio', 'Saltá del colectivo · abrí el planeador'], ['W A S D', 'Movete y dirigí la caída'], ['Mouse', 'Apuntá y dispará · clic derecho: mira'], ['E', 'Agarrá (si estás lleno, cambia) · abrí cofres con un toque'], ['1 – 5', 'Elegí casillero · rueda para pasar'], ['C', 'Sacá el pico y juntá materiales'], ['Q', 'Modo construcción · F pieza · R rotar'], ['F', 'Usá vendas, botiquín o escudos'], ['M', 'Mapa: marcá a dónde ir'], ['Tab', 'Inventario completo'], ['B', 'Gestos'], ['T', 'Chat'], ['Esc', 'Pausa']].map(([k, d]) => `<kbd>${k}</kbd><span>${d}</span>`).join('')}
         </div>
       </section>
     </div>
@@ -176,17 +177,19 @@ function abrirSala(code) {
       <div class="hud-ranuras" data-slots></div>
       <div class="hud-teclas" data-teclas></div>
     </div>
+    <div class="capa bs-inventario-panel hidden" data-inventario-panel></div>
     <div class="capa hud-accion hidden" data-pista></div>
     <div class="capa hud-uso hidden" data-uso><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="fondo"/><circle cx="22" cy="22" r="19" class="progreso" data-uso-arco/></svg><b data-uso-t></b><small data-uso-n></small></div>
     <div class="capa hud-construir hidden" data-construir></div>
     <div class="capa hud-colectivo hidden" data-hud-colectivo><small>El colectivo de Battle Shmitz está cruzando la isla</small><b>Saltá con <kbd>Espacio</kbd></b><div class="hud-recorrido"><i data-recorrido></i></div></div>
     <div class="capa hud-altura hidden" data-hud-altura><div class="altimetro"><i data-altura-i></i></div><b data-altura-n>100</b><small data-altura-txt>Caída libre</small></div>
     <div class="capa aviso-centro" data-aviso></div>
+    <div class="capa bs-baja hidden" data-baja></div>
     <div class="capa cuenta" data-cuenta></div>
     <div class="capa bs-lobby hidden" data-lobby></div>
     <div class="capa bs-fin hidden" data-fin></div>
     <div class="capa espectar hidden" data-espectar><button data-esp="-1" aria-label="Anterior">‹</button><span>Mirando a <b data-esp-n></b></span><button data-esp="1" aria-label="Siguiente">›</button></div>
-    <div class="capa chat-mini"><div class="log" data-log></div><form data-chat><input class="bs-entrada" maxlength="200" placeholder="Enter para chatear" autocomplete="off"></form></div>
+    <div class="capa chat-mini"><div class="log" data-log aria-live="polite"></div><form data-chat><input class="bs-entrada" maxlength="200" placeholder="Escribí y pulsá Enter · Esc cierra" autocomplete="off"></form><button type="button" class="chat-ayuda" data-chat-abrir>T para hablar</button></div>
     <div class="capa mapa-grande hidden" data-mapa-grande>
       <div class="mapa-cabeza"><div><small>Battle Shmitz</small><b>Mapa de la isla</b></div><div class="mapa-info" data-mapa-info></div><button class="mapa-x" data-cerrar-mapa aria-label="Cerrar mapa">×</button></div>
       <canvas></canvas>
@@ -243,6 +246,9 @@ function abrirSala(code) {
   let slotNuevo = { i: -1, hasta: 0 };
   let ultimoAgarre = 0;
   let fuegoT = 0;
+  let bajasPartida = null;
+  const bajasVistas = new Set();
+  const bajasAnunciadas = new Set();
   const tiroFuente = new Map();
   let espectando = 0;
   let muertePor = null;
@@ -274,12 +280,20 @@ function abrirSala(code) {
     intervalo: (e) => (e?.fase === 'partida' ? 1000 : 900),
     onEstado: (e) => {
       est = e;
+      if (bajasPartida !== e.partidas) { bajasPartida = e.partidas; bajasVistas.clear(); bajasAnunciadas.clear(); for (const b of e.bajas || []) bajasVistas.add(`${b.id}:${b.t}`); }
+      else for (const b of e.bajas || []) {
+        const clave = `${b.id}:${b.t}`;
+        if (bajasVistas.has(clave)) continue;
+        bajasVistas.add(clave);
+        if (b.por === e.yo && b.id !== e.yo) mostrarBaja(b, e.kills?.[e.yo] || 0);
+      }
       red.actual ??= new Red({ sala, code, miId: e.yo, alRecibir: recibir, alMensaje: mensaje, ruta: '/api/royale', accionPlanB: 'mensaje' });
       red.actual.sincronizar(e.jugadores.filter((j) => j.online && j.id !== e.yo).map((j) => j.id));
       for (const id of e.tomados) tomados.add(id);
       if (mundo) for (const b of e.sueltos || []) if (!mundo.botin.some((x) => x.id === b.id)) { mundo.botin.push(b); vista.agregarBotin(b); }
       if (e.fase !== fase) cambioDeFase(e.fase);
-      abiertos = new Set(e.abiertos || []);
+      // Una respuesta reciente de apertura no debe desaparecer por un poll anterior.
+      abiertos = new Set([...abiertos, ...(e.abiertos || [])]);
       if (mundo) {
         const firma = JSON.stringify(e.construcciones || []);
         if (firma !== firmaConstrucciones) { firmaConstrucciones = firma; mundo.construcciones = e.construcciones || []; vista.actualizarConstrucciones(mundo.construcciones); }
@@ -362,7 +376,8 @@ function abrirSala(code) {
     const clave = `${de}:${m.n}`;
     if (m.n !== undefined && vistos.has(clave)) return;
     vistos.add(clave);
-    if (m.k === 'tiro') {
+    if (m.k === 'bajaConfirmada' && m.por === yoId() && (de === m.id || (String(m.id).startsWith('bot') && de === est.host))) { mostrarBaja({ id: m.id, nombre: nombreDe(m.id) }, (est.kills?.[yoId()] || 0) + 1); }
+    else if (m.k === 'tiro') {
       // disparo de otro: solo se ve (el daño lo calcula quien dispara)
       const d = ARMAS[m.arma] || ARMAS.pistola;
       const r = rng(Math.floor(m.s * 1e6));
@@ -411,6 +426,7 @@ function abrirSala(code) {
   function empezarPartida() {
     prepararMundo(est.semilla);
     tomados = new Set(est.tomados);
+    abiertos = new Set(est.abiertos || []);
     balas = [];
     remotos.clear();
     botsSim.clear();
@@ -426,13 +442,14 @@ function abrirSala(code) {
       yo.subirColectivo();
     } else yo = null; // entró mirando
     // los bots: cada uno elige un lugar con nombre y salta cuando el colectivo pasa cerca (los simula el anfitrión)
+    const aterrizajes = puntosAterrizaje(mundo, est.semilla, est.botNpc.length);
     est.botNpc.forEach((_, i) => {
       const id = 'bot' + i;
       const s = lugar(id);
       const p = new Peleador(id, s.x, s.y);
       p.subirColectivo();
-      const destino = LUGARES[i % LUGARES.length];
-      botsSim.set(id, { p, destino, salto: tiempoParaLugar(est.semilla, destino), cerebro: new CerebroBot(p, rng((est.semilla + i * 7919) >>> 0)) });
+      const destino = aterrizajes[i];
+      botsSim.set(id, { p, destino, salto: tiempoParaLugar(est.semilla, destino.lugar) + (i % 3) * 0.45, cerebro: new CerebroBot(p, rng((est.semilla + i * 7919) >>> 0)) });
     });
     try { const save = JSON.parse(sessionStorage.getItem(guardadoClave) || 'null'); if (save?.semilla === est.semilla && save.id === yoId()) { if (yo && save.yo) Object.assign(yo, save.yo, { vivo: est.vivos.includes(yoId()) }); for (const [id, data] of save.bots || []) if (botsSim.has(id)) Object.assign(botsSim.get(id).p, data, { vivo: est.vivos.includes(id) }); } } catch {}
     if (soyAnfitrion()) est.botNpc.slice(0, 2).forEach((_, i) => setTimeout(() => sala.enviar({ t: 'botdice', bot: 'bot' + i, situacion: 'saludo' }), 1500 + i * 2500));
@@ -473,7 +490,8 @@ function abrirSala(code) {
       const mio = orden.findIndex((x) => x.id === e.yo);
       const total = orden.length;
       fin.classList.toggle('gano', gane);
-      fin.innerHTML = `${gane ? `<div class="bs-victoria"><i></i><small>Battle Shmitz</small><b>#1</b><strong>¡Último en pie!</strong></div>` : ''}<div class="bs-fin-caja ${gane ? 'gano' : ''}">
+      fin.classList.toggle('con-campeon', !!e.ganador);
+      fin.innerHTML = `${e.ganador ? `<div class="bs-victoria"><i></i><small>Battle Shmitz · campeón</small><b>#1</b><strong>${esc(e.ganadorNombre || 'Ganador')}</strong></div>` : ''}<div class="bs-fin-caja ${gane ? 'gano' : ''}">
         ${gane ? `<div class="bs-corona">${ICONOS.corona}</div><small>#1 de ${total}</small><h2>¡Último en pie!</h2><p>Ganaste Battle Shmitz con ${e.kills[e.yo] || 0} eliminaciones.</p>`
           : mio >= 0 ? `<small>Quedaste</small><h2>#${mio + 1} <span>de ${total}</span></h2><p>${e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}.` : 'Terminó la partida.'} Hiciste ${e.kills[e.yo] || 0} eliminaciones.</p>`
           : `<small>Terminó</small><h2>${e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}` : 'Fin de la partida'}</h2>`}
@@ -498,6 +516,16 @@ function abrirSala(code) {
     clearTimeout(aviso.t);
     aviso.t = setTimeout(() => ($('[data-aviso]').innerHTML = ''), 1900);
   }
+  function mostrarBaja(b, total) {
+    if (bajasAnunciadas.has(b.id)) return;
+    bajasAnunciadas.add(b.id);
+    const el = $('[data-baja]');
+    el.innerHTML = `<div class="bs-baja-cinta"><small>Battle Shmitz · baja confirmada</small><strong>¡ELIMINASTE A ${esc(b.nombre).toUpperCase()}!</strong><span>${total} ${total === 1 ? 'eliminación' : 'eliminaciones'} en esta partida</span></div>`;
+    el.classList.remove('hidden');
+    el.classList.remove('entra'); void el.offsetWidth; el.classList.add('entra');
+    clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3200);
+    sonar('gana');
+  }
   function anunciarLugar(l) {
     const el = $('[data-lugar]');
     el.innerHTML = `<small>Llegaste a</small><b>${esc(l.nombre)}</b>`;
@@ -515,6 +543,7 @@ function abrirSala(code) {
     if (reportado) return;
     reportado = true;
     muertePor = por;
+    red.actual?.todos({ k: 'bajaConfirmada', id: yoId(), por });
     sala.enviar({ t: 'muerte', victima: yoId(), por });
     aviso(por === 'zona' ? 'Te agarró la tormenta' : `Te eliminó ${nombreDe(por)}`, true);
   }
@@ -531,6 +560,8 @@ function abrirSala(code) {
     }
     if (murio) {
       b.muertoPor = por;
+      if (por === yoId()) mostrarBaja({ id: b.p.id, nombre: nombreDe(b.p.id) }, (est.kills?.[yoId()] || 0) + 1);
+      red.actual?.todos({ k: 'bajaConfirmada', id: b.p.id, por });
       sala.enviar({ t: 'muerte', victima: b.p.id, por });
       if (Math.random() < 0.35) sala.enviar({ t: 'botdice', bot: b.p.id, situacion: 'pierde' });
       if (String(por).startsWith('bot') && Math.random() < 0.45) setTimeout(() => sala.enviar({ t: 'botdice', bot: por, situacion: 'gana' }), 700);
@@ -571,12 +602,14 @@ function abrirSala(code) {
   let tactilE = false;
   let mira = false;
   let recogiendo = false;
+  let inventarioAbierto = false;
   const abajo = (e) => {
     if (e.target.closest('input, select, textarea')) return;
-    if (e.code === 'Enter') {
-      $('[data-chat] input').focus();
+    if (e.code === 'KeyT' || e.code === 'Enter') {
+      teclas.clear(); mouse.abajo = false; $('[data-chat]').classList.add('escribiendo'); $('[data-chat] input').focus();
       return e.preventDefault();
     }
+    if (e.code === 'Tab') { inventarioAbierto = !inventarioAbierto; teclas.clear(); return e.preventDefault(); }
     if (e.code === 'Escape' && mapa.abierto) { mapa.cerrar(); e.stopImmediatePropagation(); return; }
     if (!teclas.has(e.code)) {
       if (e.code === 'KeyR') { if (modoConstruccion) rotacionPieza = (rotacionPieza + 1) % 4; else yo?.recargar(); }
@@ -620,7 +653,7 @@ function abrirSala(code) {
   lienzo.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button === 0) { mouse.abajo = true; mouse.clic = performance.now(); }
     if (e.button === 0 && modoConstruccion) pedirColocar = true;
-    if (e.button === 2) { if (vista.modoCamara === 'tercera') giro = { x: e.clientX, y: e.clientY }; else mira = true; }
+    if (e.button === 2) { e.preventDefault(); lienzo.setPointerCapture(e.pointerId); if (vista.modoCamara === 'tercera') giro = { x: e.clientX, y: e.clientY }; else mira = true; }
   });
   const moverGiro = (e) => { if (!giro) return; vista.yaw = (vista.yaw || 0) - (e.clientX - giro.x) * 0.008; vista.inclina = Math.max(0.35, Math.min(1.6, (vista.inclina ?? 1) + (e.clientY - giro.y) * 0.004)); giro = { x: e.clientX, y: e.clientY }; };
   addEventListener('pointermove', moverGiro);
@@ -631,7 +664,9 @@ function abrirSala(code) {
     try { localStorage.setItem('cadalado.royale.camara', modo); } catch {}
     aviso(modo === 'tercera' ? 'Tercera persona · clic derecho y arrastrá para girar' : 'Vista desde arriba');
   }
-  lienzo.addEventListener('contextmenu', (e) => e.preventDefault());
+  const sinMenuContextual = (e) => { if (e.target.closest('[data-isla]')) { e.preventDefault(); e.stopPropagation(); } };
+  document.addEventListener('contextmenu', sinMenuContextual, true);
+  limpiar.push(() => document.removeEventListener('contextmenu', sinMenuContextual, true));
   const soltar = () => { mouse.abajo = false; mira = false; giro = null; };
   addEventListener('pointerup', soltar);
   lienzo.addEventListener('wheel', (e) => { if (modoConstruccion) materialPieza = ['madera', 'piedra', 'metal'][(['madera', 'piedra', 'metal'].indexOf(materialPieza) + (e.deltaY > 0 ? 1 : 2)) % 3]; else { yo?.cambiar(); picoActivo = false; } }, { passive: true });
@@ -647,7 +682,10 @@ function abrirSala(code) {
     if (i.value.trim()) sala.enviar({ t: 'chat', texto: i.value });
     i.value = '';
     i.blur();
+    $('[data-chat]').classList.remove('escribiendo');
   };
+  $('[data-chat] input').addEventListener('keydown', (e) => { if (e.code === 'Escape') { e.stopPropagation(); e.preventDefault(); e.currentTarget.blur(); $('[data-chat]').classList.remove('escribiendo'); } });
+  $('[data-chat-abrir]').onclick = () => { teclas.clear(); mouse.abajo = false; $('[data-chat]').classList.add('escribiendo'); $('[data-chat] input').focus(); };
   // táctil: un joystick para moverse y otro para apuntar y disparar
   const tactil = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   // los controles táctiles solo durante la partida
@@ -712,6 +750,7 @@ function abrirSala(code) {
     sala.enviar({ t: 'picar', id }).then((r) => { if (!r?.error) red.actual?.todos({ k: 'pico', id, n: Math.random() }); });
   }
   $('[data-slots]').addEventListener('click', (e) => { const pz = e.target.closest('[data-pieza]'); if (pz) { tipoPieza = pz.dataset.pieza; return; } const mt = e.target.closest('[data-material]'); if (mt) { materialPieza = mt.dataset.material; return; } if (e.target.closest('[data-pico]')) { picoActivo = !picoActivo; modoConstruccion = false; return; } const b = e.target.closest('[data-slot]'); if (b) { yo?.cambiar(+b.dataset.slot); picoActivo = false; if (OBJETOS[yo?.arma.tipo]) usarObjeto(); } });
+  $('[data-inventario-panel]').addEventListener('click', (e) => { if (e.target.closest('[data-cerrar-inv]')) { inventarioAbierto = false; return; } const b = e.target.closest('[data-inv-slot]'); if (b) { yo?.cambiar(Number(b.dataset.invSlot)); picoActivo = false; } });
   const mirando = () => (fase === 'partida' || fase === 'fin') && (!yo || !yo.vivo);
 
   // ---------------------------------------------------------------- HUD
@@ -722,9 +761,10 @@ function abrirSala(code) {
   function pintarHud(t, z, ms, colectivo) {
     const enPartida = fase === 'partida' || fase === 'cuenta';
     const vivo = !!yo?.vivo && enPartida;
-    ver('[data-hud-mapa]', enPartida || fase === 'fin');
+    ver('[data-hud-mapa]', enPartida);
     ver('[data-salud]', vivo);
     ver('[data-inv]', vivo && !yo.enColectivo);
+    ver('[data-inventario-panel]', !!yo && enPartida && inventarioAbierto);
     // tormenta e info
     if (z) poner('[data-zona-t]', z.falta > 0 ? mmss(z.falta) : '—');
     poner('[data-vivos-n]', String(est.vivos?.length || 0));
@@ -753,13 +793,14 @@ function abrirSala(code) {
       const r = s ? RAREZAS[s.rareza || 'comun'] : null;
       const datos = s && (OBJETOS[s.tipo] || ARMAS[s.tipo]);
       const pie = !s ? '' : OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala}`;
-      return `<button data-slot="${i}" class="ranura ${s ? 'r-' + (s.rareza || 'comun') : 'vacia'} ${i === yo.actual && !picoActivo && !modoConstruccion ? 'on' : ''} ${i === slotNuevo.i && performance.now() < slotNuevo.hasta ? 'nuevo' : ''}" style="--r:${r?.color || '#55605a'}" title="${esc(datos?.nombre || 'Libre')}"><small>${i + 1}</small>${s ? `<i>${ICONOS[s.tipo] || ''}</i><span>${pie}</span>` : ''}</button>`;
+      return `<button data-slot="${i}" class="ranura ${s ? 'r-' + (s.rareza || 'comun') : 'vacia'} ${i === yo.actual && !picoActivo && !modoConstruccion ? 'on' : ''} ${i === slotNuevo.i && performance.now() < slotNuevo.hasta ? 'nuevo' : ''}" style="--r:${r?.color || '#55605a'}" title="${esc(datos?.nombre || 'Libre')}"><small>${i + 1}</small>${s ? `<i>${imagenItem(s.tipo)}</i><span>${pie}</span>` : ''}</button>`;
     }).join('');
     // en modo construcción, el inventario se cambia por las piezas y los materiales (con cuánto tenés de cada uno)
     const mats = yo.materiales || {};
     const obra = `<button class="ranura obra ${tipoPieza === 'pared' ? 'on' : ''}" data-pieza="pared"><i>${ICONOS.pared}</i><small>F</small><span>Pared</span></button><button class="ranura obra ${tipoPieza === 'escalera' ? 'on' : ''}" data-pieza="escalera"><i>${ICONOS.escalera}</i><small>F</small><span>Escalera</span></button><span class="ranura-sep"></span>` +
       ['madera', 'piedra', 'metal'].map((k, i) => `<button class="ranura mat m-${k} ${materialPieza === k ? 'on' : ''} ${(mats[k] || 0) < COSTO_PIEZA ? 'falta' : ''}" data-material="${k}"><i>${ICONOS[k]}</i><small>${i + 1}</small><span>${mats[k] || 0}</span></button>`).join('');
     poner('[data-slots]', modoConstruccion ? obra : slots);
+    if (inventarioAbierto) poner('[data-inventario-panel]', `<div class="bs-inv-caja"><header><div><small>Battle Shmitz · mochila</small><h2>Tu inventario</h2></div><button data-cerrar-inv aria-label="Cerrar inventario">×</button></header><div class="bs-inv-grid">${yo.slots.map((s, i) => `<button data-inv-slot="${i}" class="bs-inv-item ${i === yo.actual ? 'activo' : ''}" style="--r:${RAREZAS[s?.rareza || 'comun'].color}"><small>CASILLERO ${i + 1}</small><i>${s ? imagenItem(s.tipo) : ''}</i><b>${esc(s ? nombreItem(s.tipo) : 'Libre')}</b><span>${s ? OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala} balas · ${RAREZAS[s.rareza || 'comun'].nombre}` : '—'}</span></button>`).join('')}</div><footer><div><b>Materiales</b>${['madera','piedra','metal'].map(k => `<span>${ICONOS[k]} ${yo.materiales?.[k] || 0}</span>`).join('')}</div><div><b>Munición</b>${Object.entries(yo.municion).map(([k,n]) => `<span>${esc(k)} ${n}</span>`).join('')}</div></footer><p><kbd>1–5</kbd> equipar · <kbd>F</kbd> usar · <kbd>Tab</kbd> cerrar</p></div>`);
     const nombreArma = picoActivo ? 'Pico' : modoConstruccion ? `Construir ${tipoPieza}` : d ? `${d.nombre}` : OBJETOS[yo.arma.tipo]?.nombre || 'Mano vacía';
     poner('[data-arma-n]', `${esc(nombreArma)}${d && !picoActivo && !modoConstruccion ? ` <em style="color:${RAREZAS[yo.arma.rareza || 'comun'].color}">${RAREZAS[yo.arma.rareza || 'comun'].nombre}</em>` : ''}`);
     poner('[data-arma-balas]', d && !picoActivo && !modoConstruccion ? (yo.recargando > 0 ? '<b class="recarga">Recargando…</b>' : `<b>${yo.arma.bala}</b><small>${yo.municion[d.municion] || 0}</small>`) : OBJETOS[yo.arma.tipo] ? `<b>×${yo.arma.cantidad}</b><small>F usar</small>` : '');
@@ -983,7 +1024,7 @@ function abrirSala(code) {
           continue;
         }
         if (b.p.altura > 0) {
-          const x = (b.destino.x + b.destino.w / 2) * 16, y = (b.destino.y + b.destino.h / 2) * 16;
+          const { x, y } = b.destino;
           b.p.caer(dtReal, x - b.p.x, y - b.p.y, Math.hypot(x - b.p.x, y - b.p.y) < 120);
           continue;
         }
@@ -1076,15 +1117,19 @@ function abrirSala(code) {
     }
 
     // el que ganó: baila, la cámara se acerca y hay fuegos artificiales
+    let campeon = null;
     if (fase === 'fin' && est.ganador) {
       const g = est.ganador === yoId() ? yo : [...blancos, ...listaBots].find((x) => x.id === est.ganador);
       if (g) {
-        if (est.ganador === yoId() && yo?.vivo) { yo.gesto = 'baila'; yo.gestoT = 99; }
+        campeon = g;
+        g.gesto = 'festeja'; g.gestoT = 99;
+        g.ang = Math.PI / 2;
         fuegoT -= dt;
         if (fuegoT <= 0) { fuegoT = 0.35 + Math.random() * 0.3; vista.fuego(g.x + (Math.random() - 0.5) * 120, g.y + (Math.random() - 0.5) * 80); }
       }
-      vista.acercar = est.ganador === yoId() ? 0.7 : 1;
-    } else vista.acercar = 1;
+      vista.acercar = 0.65;
+      vista.campeon = !!campeon;
+    } else { vista.acercar = 1; vista.campeon = false; }
     // ---------------------------------------------------------------- dibujo
     let foco = yo && (yo.vivo || fase !== 'partida') ? yo : null;
     const esp = $('[data-espectar]');
@@ -1095,6 +1140,7 @@ function abrirSala(code) {
       if (lista.length) { foco = lista[((espectando % lista.length) + lista.length) % lista.length]; esp.querySelector('[data-esp-n]').textContent = nombreDe(foco.id); }
       esp.classList.toggle('hidden', !lista.length || fase === 'fin');
     } else esp.classList.add('hidden');
+    if (fase === 'fin' && campeon) foco = { ...campeon, enColectivo: false, altura: 0 };
     if (fase === 'lobby' || !foco) {
       // en la sala: el colectivo pasea sobre la isla
       const k = ((ms / 1000) % 30) / 30, r = recorridoColectivo(est.semillaSala || 5);
@@ -1106,6 +1152,10 @@ function abrirSala(code) {
     if (yo?.vivo) gente.push({ ...yo, id: yoId(), look: lookDe(yoId()), yo: true, arma: yo.arma.tipo, rareza: yo.arma.rareza });
     for (const [id, r] of remotos) if (r.obj.vivo) gente.push({ ...r.obj, look: lookDe(id) });
     for (const p of listaBots) gente.push({ ...p, look: lookDe(p.id), arma: typeof p.arma === 'string' ? p.arma : p.arma?.tipo, rareza: typeof p.arma === 'string' ? p.rareza : p.arma?.rareza });
+    if (fase === 'fin' && est.ganador) {
+      const ganador = gente.find((p) => p.id === est.ganador);
+      if (ganador) Object.assign(ganador, { enColectivo: false, altura: 0, paracaidas: false, gesto: 'festeja', ang: Math.PI / 2 });
+    }
     const z = fase === 'partida' || fase === 'fin' ? zona(est.semilla, Math.max(0, t)) : null;
     const apuntando = mira && yo?.arma.tipo === 'francotirador' && !modoConstruccion && !picoActivo;
     if (fase !== 'lobby') vista.dibujar({ mundo, gente, balas, tomados, abiertos, foco, W: apuntando ? W * 1.45 : W, H: apuntando ? H * 1.45 : H, dt, ms, zona: z, granadas, colectivo, marca });
@@ -1190,7 +1240,7 @@ function abrirSala(code) {
     }
     // pista de la acción (abajo, al centro)
     const cercaCofre = yo?.vivo && mundo.botin.find((b) => b.tipo === 'cofre' && !abiertos.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 22);
-    const pista = !yo?.vivo || fase !== 'partida' ? '' : yo.enColectivo ? '' : yo.altura > 0 ? (yo.paracaidas ? 'Dirigí el planeador con <kbd>W A S D</kbd>' : '<kbd>Espacio</kbd> abrí el planeador') : cercaCofre ? `<kbd>E</kbd> Mantené para abrir el cofre` : '';
+    const pista = !yo?.vivo || fase !== 'partida' ? '' : yo.enColectivo ? '' : yo.altura > 0 ? (yo.paracaidas ? 'Dirigí el planeador con <kbd>W A S D</kbd>' : '<kbd>Espacio</kbd> abrí el planeador') : cercaCofre ? `<kbd>E</kbd> Pulsá para abrir el cofre` : '';
     poner('[data-pista]', pista); ver('[data-pista]', !!pista);
     pintarHud(t, z, ms, colectivo);
     // minimapa y mapa grande

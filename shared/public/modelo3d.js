@@ -158,7 +158,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
     // al entrar a un estado se elige una variante; mientras dure se mantiene
     if (estado === estadoClip && actual && lista.includes(actual)) return;
     estadoClip = estado;
-    const a = lista[Math.floor(Math.random() * lista.length)];
+    const a = lista[opciones.animacionesSincronizadas ? 0 : Math.floor(Math.random() * lista.length)];
     a.timeScale = 1;
     if (estado === 'duerme') { a.time = 0; a.timeScale = 0; } // acostado, quieto (respira con el cuerpo)
     if (a === actual) return;

@@ -2,7 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { carrera } from '../lib/carrera.js';
 import { Jugador } from '../public/js/fisica.js';
-import { rutaBot, posBot, moviles, estaticos, MAPAS, ordenLargada, posLargada } from '../public/js/pista.js';
+import { rutaBot, posBot, moviles, estaticos, MAPAS, ordenLargada, posLargada, puedeMoverAhora } from '../public/js/pista.js';
+
+test('el reloj libera a la persona en cuenta aunque el servidor todavía no cambió de fase', () => {
+  assert.equal(puedeMoverAhora('cuenta', -0.01), false);
+  assert.equal(puedeMoverAhora('cuenta', 0), true);
+  assert.equal(puedeMoverAhora('carrera', 0, true), false);
+});
 import { NPCS, POR_ID, elegirNpcs, charlas } from '../../../shared/public/npcs.js';
 import { getStore } from '../../../shared/store.js';
 
@@ -243,4 +249,22 @@ test('los obstáculos y las piñas te tiran al piso un rato', () => {
   assert.ok(tirado, 'quedó tirado');
   for (let i = 0; i < 60; i++) j.paso(1 / 60, 3, { x: 0, z: 1 }, 0);
   assert.notEqual(j.anim, 'tirado', 'se levanta');
+});
+
+test('final: el cruce más temprano gana aunque su mensaje llegue después', async () => {
+  const A='finalPrimeroA123', B='finalSegundoB123';
+  const {code}=(await req('POST','/crear',{pid:A,nombre:'Primero',opciones:{bots:0}})).data;
+  await accion(code,B,{t:'join',nombre:'Segundo'});
+  await accion(code,A,{t:'empezar'});
+  await tocar(code,{inicio:Date.now()-25000,fase:'carrera'});
+  // Segundo tiene mejor conexión; Primero cruzó 500 ms antes.
+  await accion(code,B,{t:'meta',tiempo:24700});
+  await accion(code,A,{t:'meta',tiempo:24200});
+  await tocar(code,{fin:Date.now()-1});
+  const e=(await ver(code,A)).estado;
+  assert.equal(e.fase,'podio');
+  assert.equal(e.resultados[0].nombre,'Primero');
+  assert.equal(e.resultados[0].puesto,1);
+  assert.equal(e.ganador,e.resultados[0].id);
+  assert.equal(e.resultados[1].nombre,'Segundo');
 });

@@ -160,10 +160,8 @@ export const royale = crearJuego({
       case 'abrirCofre': {
         const id = Number(msg.id);
         const b = generarMapa(r.semilla).botin[id];
-        if (r.fase !== 'partida' || !r.vivos.includes(yo) || b?.tipo !== 'cofre' || r.abiertos.includes(id)) return {error:'Ese cofre no está disponible'};
-        // el aviso de que empezaste a abrir puede llegar tarde (o después): no se le exige el segundo exacto
-        const desde = r.aperturas[yo + ':' + id];
-        if (desde && ctx.now - desde < 400) return {error:'Mantené E durante un segundo'};
+        if (r.fase !== 'partida' || !r.vivos.includes(yo) || b?.tipo !== 'cofre') return {error:'Ese cofre no está disponible'};
+        if (r.abiertos.includes(id)) return {}; // apertura idempotente: dos personas pueden pulsar a la vez
         r.abiertos.push(id);
         r.tomados.push(id);
         delete r.aperturas[yo + ':' + id];

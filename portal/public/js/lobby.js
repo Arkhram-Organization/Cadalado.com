@@ -122,7 +122,7 @@ export async function montarLobby(raiz) {
     p.grupo.rotation.y = -ang * .35; // miran a cámara, un poco hacia el centro
     p.npc = n; escena.add(p.grupo); personas.push(p);
   });
-  const yoP = crearPersona(THREE, miLook, { sombras: true, tamGlobo: .4 });
+  const yoP = crearPersona(THREE, { ...miLook, travesuras: {} }, { sombras: true, tamGlobo: .4, animacionesSincronizadas: true });
   yoP.grupo.position.set(0, 0, -.9); yoP.grupo.rotation.y = 0; escena.add(yoP.grupo);
   $('[data-yo-nombre]', raiz).textContent = miNombre;
   $('[data-yo-como]', raiz).textContent = guardado?.npc ? `Jugás como ${NPCS.find((n) => n.id === guardado.npc)?.nombre || ''}` : 'Tu personaje';
@@ -151,7 +151,7 @@ export async function montarLobby(raiz) {
     if (p) { p.decir(frase(p.npc.id, Math.random, miNombre), 4); p.gesto?.(['saluda', 'festeja', 'baila'][Math.floor(Math.random() * 3)]); }
   });
   const QUE_HACE = Object.fromEntries(GESTOS.map((g) => [g.id, g.que]));
-  ruedaGestos({ alElegir: (id) => { yoP.gesto?.(id); yoP.decir?.(QUE_HACE[id] || '', 2.5); grupoApi?.gesto?.(id); } });
+  ruedaGestos({ alElegir: (id) => { if (grupoApi?.grupo?.miembros.length > 1) grupoApi.gesto(id); else yoP.gesto?.(id); } });
 
   // ---------------- lobby compartida: los del grupo aparecen al lado tuyo
   const compas = new Map(); // nombre → persona
@@ -163,18 +163,22 @@ export async function montarLobby(raiz) {
     [-3.15, 4.3], [-1.05, 4.3], [1.05, 4.3], [3.15, 4.3],
   ];
   function ponerCompas(g) {
+    const propio = g?.miembros.find(m => m.yo);
+    if (propio?.gesto) yoP.gestoPendiente = propio.gesto;
     const otros = (g?.miembros || []).filter((m) => !m.yo);
-    const nombres = new Set(otros.map((m) => m.nombre));
+    const nombres = new Set(otros.map((m) => m.id || m.nombre));
     for (const [n, p] of compas) if (!nombres.has(n)) { escena.remove(p.grupo); p.dispose(); compas.delete(n); }
     otros.forEach((m, i) => {
-      let p = compas.get(m.nombre);
+      let p = compas.get(m.id || m.nombre);
+      const firmaLook = JSON.stringify(m.look);
+      if (p && p.firmaLook !== firmaLook) { escena.remove(p.grupo); p.dispose(); compas.delete(m.id || m.nombre); p = null; }
       if (!p) {
-        p = crearPersona(THREE, m.look ? lookParaDibujo(m.look) : lookDeNombre(m.nombre), { sombras: !chico, nombre: m.nombre + (m.lider ? ' ★' : ''), colorNombre: '#c5f04a', tamCartel: .32, tamGlobo: .32 });
-        escena.add(p.grupo); compas.set(m.nombre, p);
+        p = crearPersona(THREE, { ...(m.look ? lookParaDibujo(m.look) : lookDeNombre(m.nombre)), travesuras: {} }, { animacionesSincronizadas: true, sombras: !chico, nombre: m.nombre + (m.lider ? ' ★' : ''), colorNombre: '#c5f04a', tamCartel: .32, tamGlobo: .32 });
+        p.firmaLook = firmaLook; escena.add(p.grupo); compas.set(m.id || m.nombre, p);
         p.decir('¡Llegué!', 2.5);
       }
       // si hizo un gesto, se ve acá también (y qué está haciendo)
-      if (m.gesto && m.gesto.ts !== p.ultimoGesto) { p.ultimoGesto = m.gesto.ts; p.gesto?.(m.gesto.id); p.decir(QUE_HACE[m.gesto.id] || '', 3); }
+      if (m.gesto) p.gestoPendiente = m.gesto;
       const [x, z] = LUGARES[i % LUGARES.length];
       p.grupo.position.set(x, 0, z); p.grupo.rotation.y = -x * .12;
     });
@@ -230,6 +234,7 @@ export async function montarLobby(raiz) {
     camara.lookAt(0, angosto ? 1.05 : 1.15, .7);
     yoP.grupo.rotation.y += (giro - yoP.grupo.rotation.y) * Math.min(1, dt * 8);
     halo.material.opacity = .12 + Math.sin(t * 2) * .04;
+    for (const p of [yoP, ...compas.values()]) { const g = p.gestoPendiente; if (g && g.ts !== p.ultimoGesto && (Date.now() + (grupoApi?.grupo?.relojOffset || 0)) >= g.ts) { p.ultimoGesto = g.ts; if ((Date.now() + (grupoApi?.grupo?.relojOffset || 0)) - g.ts < 1800) p.gesto?.(g.id); } }
     yoP.animar('quieto', dt);
     for (const p of personas) p.animar('quieto', dt);
     for (const p of compas.values()) p.animar('quieto', dt);

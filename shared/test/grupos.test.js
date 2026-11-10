@@ -139,5 +139,41 @@ test('tienda: códigos de creador, una sola vez por cuenta', async () => {
   assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'Opusreligioso' })).status, 400, 'otra vez no');
   r = await a('POST', '/tienda/codigo', { pid, codigo: 'Ad1min' });
   assert.equal(r.data.saldo, 148_000);
+  r = await a('POST', '/tienda/codigo', { pid, codigo: ' QuienesChapaMax ' });
+  const { SKINS } = await import('../tienda.js');
+  assert.equal(r.status, 200);
+  assert.deepEqual(new Set(r.data.mias), new Set(SKINS.map((s) => s.id)));
+  assert.equal(r.data.skins, SKINS.length);
+  assert.equal(r.data.saldo, 148_000, 'el código de skins no altera las fichas');
+  const guardadas = await a('GET', `/tienda?pid=${pid}`);
+  assert.deepEqual(new Set(guardadas.data.mias), new Set(SKINS.map((s) => s.id)), 'las skins persisten al recargar');
+  assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'quieneschapamax' })).status, 400);
   assert.equal((await a('POST', '/tienda/codigo', { pid, codigo: 'cualquiera' })).status, 404);
+});
+
+test('lobby: consultas simultáneas no pierden gestos ni cambios de look', async () => {
+  const a = cliente('12.0.0.1'), b = cliente('12.0.0.2');
+  const pa = 'syncA' + rnd(), pb = 'syncB' + rnd();
+  const id = (await a('GET', `/grupo?pid=${pa}&nombre=Ana`)).data.grupo.id;
+  await b('POST', '/grupo', { pid: pb, nombre: 'Beto', accion: 'unirse', id });
+  await Promise.all([
+    a('GET', `/grupo?pid=${pa}&nombre=Ana`),
+    b('POST', '/grupo', { pid: pb, nombre: 'Beto', accion: 'gesto', gesto: 'baila' }),
+    b('GET', `/grupo?pid=${pb}&nombre=Beto&look=${encodeURIComponent(JSON.stringify({npc:'batata'}))}`),
+  ]);
+  const grupo = (await a('GET', `/grupo?pid=${pa}&nombre=Ana`)).data.grupo;
+  const amigo = grupo.miembros.find(m => !m.yo);
+  assert.equal(amigo.look.npc, 'batata');
+  assert.equal(amigo.gesto.id, 'baila');
+  assert.ok(amigo.gesto.ts > Date.now(), 'el inicio se agenda para que lo reciban ambos');
+});
+
+test('lobby: descarta una sala borrada en lugar de redirigir de nuevo', async () => {
+  const { getStore } = await import('../store.js');
+  const a = cliente('12.0.0.3'), pid = 'missing' + rnd();
+  const id = (await a('GET', `/grupo?pid=${pid}`)).data.grupo.id;
+  const g = JSON.parse(await getStore().get(`grupo:${id}`));
+  g.ir = { url: '/royale/sala/NOEXISTE', ts: Date.now() };
+  await getStore().set(`grupo:${id}`, JSON.stringify(g));
+  assert.equal((await a('GET', `/grupo?pid=${pid}`)).data.grupo.ir, null);
 });

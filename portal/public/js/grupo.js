@@ -24,6 +24,8 @@ const cara = (m) => `<span class="gr-cara">${avatarSvg(m.look ? lookParaDibujo(m
 // /royale/sala/ABC → /royale/?sala=ABC: esa dirección siempre la sirve el hosting (el juego acomoda la URL solo)
 const aIndice = (url) => String(url).replace(/^\/([a-z]{3,12})\/(sala|mesa)\/([A-Za-z0-9-]{3,24})\/?$/, '/$1/?$2=$3');
 const SALAS = {
+  truco: () => ({ api: '/api/truco/rooms', url: '/truco/sala/', directo: true, opciones: { mode: '3v3', target: 30, isPublic: false } }),
+  ajedrez: () => ({ api: '/ajedrez/api/games', url: '/ajedrez/game/', directo: true, opciones: { tc: '10+0', color: 'w' } }),
   royale: (o) => ({ api: '/api/royale/crear', url: '/royale/sala/', opciones: { bots: 7, publica: false, ...o } }),
   carrera: (o) => ({ api: '/api/carrera/crear', url: '/carrera/sala/', opciones: { bots: 5, publica: false, ...o } }),
   memes: (o) => ({ api: '/api/memes/crear', url: '/memes/sala/', opciones: { bots: 2, publica: false, ...o } }),
@@ -34,8 +36,9 @@ const SALAS = {
 export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
   const yo = () => ({ pid: pid(), nombre: usuario?.nombre || nombre(), look: usuario?.look || leer('cadalado.look', null) });
   const q = () => { const y = yo(); return `pid=${encodeURIComponent(y.pid)}&nombre=${encodeURIComponent(y.nombre)}${y.look ? '&look=' + encodeURIComponent(JSON.stringify(y.look)) : ''}`; };
-  let grupo = null, listas = { abiertos: [], amigos: [] }, desde = Date.now() - 60_000, irVisto = null, abierto = false;
+  let grupo = null, listas = { abiertos: [], amigos: [] }, desde = Date.now() - 60_000, irVisto = Number(sessionStorage.getItem('cadalado.grupo.ir')) || 0, abierto = false;
   const vistas = new Set();
+  let revision = 0, consultando = false, accionesPendientes = 0;
 
   window.__grupoLobby = true; // la portada sigue al grupo con su propio panel
   // ---------- panel
@@ -51,17 +54,22 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
   }
 
   async function accion(datos) {
+    revision++; accionesPendientes++;
     try {
       const r = await api('/api/club/grupo', { ...yo(), ...datos });
-      grupo = r.grupo; pintar(); alCambiar?.(grupo);
+      grupo = r.grupo; if (grupo) grupo.relojOffset = (r.now || Date.now()) - Date.now(); pintar(); alCambiar?.(grupo);
       return grupo;
-    } catch (e) { toast(e.message, true); return null; }
+    } catch (e) { toast(e.message, true); return null; } finally { revision++; accionesPendientes--; }
   }
   async function refrescar() {
+    if (consultando || accionesPendientes) return;
+    consultando = true;
+    const rev = revision;
     try {
       const r = await api('/api/club/grupo?' + q() + '&desde=' + desde);
+      if (rev !== revision) return;
       const antes = grupo;
-      grupo = r.grupo;
+      grupo = r.grupo; if (grupo) grupo.relojOffset = (r.now || Date.now()) - Date.now();
       for (const inv of r.invitaciones || []) {
         desde = Math.max(desde, inv.ts);
         if (vistas.has(inv.ts)) continue;
@@ -69,13 +77,14 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
         invitacion(inv);
       }
       // el líder arrancó: se van todos
-      if (grupo?.ir && grupo.ir.ts !== irVisto && !grupo.soyLider && location.pathname !== grupo.ir.url) {
+      if (grupo?.ir && grupo.ir.ts > irVisto && (r.now || Date.now()) - grupo.ir.ts < 60000 && !grupo.soyLider && location.pathname !== grupo.ir.url) {
         irVisto = grupo.ir.ts;
+        sessionStorage.setItem('cadalado.grupo.ir', String(irVisto));
         toast('¡Arranca el juego! Te llevamos con tu lobby…');
         setTimeout(() => (location.href = aIndice(grupo.ir.url)), 900);
       }
       if (JSON.stringify(antes) !== JSON.stringify(grupo)) { pintar(); alCambiar?.(grupo); }
-    } catch {}
+    } catch {} finally { consultando = false; }
   }
   async function cargarListas() {
     try { listas = await api('/api/club/grupos?' + q()); pintar(); } catch {}
@@ -146,11 +155,14 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
     const s = SALAS[juego]?.(grupo.config||{});
     if (s) {
       try {
-        const { code } = await api(s.api, { pid: pid(), nombre: yo().nombre, opciones: s.opciones });
+        const creada = await api(s.api, { pid: pid(), nombre: yo().nombre, name: yo().nombre, ...(s.directo ? s.opciones : { opciones: s.opciones }) });
+        const code = creada.code || creada.id;
+        if (!code) throw new Error('No se pudo confirmar la creación de la sala.');
         url = s.url + code;
       } catch (e) { return toast(e.message, true); }
     }
-    if (await accion({ accion: 'jugar', url })) irA(aIndice(url));
+    const listo = await accion({ accion: 'jugar', url });
+    if (listo) { sessionStorage.setItem('cadalado.grupo.ir', String(listo.ir.ts)); irA(aIndice(url)); }
   }
 
   // entrar con un link de invitación (?lobby=CODIGO)
@@ -162,7 +174,7 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
     } else await refrescar();
     alCambiar?.(grupo);
   })();
-  setInterval(() => { if (!document.hidden) refrescar(); }, 1500);
+  setInterval(() => { if (!document.hidden) refrescar(); }, 400);
   setInterval(() => { if (!document.hidden && abierto) cargarListas(); }, 8000);
 
   return {

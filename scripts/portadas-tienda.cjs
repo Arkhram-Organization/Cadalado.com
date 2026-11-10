@@ -4,6 +4,8 @@
 const { chromium } = require('playwright'); const fs = require('fs');
 const OUT = process.argv[2];
 const P = [
+  ['trosman', 'Theotrosman', 'TROSMAN', 'g-baila', 1.1, .15, 'confeti', ['#1d0636','#8a3cf0','#e3c2ff']],
+  ['batata', 'Católico y Gasolero', 'BATATA', 'g-festeja', 1.3, -.2, 'oro', ['#31102c','#90402d','#ffd166']],
   // id, nombre arriba (chico), nombre grande (contorno), pose, tiempo de animación, giro, estilo de fondo, colores
   ['mati', 'Mati', 'NADEO', 'g-festeja', 1.0, -0.2, 'oro', ['#4a0a3a', '#d4207a', '#ffd23f']],
   ['dobro', 'El casino de', 'DOBRO', 'quieto', 1, 0.15, 'casino', ['#2a0508', '#8a0f1a', '#ffd23f']],
@@ -23,7 +25,7 @@ const P = [
   ['claude', 'Hecho por', 'CLAUDE', 'g-habla', 1.0, -0.2, 'rayos', ['#16191e', '#56616d', '#e2e8ee']],
 ];
 (async () => {
-  const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const p = await b.newPage(); p.on('pageerror', (e) => console.log('ERR', e.message));
   await p.goto('http://localhost:8787/404.html');
   // Barlow Condensed 900 (bajala de Google Fonts y dejala al lado de este script)

@@ -370,11 +370,11 @@ export function generarMapa(semilla) {
   const pesoCura = ['venda', 'venda', 'mini', 'mini', 'escudo', 'botiquin', 'granada'];
   const rarezaAleatoria = (mejor = false) => {
     const n = botines();
-    if (mejor) return n < 0.1 ? 'legendaria' : n < 0.4 ? 'epica' : n < 0.8 ? 'rara' : 'poco_comun';
-    return n < 0.46 ? 'comun' : n < 0.76 ? 'poco_comun' : n < 0.92 ? 'rara' : n < 0.985 ? 'epica' : 'legendaria';
+    if (mejor) return n < 0.025 ? 'legendaria' : n < 0.16 ? 'epica' : n < 0.56 ? 'rara' : 'poco_comun';
+    return n < 0.62 ? 'comun' : n < 0.89 ? 'poco_comun' : n < 0.975 ? 'rara' : n < 0.997 ? 'epica' : 'legendaria';
   };
   const agregarBotin = (x, y, tipo, cofre = null, mejor = false) => {
-    const rareza = tipo === 'rpg' ? (botines() < 0.25 ? 'legendaria' : 'epica') : ARMAS[tipo] ? rarezaAleatoria(mejor) : 'comun';
+    const rareza = tipo === 'rpg' ? (botines() < 0.06 ? 'legendaria' : 'epica') : ARMAS[tipo] ? rarezaAleatoria(mejor) : 'comun';
     const b = { id: botin.length, x: Math.round(x), y: Math.round(y), tipo, rareza };
     if (cofre !== null) b.cofre = cofre;
     botin.push(b);
@@ -389,7 +389,7 @@ export function generarMapa(semilla) {
   const ocupado = (x, y, d = 18) => botin.some((b) => Math.abs(b.x - x) < d && Math.abs(b.y - y) < d);
   const cofre = (x, y) => {
     const c = agregarBotin(x, y, 'cofre');
-    const arma = botines() < 0.12 ? 'rpg' : pesoArma[Math.floor(botines() * pesoArma.length)];
+    const arma = botines() < 0.035 ? 'rpg' : pesoArma[Math.floor(botines() * pesoArma.length)];
     agregarBotin(x + 16, y + 4, arma, c.id, true);
     agregarBotin(x - 14, y + 8, pesoCura[Math.floor(botines() * pesoCura.length)], c.id);
     agregarBotin(x + 2, y - 15, 'balas-' + ARMAS[arma].municion, c.id);
@@ -424,13 +424,18 @@ export function generarMapa(semilla) {
       cofre(x, y); puestos++;
     }
   }
-  // un poco de botín suelto por la isla y cajas de munición
-  for (let k = 0; k < 900 && botin.length < 330; k++) {
-    const x = Math.floor(botines() * TAM), y = Math.floor(botines() * TAM);
-    if (![T.PASTO, T.CAMINO, T.TIERRA, T.PLAZA].includes(t[idx(x, y)])) continue;
-    const bx = px(x), by = px(y);
-    if (ocupado(bx, by, 40) || obstaculos.some((o) => Math.hypot(o.x - bx, o.y - by) < o.r + 8)) continue;
-    agregarBotin(bx, by, botines() < 0.4 ? ['balas-livianas', 'balas-medianas', 'balas-cartuchos', 'balas-pesadas', 'balas-livianas', 'balas-medianas'][Math.floor(botines() * 6)] : algo());
+  // Fuera de las zonas pobladas hay caminos y cobertura, pero las provisiones se buscan en los lugares.
+  for (const l of LUGARES) {
+    let puestos = 0;
+    for (let k = 0; k < 120 && puestos < 5 + l.botin * 2; k++) {
+      const x = l.x + 2 + Math.floor(botines() * (l.w - 4));
+      const y = l.y + 2 + Math.floor(botines() * (l.h - 4));
+      if (![T.PASTO, T.CAMINO, T.TIERRA, T.PLAZA].includes(t[idx(x, y)])) continue;
+      const bx = px(x), by = px(y);
+      if (ocupado(bx, by, 32) || obstaculos.some((o) => Math.hypot(o.x - bx, o.y - by) < o.r + 9)) continue;
+      agregarBotin(bx, by, botines() < 0.5 ? ['balas-livianas', 'balas-medianas', 'balas-cartuchos', 'balas-pesadas', 'balas-livianas', 'balas-medianas'][Math.floor(botines() * 6)] : algo());
+      puestos++;
+    }
   }
   // lugares de salida (para el principio y las pruebas)
   const salidas = [];

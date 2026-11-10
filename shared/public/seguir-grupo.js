@@ -21,7 +21,7 @@ export function seguirGrupo() {
     try {
       const r = await fetch('/api/club/grupo?' + q, { cache: 'no-store' });
       if (!r.ok) return;
-      const { grupo } = await r.json();
+      const { grupo, now } = await r.json();
       if (!grupo || grupo.miembros.length < 2) return;
       const aca = enSala();
       if (grupo.soyLider) {
@@ -33,12 +33,12 @@ export function seguirGrupo() {
       }
       const ir = grupo.ir;
       const visto = Number(sessionStorage.getItem(VISTO)) || 0;
-      if (ir && ir.ts > visto && ir.url !== aca) {
+      if (ir && ir.ts > visto && (now || Date.now()) - ir.ts < 60000 && ir.url !== aca) {
         const sala = ir.url.match(/^\/([a-z]{3,12})\/(?:sala|mesa|game)\/([A-Za-z0-9-]{3,24})$/);
         if (sala) {
           let lista = false;
           for (let i = 0; i < 5 && !lista; i++) {
-            try { lista = (await fetch(`/api/${sala[1]}/salas/${sala[2]}?pid=${encodeURIComponent(pid)}`, { cache: 'no-store' })).ok; } catch {}
+            try { lista = (await fetch((sala[1] === 'ajedrez' ? `/ajedrez/api/games/${sala[2]}` : sala[1] === 'truco' ? `/api/truco/rooms/${sala[2]}` : `/api/${sala[1]}/salas/${sala[2]}`) + `?pid=${encodeURIComponent(pid)}`, { cache: 'no-store' })).ok; } catch {}
             if (!lista) await new Promise(resolve => setTimeout(resolve, 500));
           }
           if (!lista) return; // se vuelve a intentar en la próxima consulta

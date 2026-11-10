@@ -456,12 +456,16 @@ export class Isla3D {
     const width = this.renderer.domElement.clientWidth, height = this.renderer.domElement.clientHeight;
     if (this.w !== width || this.h !== height) { this.w = width; this.h = height; this.renderer.setSize(width, height, false); }
     this.agua.uniforms.t.value = ms / 1000;
-    this.camera = this.modoCamara === 'tercera' ? this.tercera : this.ortho;
+    this.camera = this.campeon || this.modoCamara === 'tercera' ? this.tercera : this.ortho;
     const alzada = foco.enColectivo ? 150 : foco.altura || 0;
     // más alto, más lejos: en el colectivo y en la caída se ve más isla
     const zoomObj = (foco.enColectivo ? 2.7 : 1 + Math.min(1.7, alzada / 70)) * (this.acercar || 1);
     this.zoom += (zoomObj - this.zoom) * Math.min(1, dt * 2.5);
-    if (this.modoCamara === 'tercera') {
+    if (this.campeon) {
+      this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
+      this.camera.position.set(foco.x + Math.sin(ms / 1300) * 5, 27, foco.y + 62);
+      this.camera.lookAt(foco.x, 13, foco.y);
+    } else if (this.modoCamara === 'tercera') {
       this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
       const lejos = this.zoom, yaw = this.yaw || 0, inc = this.inclina ?? 1;
       const atras = 70 * lejos, alto = 62 * lejos * inc;

@@ -87,7 +87,7 @@ async function motor3d() {
   const luz = new THREE.DirectionalLight('#fff0d8', 3); luz.position.set(-2, 3, 4); escena.add(luz);
   const borde = new THREE.DirectionalLight('#ffffff', 2.2); borde.position.set(3, 2.5, -3); escena.add(borde);
   const camara = new THREE.PerspectiveCamera(30, 1, 0.1, 60);
-  visor = { THREE, crearPersona, renderer, escena, camara, persona: null, id: null, anim: 'quieto', yaw: 0, auto: true, dist: 5, centro: new THREE.Vector3(0, 1, 0), raf: 0, ultimo: 0 };
+  visor = { THREE, crearPersona, renderer, escena, camara, persona: null, id: null, anim: 'quieto', yaw: Math.PI, dist: 5, centro: new THREE.Vector3(0, 1, 0), raf: 0, ultimo: 0 };
   return visor;
 }
 function encuadrar() {
@@ -100,9 +100,9 @@ function cuadro(t) {
   const v = visor;
   if (!v.persona || !v.renderer.domElement.isConnected) { v.raf = 0; return; }
   const dt = Math.min(0.05, (t - (v.ultimo || t)) / 1000); v.ultimo = t;
-  if (v.auto) v.yaw += dt * 0.5;
   v.persona.grupo.rotation.y = v.yaw;
   v.persona.animar('g-' + v.anim, dt);
+  if (v.aureola) { v.aureola.rotation.y += dt * .6; v.aureola.children.forEach((p, i) => { p.position.y = .3 + ((t / 2400 + i / 18) % 1) * 2.2; p.scale.setScalar(.6 + Math.sin(t / 350 + i) * .4); }); }
   const c = v.centro;
   v.camara.position.set(c.x, c.y + v.dist * 0.08, c.z + v.dist); v.camara.lookAt(c.x, c.y, c.z);
   v.renderer.render(v.escena, v.camara);
@@ -115,7 +115,13 @@ async function abrirVisor(cont, id) {
   encuadrar();
   if (v.id !== id) {
     if (v.persona) { v.escena.remove(v.persona.grupo); v.persona.dispose?.(); v.persona = null; }
-    v.id = id; v.anim = 'quieto'; v.yaw = 0.35; v.auto = true;
+    if (v.aureola) { v.escena.remove(v.aureola); for (const p of v.aureola.children) { p.geometry.dispose(); p.material.dispose(); } v.aureola = null; }
+    if (id === 'batata') {
+      v.aureola = new v.THREE.Group();
+      for (let i = 0; i < 36; i++) { const p = new v.THREE.Mesh(new v.THREE.OctahedronGeometry(.035), new v.THREE.MeshBasicMaterial({color: i % 2 ? '#ffd166' : '#fff0c4'})); const a = i * 2.4; p.position.set(Math.cos(a) * 1.05, i / 16, Math.sin(a) * .7); v.aureola.add(p); }
+      v.escena.add(v.aureola);
+    }
+    v.id = id; v.anim = 'quieto'; v.yaw = Math.PI;
     const p = v.crearPersona(v.THREE, { ...POR_ID[id]?.look, travesuras: {} }, { sombras: false });
     await p.listo;
     if (v.id !== id) { p.dispose?.(); return; }
@@ -139,7 +145,7 @@ let arrastre = null;
 document.addEventListener('pointerdown', (e) => {
   const cont = e.target.closest('.ti-visor');
   if (!cont || !visor || e.target.closest('button')) return;
-  arrastre = { x: e.clientX, yaw: visor.yaw }; visor.auto = false;
+  arrastre = { x: e.clientX, yaw: visor.yaw };
 });
 document.addEventListener('pointermove', (e) => { if (arrastre && visor) visor.yaw = arrastre.yaw + (e.clientX - arrastre.x) * 0.012; });
 document.addEventListener('pointerup', () => { arrastre = null; });
@@ -173,7 +179,7 @@ function listaAmigos(id) {
 }
 function infoHtml(id) {
   const s = skin(id), r = datos.rarezas[s.rareza], mia = datos.mias.includes(id);
-  const actual = visor?.id === id ? visor.anim : 'quieto';
+  const actual = visor?.id === id ? visor.anim : id === 'batata' ? 'festeja' : 'quieto';
   return `<span><span class="ti-chip">${esc(r.nombre)}</span>${s.nuevo && !mia ? ' <span class="ti-chip" style="background:#ffe03a">¡Nuevo!</span>' : ''}</span>
     <h3>${esc(nombre(id))}</h3>
     <span class="ti-tipo">Skin con modelo 3D</span>
@@ -190,7 +196,7 @@ function detalle(id, recien = false) {
   if (mismo && !recien) { $('.ti-det-info').innerHTML = infoHtml(id); return; }
   m.innerHTML = `<div class="ti-det ${recien ? 'recien' : ''}" style="--r:${r.color}" role="dialog" aria-modal="true" aria-label="${esc(nombre(id))}">
     <button class="ti-cerrar" data-cerrar aria-label="Cerrar">×</button>
-    <div class="ti-visor"><img class="ti-portada" src="${portada(id)}" alt="${esc(nombre(id))}"><button class="ti-vista" data-vista>Portada</button><span class="ti-girar">Arrastrá para girarlo · rueda para acercar</span></div>
+    <div class="ti-visor ${id === 'batata' ? 'batata-revela en-3d' : ''}"><img class="ti-portada" src="${portada(id)}" alt="${esc(nombre(id))}"><button class="ti-vista" data-vista>Portada</button><span class="ti-girar">Arrastrá para girarlo · rueda para acercar</span></div>
     <div class="ti-det-info">${infoHtml(id)}</div>
   </div>`;
   m.hidden = false;
@@ -230,9 +236,11 @@ $('[data-codigo]').addEventListener('submit', async (e) => {
   b.disabled = true;
   try {
     const r = await api('/api/club/tienda/codigo', { pid: pid(), codigo });
-    datos.saldo = r.saldo; pintar();
+    datos.saldo = r.saldo;
+    if (r.mias) datos.mias = r.mias;
+    pintar();
     input.value = ''; f.classList.remove('ok'); void f.offsetWidth; f.classList.add('ok');
-    toast(`¡Código canjeado! +${fmt(r.monto)} fichas`);
+    toast(r.mias ? `¡Código canjeado! Ya tenés todas las skins (${r.skins} nuevas).` : `¡Código canjeado! +${fmt(r.monto)} fichas`);
   } catch (err) { toast(err.message, true); }
   b.disabled = false;
 });

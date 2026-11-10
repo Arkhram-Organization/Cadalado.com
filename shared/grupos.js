@@ -22,23 +22,12 @@ export function quien(u, body) {
   return { k: 'p:' + p, nombre: limpiarNombre(body.nombre), look: body.look ? limpiarLook(body.look) : null };
 }
 
-// Candado por lobby: varios miembros escriben a la vez (cada uno marca que sigue cada 1,5 s);
-// sin esto una escritura pisaba a otra y alguien "desaparecía" de la lobby.
-async function conCandado(id, fn) {
-  const s = getStore(), k = `candado:grupo:${id}`;
-  for (let i = 0; i < 60; i++) {
-    if (await s.setNX(k, '1', 3000)) {
-      try { return await fn(); } finally { await s.del(k); }
-    }
-    await new Promise((r) => setTimeout(r, 40 + Math.random() * 40));
-  }
-  return fn(); // no debería pasar: el candado vence solo a los 3 s
-}
-
+const claveDestino = (juego, code) => juego === 'ajedrez' ? `room:${code}` : juego === 'truco' ? `truco:${code.toUpperCase()}` : `sala:${juego}:${code.toUpperCase()}`;
 async function leer(id) { return id ? parse(await getStore().get(`grupo:${id}`)) : null; }
 async function guardar(g) {
   const s = getStore();
   g.miembros = g.miembros.filter((m) => Date.now() - m.visto < VIVO_MS);
+  for (const m of g.miembros) m.id ||= crypto.randomUUID();
   if (!g.miembros.length) {
     await s.del(`grupo:${g.id}`); await s.hdel('grupos:abiertos', [g.id]);
     return null;
@@ -51,22 +40,18 @@ async function guardar(g) {
 }
 const vista = (g, yo) => g && {
   id: g.id, abierto: g.abierto, juego: g.juego, config: g.config || CONFIG_INICIAL[g.juego] || {}, ir: g.ir, soyLider: g.lider === yo.k,
-  miembros: g.miembros.map((m) => ({ nombre: m.nombre, usuario: m.usuario || null, look: m.look, lider: m.k === g.lider, yo: m.k === yo.k, gesto: m.gesto && Date.now() - m.gesto.ts < 10_000 ? m.gesto : null })),
+  miembros: g.miembros.map((m) => ({ id: m.id, nombre: m.nombre, usuario: m.usuario || null, look: m.look, lider: m.k === g.lider, yo: m.k === yo.k, gesto: m.gesto && Date.now() - m.gesto.ts < 10_000 ? m.gesto : null })),
 };
 
 async function entrar(yo, id) {
-  // salir de la anterior (fuera del candado de esta)
-  const s = getStore();
-  const antes = await s.get(`grupo-de:${yo.k}`);
-  if (antes && antes !== id) await salir(yo);
-  return conCandado(id, () => entrarYa(yo, id));
-}
-async function entrarYa(yo, id) {
   const s = getStore();
   const g = await leer(id);
   if (!g) throw err('Esa lobby ya no existe.', 404);
   const ya = g.miembros.find((m) => m.k === yo.k);
   if (!ya && g.miembros.filter((m) => Date.now() - m.visto < VIVO_MS).length >= MAX) throw err('Esa lobby está llena.');
+  // salir de la anterior
+  const antes = await s.get(`grupo-de:${yo.k}`);
+  if (antes && antes !== id) await salir(yo);
   if (ya) Object.assign(ya, { ...yo, visto: Date.now() });
   else g.miembros.push({ ...yo, visto: Date.now() });
   await s.set(`grupo-de:${yo.k}`, id, TTL);
@@ -77,17 +62,14 @@ async function salir(yo) {
   const s = getStore();
   const id = await s.get(`grupo-de:${yo.k}`);
   await s.del(`grupo-de:${yo.k}`);
-  if (!id) return;
-  await conCandado(id, async () => {
-    const g = await leer(id);
-    if (!g) return;
-    g.miembros = g.miembros.filter((m) => m.k !== yo.k);
-    await guardar(g);
-  });
+  const g = await leer(id);
+  if (!g) return;
+  g.miembros = g.miembros.filter((m) => m.k !== yo.k);
+  await guardar(g);
 }
 
 // Mi grupo (y de paso marca que sigo acá). Si no tengo, me arma uno solo para mí.
-export async function miGrupo(yo) {
+async function miGrupoInterno(yo) {
   const s = getStore();
   let g = await leer(await s.get(`grupo-de:${yo.k}`));
   if (!g || !g.miembros.some((m) => m.k === yo.k)) {
@@ -95,19 +77,16 @@ export async function miGrupo(yo) {
     await s.set(`grupo:${g.id}`, JSON.stringify(g), TTL);
     return vista(await entrar(yo, g.id), yo);
   }
-  const r = await conCandado(g.id, async () => {
-    const g2 = await leer(g.id);
-    const m = g2?.miembros.find((x) => x.k === yo.k);
-    if (!m) return null; // justo lo sacaron
-    Object.assign(m, { nombre: yo.nombre, look: yo.look, visto: Date.now() });
-    return vista(await guardar(g2), yo);
-  });
-  if (r) return r;
-  await s.del(`grupo-de:${yo.k}`);
-  return miGrupo(yo); // arma una nueva para vos
+  if (g.ir) {
+    const destino = g.ir.url.match(/^\/([a-z]+)\/(?:sala|mesa|game)\/([A-Za-z0-9-]+)$/);
+    if (destino && !(await s.get(claveDestino(destino[1], destino[2])))) g.ir = null;
+  }
+  const m = g.miembros.find((x) => x.k === yo.k);
+  Object.assign(m, { nombre: yo.nombre, look: yo.look, visto: Date.now() });
+  return vista(await guardar(g), yo);
 }
 
-export async function accionGrupo(yo, body) {
+async function accionGrupoInterno(yo, body) {
   const s = getStore();
   const id = await s.get(`grupo-de:${yo.k}`);
   switch (body.accion) {
@@ -121,16 +100,10 @@ export async function accionGrupo(yo, body) {
     }
     case 'salir': {
       await salir(yo);
-      return miGrupo(yo);
+      return miGrupoInterno(yo);
     }
     default: break;
   }
-  if (!id) throw err('No estás en ninguna lobby.');
-  return conCandado(id, () => accionEnGrupo(yo, body, id));
-}
-
-async function accionEnGrupo(yo, body, id) {
-  const s = getStore();
   const g = await leer(id);
   if (!g) throw err('No estás en ninguna lobby.');
   const lider = g.lider === yo.k;
@@ -164,7 +137,7 @@ async function accionEnGrupo(yo, body, id) {
       if (!/^\/[a-z]{3,12}\/((sala|mesa|game)\/[A-Za-z0-9-]{3,24})?$/.test(url)) throw err('Destino inválido.');
       if(!url.startsWith('/'+g.juego+'/'))throw err('Primero elegí ese juego para la lobby.');
       const m=url.match(/^\/([a-z]{3,12})\/(?:sala|mesa|game)\/([A-Za-z0-9-]{3,24})$/);
-      if(m && !(await s.get(`sala:${m[1]}:${m[2].toUpperCase()}`))){
+      if(m && !(await s.get(claveDestino(m[1], m[2])))){
         const publica=m[1]==='casino' && !!(await import('../games/casino/lib/casino.js')).MESAS_PUBLICAS[m[2].toUpperCase()];
         if(!publica)throw err('La sala todavía no está lista. Probá de nuevo.');
       }
@@ -180,7 +153,7 @@ async function accionEnGrupo(yo, body, id) {
       const id = String(body.gesto || '');
       if (!/^[a-z]{3,12}$/.test(id)) throw err('Gesto inválido.');
       const m = g.miembros.find((x) => x.k === yo.k);
-      if (m) m.gesto = { id, ts: Date.now() };
+      if (m) m.gesto = { id, ts: Date.now() + 1000 };
       break;
     }
     case 'invitar': {
@@ -235,3 +208,20 @@ export async function listarGrupos(yo) {
   }
   return { abiertos: abiertos.filter((g) => !g.mia).slice(0, 30), amigos };
 }
+
+async function conGrupo(yo, body, fn) {
+  const s = getStore();
+  const id = body?.accion === 'unirse' ? String(body.id).toUpperCase() : await s.get(`grupo-de:${yo.k}`) || yo.k;
+  const lock = `lock:grupo:${id}`;
+  const token = crypto.randomUUID();
+  for (let i = 0; i < 80; i++) {
+    if (await s.setNX(lock, token, 10000)) {
+      try { return await fn(); }
+      finally { if (await s.get(lock) === token) await s.del(lock); }
+    }
+    await new Promise(r => setTimeout(r, 25));
+  }
+  throw err('La lobby está ocupada. Reintentá en un momento.', 409);
+}
+export const miGrupo = yo => conGrupo(yo, null, () => miGrupoInterno(yo));
+export const accionGrupo = (yo, body) => conGrupo(yo, body, () => accionGrupoInterno(yo, body));

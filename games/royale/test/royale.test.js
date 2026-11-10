@@ -73,6 +73,15 @@ test('bots: se mueven, buscan pelea y disparan', () => {
   assert.ok(balas > 0, 'disparó');
 });
 
+test('dos bots en la misma posición se separan sin coordenadas inválidas', () => {
+  const m = generarMapa(55), s = m.salidas[0];
+  const a = new Peleador('bot0', s.x, s.y), b = new Peleador('bot1', s.x, s.y);
+  const cerebro = new CerebroBot(a, () => 0.4);
+  for (let i = 0; i < 30; i++) cerebro.paso(1 / 60, m, 55, 10 + i / 60, [b], []);
+  assert.ok(Number.isFinite(a.x) && Number.isFinite(a.y));
+  assert.ok(Math.hypot(a.x - b.x, a.y - b.y) > 0);
+});
+
 test('partida: arranca, botín de a uno, bajas, el bot habla y termina con un ganador', async () => {
   const A = 'pidRoyaleAA1';
   const B = 'pidRoyaleBB2';
@@ -110,7 +119,7 @@ test('partida: arranca, botín de a uno, bajas, el bot habla y termina con un ga
   assert.equal(JSON.stringify(v.estado).includes('pidRoyale'), false, 'no se filtran identificadores');
 });
 
-test('cofre tarda un segundo y el servidor entrega su contenido una sola vez', async () => {
+test('cofre abre con una sola acción y entrega su contenido una sola vez', async () => {
   const pid='pidCofreAA1';
   const {code}=(await req('POST','/crear',{pid,nombre:'Lola',opciones:{bots:2}})).data;
   await accion(code,pid,{t:'join',nombre:'Lola'});
@@ -120,14 +129,10 @@ test('cofre tarda un segundo y el servidor entrega su contenido una sola vez', a
   const cofre=generarMapa(v.semilla).botin.find(b=>b.tipo==='cofre');
   const contenido=generarMapa(v.semilla).botin.find(b=>b.cofre===cofre.id);
   assert.ok((await accion(code,pid,{t:'agarrar',id:contenido.id})).data.error);
-  await accion(code,pid,{t:'iniciarCofre',id:cofre.id});
-  assert.ok((await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
-  const r=JSON.parse(await getStore().get(`sala:royale:${code}`));
-  r.aperturas[v.yo+':'+cofre.id]=Date.now()-1100;
-  await getStore().set(`sala:royale:${code}`,JSON.stringify(r),3600);
   v=(await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.estado;
   assert.ok(v.abiertos.includes(cofre.id));
-  assert.ok((await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
+  assert.ok(!(await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
+  assert.equal((await ver(code,pid)).estado.abiertos.filter(id=>id===cofre.id).length,1);
   await accion(code,pid,{t:'agarrar',id:contenido.id});
   assert.equal((await ver(code,pid)).estado.propietarios[contenido.id],v.yo);
 });

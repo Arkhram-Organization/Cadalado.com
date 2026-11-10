@@ -106,8 +106,8 @@ export async function handle(request) {
       if (typeof datos.look === 'string') { try { datos.look = JSON.parse(datos.look); } catch { datos.look = null; } }
       const yo = grupos.quien(u, datos);
       if (ruta === '/grupos') return json(await grupos.listarGrupos(yo));
-      if (metodo === 'GET') return json({ grupo: await grupos.miGrupo(yo), invitaciones: await grupos.invitaciones(yo, Number(datos.desde) || 0) });
-      return json({ grupo: await grupos.accionGrupo(yo, body) });
+      if (metodo === 'GET') return json({ now: Date.now(), grupo: await grupos.miGrupo(yo), invitaciones: await grupos.invitaciones(yo, Number(datos.desde) || 0) });
+      return json({ now: Date.now(), grupo: await grupos.accionGrupo(yo, body) });
     }
     // Muro y sugerencias: se usan sin cuenta (con cuenta salen con tu nombre y tu personaje).
     if (ruta === '/muro/foto' && metodo === 'GET') {

@@ -258,6 +258,9 @@ export function posLargada(indice, total) {
   const enFila = Math.min(columnas, total - fila * columnas);
   return { x: (indice % columnas - (enFila - 1) / 2) * 1.8, y: 0, z: -3 + fila * 2.1 };
 }
+export function puedeMoverAhora(fase, tiempo, espectador = false) {
+  return !espectador && (fase === 'lobby' || fase === 'podio' || ((fase === 'cuenta' || fase === 'carrera') && tiempo >= 0));
+}
 
 const cacheF = new Map();
 function fases(semilla, n) {
