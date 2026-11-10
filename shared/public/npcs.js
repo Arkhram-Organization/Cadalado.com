@@ -60,8 +60,8 @@ export const NPCS = [
   {
     id: 'dobro',
     nombre: 'Dobro',
-    // foto: buzo azul con la capucha puesta y anteojos de marco claro (de smoking en el casino)
-    look: { foto: 'dobro', piel: '#e2b48f', pelo: { estilo: 'calvo', color: '#2a1d14' }, ojos: '#5a3a22', cuerpo: 'flaco', lentes: '#d9cfc2', lentesClaros: true, capucha: '#1f2a4d', ropa: { remera: '#1f2a4d', pantalon: '#15171c', bolso: false, zapatillas: '#e9e6e0' }, genero: 'h' },
+    // modelo de Meshy: modelos/dobro.glb (buzo azul con capucha y anteojos de marco claro)
+    look: { modelo: 'dobro', clips: { corre: 'run_fast_7_inplace', festeja: 'Clapping_Run' }, travesuras: { quieto: ['habla', 'saluda', 'festeja', 'habla'], corre: ['voltereta'] }, foto: 'dobro', piel: '#e2b48f', pelo: { estilo: 'calvo', color: '#2a1d14' }, ojos: '#5a3a22', cuerpo: 'flaco', lentes: '#d9cfc2', lentesClaros: true, capucha: '#1f2a4d', ropa: { remera: '#1f2a4d', pantalon: '#15171c', bolso: false, zapatillas: '#e9e6e0' }, genero: 'h' },
     // en el casino aparece de smoking (lo pone la mesa de blackjack); en el resto, con su buzo
     smoking: true,
     frases: [
@@ -183,6 +183,31 @@ export const NPCS = [
       '¡Shana Tova Umeka a todos!',
       'La rata no pierde: la rata se escabulle.',
       'Si me ves correr, es la rata huyendo.',
+    ],
+  },
+  {
+    id: 'sandra',
+    nombre: 'Sandra Bernstein',
+    // solo habla del caso Bernstein (desde entonces no volvió a ser la misma), de Israel y de las festividades.
+    // Modelo de Meshy: modelos/sandra.glb
+    look: { modelo: 'sandra', clips: { baila: 'Hip_Hop_Dance_1', pina: 'Elbow_Strike', patada: 'Counterstrike' }, travesuras: { quieto: ['habla', 'habla', 'saluda', 'flexiones', 'baila'], corre: ['voltereta'] }, estilo: 'meshy', piel: '#f0cdb0', pelo: { estilo: 'poco', color: '#6a3a22' }, ojos: '#4a3020', cuerpo: 'normal', ropa: { remera: '#8a9f55', pantalon: '#1a1a1c', zapatillas: '#f2efe8' }, genero: 'm' },
+    frases: [
+      'Desde el caso Bernstein no volví a ser la misma.',
+      '¿Ustedes se acuerdan del caso Bernstein? Yo todos los días.',
+      'El caso Bernstein me cambió la vida. Literalmente.',
+      'Nadie habla del caso Bernstein. Yo sí.',
+      'Antes del caso Bernstein yo era otra persona.',
+      'Esto me hace acordar al caso Bernstein. Todo me hace acordar.',
+      'Cuando estuve en Israel me olvidé del caso Bernstein. Dos días.',
+      'En Tel Aviv la playa es otra cosa, eh.',
+      'Fui al Muro de los Lamentos y dejé un papelito. Adivinen de qué caso.',
+      '¡Shaná Tová! Que sea un año dulce, con miel y manzana.',
+      'En Iom Kipur ayuno. En el caso Bernstein también ayuné.',
+      'Pésaj: matzá una semana entera. Se sobrevive.',
+      'En Janucá prendo las velitas y pienso en el caso Bernstein.',
+      'Sucot es mi festividad favorita. Comer en la sucá no tiene precio.',
+      'En Purim me disfracé de jueza del caso Bernstein. Nadie lo entendió.',
+      'El próximo año en Jerusalén. Y sin casos.',
     ],
   },
   {

@@ -39,6 +39,12 @@ const DICHOS = {
     pierde: ['La rata se escabulle y vuelve.', 'Javila…', 'Seguro fue culpa de Trosman.'],
     turno: ['Shimyz.', 'Le toca a la rata.', 'Javila, javila.'],
   },
+  sandra: {
+    saludo: ['Hola. Desde el caso Bernstein no volví a ser la misma.', '¡Shaná Tová a todos!', 'Llegué. ¿Alguien quiere hablar del caso Bernstein?'],
+    gana: ['¡Gané! Esto no pasaba desde antes del caso Bernstein.', 'Mazal tov para mí.', 'Esto lo festejo como en Janucá: ocho días.'],
+    pierde: ['Perder no es nada. Lo del caso Bernstein, eso sí fue perder.', 'Ya me pasó algo peor. El caso Bernstein.', 'El próximo año en Jerusalén… y ganando.'],
+    turno: ['Me toca. Como en el caso Bernstein: me tocó.', 'Vamos, que se viene Pésaj.', 'Pensando… como en Iom Kipur, con calma.'],
+  },
   colon: {
     saludo: ['¡Tierra a la vista!', 'Descubrí esta mesa. Es mía.'],
     gana: ['¡Lo descubrí antes que nadie!', 'Esto no figura en mis mapas, pero gané.'],
