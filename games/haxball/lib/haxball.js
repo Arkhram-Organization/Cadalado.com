@@ -2,6 +2,7 @@
 // La física la corre el navegador del anfitrión y la manda a los demás por WebRTC; él avisa los goles.
 import { crearJuego, idPublico } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
 import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
@@ -170,13 +171,17 @@ export const haxball = crearJuego({
     const host = r.jugadores[r.host];
     return { titulo: host ? `Cancha de ${host.nombre}` : 'Haxball', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
   },
-  async despues(r, antes) {
+  async despues(r, antes, ctx) {
     if (r.fase !== 'fin' || antes.fase === 'fin') return;
+    const pagos = [];
     for (const pid of r.participantes) {
       const j = r.jugadores[pid];
-      if (!j?.uid) continue;
+      if (!j) continue;
       const e = r.equipos[pid];
       const otro = e === 'rojo' ? 'azul' : 'rojo';
+      const goles = r.goles.filter((g) => g.autor === idPublico(pid) && !g.contra).length;
+      pagos.push({ nombre: j.nombre, monto: await premiar(pid, j.uid, r.ganador === 'empate' ? 'empate' : r.ganador === e ? 'victoria' : 'derrota', goles * 150) });
+      if (!j.uid) continue;
       await registrarPartida(j.uid, {
         juego: 'haxball',
         sala: r.code,
@@ -187,6 +192,8 @@ export const haxball = crearJuego({
         rivales: r.participantes.filter((p) => r.equipos[p] === otro).map((p) => r.jugadores[p]?.nombre).filter(Boolean).slice(0, 6),
       });
     }
+    const aviso = avisoPremios(pagos);
+    if (aviso) ctx?.sistema?.(aviso);
   },
   // Plan B: si dos navegadores no se conectan directo, el estado pasa por el servidor.
   async rutas(ruta, request, { json, readJson, limpiarPid }) {

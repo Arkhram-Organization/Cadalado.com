@@ -43,7 +43,7 @@ test('ruleta: varios apuestan a la vez, se paga bien y el saldo cuadra', async (
   await accion(mesa, A, { t: 'join', nombre: 'Ana' });
   await accion(mesa, B, { t: 'join', nombre: 'Beto' });
   const inicial = (await ver(mesa, A)).saldo;
-  assert.equal(inicial, 10000);
+  assert.equal(inicial, 8000);
   // apuestas simultáneas
   await Promise.all([
     accion(mesa, A, { t: 'apostar', casillero: 'rojo', monto: 1000 }),
@@ -55,9 +55,9 @@ test('ruleta: varios apuestan a la vez, se paga bien y el saldo cuadra', async (
   let r = await accion(mesa, B, { t: 'apostar', casillero: 'rojo', monto: 5000 });
   r = await accion(mesa, B, { t: 'apostar', casillero: 'rojo', monto: 5000 });
   assert.equal(r.data.error, 'No te alcanzan las fichas');
-  assert.equal((await ver(mesa, B)).saldo, 10000 - 550 - 5000);
+  assert.equal((await ver(mesa, B)).saldo, 8000 - 550 - 5000);
   await accion(mesa, B, { t: 'deshacer' });
-  assert.equal((await ver(mesa, B)).saldo, 10000 - 550);
+  assert.equal((await ver(mesa, B)).saldo, 8000 - 550);
   // gira
   await adelantar(mesa);
   let v = await ver(mesa, A);
@@ -69,7 +69,7 @@ test('ruleta: varios apuestan a la vez, se paga bien y el saldo cuadra', async (
   assert.equal(v.estado.fase, 'pago');
   const esperadoA = inicial - 1100 + (ROJOS.has(n) ? 2000 : 0) + (n === 7 ? 3600 : 0);
   assert.equal(v.saldo, esperadoA, `salió ${n}`);
-  const esperadoB = 10000 - 550 + (n !== 0 && !ROJOS.has(n) ? 1000 : 0) + (n >= 1 && n <= 12 ? 150 : 0);
+  const esperadoB = 8000 - 550 + (n !== 0 && !ROJOS.has(n) ? 1000 : 0) + (n >= 1 && n <= 12 ? 150 : 0);
   assert.equal((await ver(mesa, B)).saldo, esperadoB);
   assert.equal(v.estado.historial[0], n);
   // repetir la apuesta en la ronda siguiente
@@ -89,7 +89,7 @@ test('blackjack: sentarse, apostar, jugar la mano y cobrar', async () => {
   await accion(mesa, A, { t: 'apostar', monto: 100 });
   let v = await ver(mesa, A);
   assert.equal(v.estado.asientos[2].apuesta, 600);
-  assert.equal(v.saldo, 10000 - 600);
+  assert.equal(v.saldo, 8000 - 600);
   await adelantar(mesa);
   v = await ver(mesa, A);
   assert.ok(['jugando', 'pago', 'banca'].includes(v.estado.fase), v.estado.fase);
@@ -106,7 +106,7 @@ test('blackjack: sentarse, apostar, jugar la mano y cobrar', async () => {
   assert.equal(v.estado.fase, 'pago');
   const a = v.estado.asientos[2];
   assert.ok(['gana', 'pierde', 'empate', 'blackjack'].includes(a.res));
-  assert.equal(v.saldo, 10000 - 600 + a.cobra);
+  assert.equal(v.saldo, 8000 - 600 + a.cobra);
   if (a.res === 'gana') assert.equal(a.cobra, 1200);
   if (a.res === 'empate') assert.equal(a.cobra, 600);
 });
@@ -148,12 +148,12 @@ test('desafío entre jugadores: se acepta, el que más gana se lleva el pozo; si
   for (const [p, n] of [[A, 'Ana'], [B, 'Beto'], [C, 'Caro']]) await accion(mesa, p, { t: 'join', nombre: n });
   // nadie acepta: vuelve
   await accion(mesa, A, { t: 'desafiar', monto: 1000 });
-  assert.equal((await ver(mesa, A)).saldo, 9000);
+  assert.equal((await ver(mesa, A)).saldo, 7000);
   assert.equal((await accion(mesa, B, { t: 'desafiar', monto: 500 })).data.error, 'Ya hay un desafío en la mesa');
   await adelantar(mesa);
   let v = await ver(mesa, A);
   assert.equal(v.estado.desafio, null);
-  assert.equal(v.saldo, 10000);
+  assert.equal(v.saldo, 8000);
   await adelantar(mesa);
   await ver(mesa, A);
   await adelantar(mesa);
@@ -166,7 +166,7 @@ test('desafío entre jugadores: se acepta, el que más gana se lleva el pozo; si
   assert.equal((await accion(mesa, A, { t: 'aceptar' })).data.error, undefined);
   v = await ver(mesa, B);
   assert.equal(v.estado.desafio.aceptan.length, 2);
-  assert.equal(v.saldo, 9000);
+  assert.equal(v.saldo, 7000);
   for (let k = 0; k <= 36; k++) await accion(mesa, B, { t: 'apostar', casillero: 'n' + k, monto: 10 }); // Beto: neto +360 - 370 = -10
   await accion(mesa, C, { t: 'apostar', casillero: 'n0', monto: 10 }); // Caro: casi seguro pierde 10
   await adelantar(mesa);
@@ -178,7 +178,7 @@ test('desafío entre jugadores: se acepta, el que más gana se lleva el pozo; si
   // Ana no apostó: neto 0, es la mejor salvo que Caro acierte el 0
   if (n !== 0) {
     assert.deepEqual(v.estado.desafioRes.nombres, ['Ana']);
-    assert.equal(v.saldo, 9000 + 3000);
+    assert.equal(v.saldo, 7000 + 3000);
   }
   assert.equal(v.estado.desafio, null);
 });
@@ -194,7 +194,7 @@ test('bots: apuestan en la ruleta, juegan solos al blackjack y hablan en el chat
   assert.equal(v.estado.bots.length, 2);
   assert.equal(v.estado.apuestas.length, 2, 'los bots ya apostaron');
   assert.ok(v.eventos.some((e) => e.k === 'chat' && e.bot), 'saludan en el chat');
-  assert.equal(v.saldo, 10000, 'los bots no tocan mis fichas');
+  assert.equal(v.saldo, 8000, 'los bots no tocan mis fichas');
   // blackjack: Ana se sienta, sienta un bot y juegan una mano entera
   const bj = (await req('POST', '/crear', { pid: 'pidBotsBJAA', nombre: 'Ana', opciones: { tipo: 'blackjack' } })).data.code;
   await accion(bj, A, { t: 'join', nombre: 'Ana' });

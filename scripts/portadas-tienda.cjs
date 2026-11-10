@@ -1,4 +1,5 @@
-// Genera las portadas de la tienda: cada personaje en su pose, con un fondo distinto y su nombre gigante atrás.
+// Genera las portadas de la tienda: cada personaje en su pose, con un fondo distinto (del color de su rareza;
+// las míticas tienen el suyo) y su nombre gigante atrás.
 // Necesita el servidor de desarrollo en :8787. Uso: node scripts/portadas-tienda.cjs portal/public/img/tienda
 const { chromium } = require('playwright'); const fs = require('fs');
 const OUT = process.argv[2];
@@ -6,19 +7,19 @@ const P = [
   // id, nombre arriba (chico), nombre grande (contorno), pose, tiempo de animación, giro, estilo de fondo, colores
   ['mati', 'Mati', 'NADEO', 'g-festeja', 1.0, -0.2, 'oro', ['#4a0a3a', '#d4207a', '#ffd23f']],
   ['dobro', 'El casino de', 'DOBRO', 'quieto', 1, 0.15, 'casino', ['#2a0508', '#8a0f1a', '#ffd23f']],
-  ['angeles', 'Ángeles', 'PEÑA', 'g-baila', 1.3, 0.3, 'rayos', ['#2a0f5a', '#a43cff', '#ff7ad1']],
-  ['franba', 'El hijo del', 'CIBER', 'g-habla', 0.9, -0.15, 'ciber', ['#04140a', '#0b3a1e', '#39ff88']],
-  ['julo', 'Julo', 'DEPLOY', 'g-musculos', 1.1, 0.25, 'codigo', ['#03101f', '#0b3a6b', '#4fd1ff']],
-  ['glinsky', 'Profe', 'GLINSKY', 'g-habla', 1.2, -0.25, 'exponencial', ['#061a2e', '#14507a', '#7cf0ff']],
-  ['faur', 'Una más y me', 'QUEDO', 'g-baila', 1.6, 0.2, 'confeti', ['#1a2a06', '#3f7a14', '#c5f04a']],
-  ['volcho', '¿Quién? El', 'VOLCHO', 'g-baila', 0.8, -0.3, 'espiral', ['#3a0a5a', '#c058ff', '#ffe08a']],
-  ['olcho', 'La', 'RATA', 'g-musculos', 1.2, 0.2, 'comic', ['#5a1a00', '#ff7a1a', '#ffd23f']],
-  ['sandra', 'Caso', 'BERNSTEIN', 'g-habla', 1.0, 0.15, 'estrellas', ['#06143a', '#1f4fb5', '#eaf2ff']],
-  ['angie', 'Nacho y', 'ANGIE', 'g-saluda', 0.9, -0.2, 'corazones', ['#5a0a3a', '#ff5fa8', '#ffe0f0']],
-  ['capitan', 'Capitán', 'MATE', 'g-festeja', 0.9, 0.2, 'rayos', ['#0a3a1a', '#2fa85a', '#e8ff9a']],
-  ['chapa', 'Chapa', 'MAX', 'g-saluda', 0.7, -0.2, 'codigo', ['#1a1a24', '#5a6a7a', '#c9d6e3']],
-  ['colon', '¡Tierra a la', 'VISTA!', 'g-saluda', 1.0, 0.25, 'mar', ['#04283a', '#1a7ab5', '#ffe9b0']],
-  ['claude', 'Hecho por', 'CLAUDE', 'g-habla', 1.0, -0.2, 'rayos', ['#3a1a08', '#d97b4a', '#ffd9b0']],
+  ['angeles', 'Ángeles', 'PEÑA', 'g-baila', 1.3, 0.3, 'rayos', ['#3a1a02', '#e08a10', '#ffe08a']],
+  ['franba', 'El hijo del', 'CIBER', 'g-habla', 0.9, -0.15, 'ciber', ['#3a1a02', '#e08a10', '#ffe08a']],
+  ['julo', 'Julo', 'DEPLOY', 'g-musculos', 1.1, 0.25, 'codigo', ['#1d0636', '#8a3cf0', '#e3c2ff']],
+  ['glinsky', 'Profe', 'GLINSKY', 'g-habla', 1.2, -0.25, 'exponencial', ['#1d0636', '#8a3cf0', '#e3c2ff']],
+  ['faur', 'Una más y me', 'QUEDO', 'g-baila', 1.6, 0.2, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
+  ['volcho', '¿Quién? El', 'VOLCHO', 'g-baila', 0.8, -0.3, 'espiral', ['#1d0636', '#8a3cf0', '#e3c2ff']],
+  ['olcho', 'La', 'RATA', 'g-musculos', 1.2, 0.2, 'comic', ['#051634', '#1f5fd0', '#9cc8ff']],
+  ['sandra', 'Caso', 'BERNSTEIN', 'g-habla', 1.0, 0.15, 'estrellas', ['#051634', '#1f5fd0', '#9cc8ff']],
+  ['angie', 'Nacho y', 'ANGIE', 'g-saluda', 0.9, -0.2, 'corazones', ['#051634', '#1f5fd0', '#9cc8ff']],
+  ['capitan', 'Capitán', 'MATE', 'g-festeja', 0.9, 0.2, 'rayos', ['#16191e', '#56616d', '#e2e8ee']],
+  ['chapa', 'Chapa', 'MAX', 'g-saluda', 0.7, -0.2, 'codigo', ['#16191e', '#56616d', '#e2e8ee']],
+  ['colon', '¡Tierra a la', 'VISTA!', 'g-saluda', 1.0, 0.25, 'mar', ['#16191e', '#56616d', '#e2e8ee']],
+  ['claude', 'Hecho por', 'CLAUDE', 'g-habla', 1.0, -0.2, 'rayos', ['#16191e', '#56616d', '#e2e8ee']],
 ];
 (async () => {
   const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });

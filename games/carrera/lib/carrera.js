@@ -4,6 +4,7 @@
 // Los bots son los NPC de cadalado y se calculan igual en todos lados (pista.js).
 import { crearJuego, idPublico, entero } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
 import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
 import { rutaBot, rng, ordenLargada, LIMITE_S, COLORES, MAPAS } from '../public/js/pista.js';
@@ -256,14 +257,18 @@ export const carrera = crearJuego({
     const host = r.jugadores[r.host];
     return { titulo: host ? `Full Gays de ${host.nombre}` : 'Full Gays', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
   },
-  async despues(r, antes) {
+  async despues(r, antes, ctx) {
     if (r.fase !== 'podio' || antes.fase === 'podio') return;
     const total = r.resultados.length;
+    const pagos = [];
     for (const pid of r.participantes) {
       const j = r.jugadores[pid];
-      if (!j?.uid) continue;
+      if (!j) continue;
       const pos = r.resultados.findIndex((x) => x.id === idPublico(pid)) + 1;
       const yo = r.resultados[pos - 1];
+      const gano = pos === 1 && yo?.paso;
+      pagos.push({ nombre: j.nombre, monto: await premiar(pid, j.uid, gano ? 'victoria' : 'derrota', pos > 0 ? (total - pos) * 60 + ((yo?.ronda ?? 1) - 1) * 150 : 0) });
+      if (!j.uid) continue;
       await registrarPartida(j.uid, {
         juego: 'carrera',
         sala: r.code,
@@ -274,6 +279,8 @@ export const carrera = crearJuego({
         rivales: r.resultados.filter((x) => x.id !== idPublico(pid)).map((x) => x.nombre).slice(0, 6),
       });
     }
+    const aviso = avisoPremios(pagos);
+    if (aviso) ctx?.sistema?.(aviso);
   },
   // Plan B si dos navegadores no se pueden conectar directo: se pasan la posición por acá (sin candado).
   async rutas(ruta, request, { json, readJson, limpiarPid }) {

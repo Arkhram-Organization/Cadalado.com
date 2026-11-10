@@ -669,6 +669,8 @@ export const casino = crearJuego({
         const { ayuda } = await import('./fichas.js');
         return json({ saldo: await ayuda(q) });
       }
+      const { cargaEspecial } = await import('../../../shared/premios.js');
+      await cargaEspecial(u).catch(() => 0);
       return json({ saldo: await saldo(q), cuenta: !!u });
     }
     return null;

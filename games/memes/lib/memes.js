@@ -3,6 +3,7 @@
 import { PLANTILLAS } from '../public/js/plantillas.js';
 import { crearJuego, idPublico, mezclar, entero } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { textosBot, nombresBots, votoBot, reaccionBot, MAX_BOTS } from './bots.js';
 
 const POR_ID = new Map(PLANTILLAS.map((p) => [p.id, p]));
@@ -267,24 +268,30 @@ export const memes = crearJuego({
     const host = r.jugadores[r.host];
     return { titulo: host ? `Sala de ${host.nombre}` : 'Sala de memes', fase: r.fase, jugadores: Object.keys(r.jugadores).length, ronda: r.ronda, rondas: r.rondas };
   },
-  async despues(r, antes) {
+  async despues(r, antes, ctx) {
     if (r.fase !== 'final' || antes.fase === 'final') return;
     const tabla = Object.entries(r.puntos).sort((a, b) => b[1] - a[1]);
     const max = tabla[0]?.[1] ?? 0;
     const ganadores = tabla.filter(([, n]) => n === max).length;
+    const pagos = [];
     for (const [pid, pts] of tabla) {
       const j = r.jugadores[pid];
-      if (!j?.uid) continue;
+      if (!j) continue;
+      const resultado = pts === max ? (ganadores > 1 ? 'tablas' : 'victoria') : 'derrota';
+      pagos.push({ nombre: j.nombre, monto: await premiar(pid, j.uid, resultado, pts * 40) });
+      if (!j.uid) continue;
       await registrarPartida(j.uid, {
         juego: 'memes',
         sala: r.code,
         url: `/memes/sala/${r.code}`,
-        resultado: pts === max ? (ganadores > 1 ? 'tablas' : 'victoria') : 'derrota',
+        resultado,
         detalle: `${r.rondas} rondas`,
         marcador: `${pts} pts · ${tabla.findIndex(([p]) => p === pid) + 1}º de ${tabla.length}`,
         rivales: tabla.filter(([p]) => p !== pid).map(([p]) => nombreDe(r, p)),
       });
     }
+    const aviso = avisoPremios(pagos);
+    if (aviso) ctx?.sistema?.(aviso);
   },
 });
 

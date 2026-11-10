@@ -92,6 +92,7 @@ test('lobby: sala pública aparece y partida rápida la encuentra', async () => 
 
 test('apuesta de fichas: se propone, se acepta, se activa al empezar y el ganador cobra', async () => {
   const { saldo, quien } = await import('../../casino/lib/fichas.js');
+  const { PREMIOS } = await import('../../../shared/premios.js');
   const P = 'pidApuestaP' + Date.now();
   const Q = 'pidApuestaQ' + Date.now();
   const code = await sala.crearSala({ mode: '1v1', pid: P, name: 'Pepa' });
@@ -101,12 +102,12 @@ test('apuesta de fichas: se propone, se acepta, se activa al empezar y el ganado
   assert.equal((await act(P, { t: 'apuesta-proponer', monto: 50 })).error, 'La apuesta va de 100 a 50.000 fichas');
   let res = await act(P, { t: 'apuesta-proponer', monto: 2000 });
   assert.equal(res.r.apuesta.monto, 2000);
-  assert.equal(await saldo(quien(P)), 8000);
+  assert.equal(await saldo(quien(P)), 6000);
   await act(Q, { t: 'apuesta-aceptar' });
-  assert.equal(await saldo(quien(Q)), 8000);
+  assert.equal(await saldo(quien(Q)), 6000);
   // salir y volver a entrar
   await act(Q, { t: 'apuesta-salir' });
-  assert.equal(await saldo(quien(Q)), 10000);
+  assert.equal(await saldo(quien(Q)), 8000);
   await act(Q, { t: 'apuesta-aceptar' });
   res = await act(P, { t: 'start' });
   assert.equal(res.r.status, 'playing');
@@ -118,11 +119,11 @@ test('apuesta de fichas: se propone, se acepta, se activa al empezar y el ganado
     r.status = 'ended';
   });
   assert.equal(res.r.apuesta, null);
-  assert.equal(await saldo(quien(Q)), 12000);
-  assert.equal(await saldo(quien(P)), 8000);
+  assert.equal(await saldo(quien(Q)), 10000 + PREMIOS.victoria);
+  assert.equal(await saldo(quien(P)), 6000 + PREMIOS.derrota);
   // si nadie acepta, al empezar se devuelve
   await act(P, { t: 'apuesta-proponer', monto: 1000 });
   res = await act(P, { t: 'rematch' });
   assert.equal(res.r.apuesta, null);
-  assert.equal(await saldo(quien(P)), 8000);
+  assert.equal(await saldo(quien(P)), 6000 + PREMIOS.derrota);
 });

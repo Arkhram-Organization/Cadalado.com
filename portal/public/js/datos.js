@@ -41,7 +41,7 @@ export const JUEGOS = [
     nuevo: true,
     url: '/casino/',
     linea: 'Ruleta, blackjack y tragamonedas con fichas de mentira, en mesas compartidas.',
-    datos: [['Jugadores', 'Todos en la misma mesa'], ['Juegos', 'Ruleta · Blackjack · Slots'], ['Fichas', '10.000 para arrancar']],
+    datos: [['Jugadores', 'Todos en la misma mesa'], ['Juegos', 'Ruleta · Blackjack · Slots'], ['Fichas', '8.000 para arrancar']],
     color: '#f2c94c',
     captura: '/img/casino-poster-chico.webp',
     poster: '/img/casino-poster.webp',

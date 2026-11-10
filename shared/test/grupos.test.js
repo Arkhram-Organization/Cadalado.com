@@ -65,7 +65,7 @@ test('tienda: se compra una skin en venta con las fichas del casino y no se pued
   const a = cliente('11.0.0.9');
   const pid = 'pidtienda' + rnd();
   let r = await a('GET', `/tienda?pid=${pid}`);
-  assert.equal(r.data.saldo, 10_000);
+  assert.equal(r.data.saldo, 8_000);
   assert.ok(r.data.skins.find((s) => s.id === 'mati').precio > r.data.skins.find((s) => s.id === 'capitan').precio, 'la mítica es la más cara');
   assert.equal(r.data.destacadas.length, 3);
   assert.equal(r.data.diarias.length, 4);
@@ -73,14 +73,14 @@ test('tienda: se compra una skin en venta con las fichas del casino y no se pued
   const venta = [...r.data.destacadas, ...r.data.diarias];
   const barata = r.data.skins.filter((s) => r.data.diarias.includes(s.id)).sort((x, y) => x.precio - y.precio)[0];
   r = await a('POST', '/tienda/comprar', { pid, skin: barata.id });
-  assert.equal(r.data.saldo, 10_000 - barata.precio);
+  assert.equal(r.data.saldo, 8_000 - barata.precio);
   assert.deepEqual(r.data.mias, [barata.id]);
   r = await a('POST', '/tienda/comprar', { pid, skin: barata.id });
-  assert.equal(r.data.saldo, 10_000 - barata.precio, 'comprarla otra vez no cobra');
+  assert.equal(r.data.saldo, 8_000 - barata.precio, 'comprarla otra vez no cobra');
   const fuera = ['capitan', 'chapa', 'colon', 'claude', 'angie', 'olcho', 'sandra'].find((id) => !venta.includes(id));
   r = await a('POST', '/tienda/comprar', { pid, skin: fuera });
   assert.equal(r.status, 400, 'lo que no está en venta hoy no se compra');
-  assert.equal((await a('GET', `/tienda?pid=${pid}`)).data.saldo, 10_000 - barata.precio);
+  assert.equal((await a('GET', `/tienda?pid=${pid}`)).data.saldo, 8_000 - barata.precio);
 });
 
 test('tienda: la rotación es fija por día, cambia entre días y vende solo un par', async () => {
@@ -93,4 +93,37 @@ test('tienda: la rotación es fija por día, cambia entre días y vende solo un 
     assert.equal(new Set(v).size, 7);
     assert.ok(v.length < SKINS.length / 2);
   }
+});
+
+test('tienda: regalar una skin de hoy a un amigo y le avisa', async () => {
+  const a = cliente('11.0.0.21'), b = cliente('11.0.0.22');
+  const ua = 'rega' + rnd(), ub = 'regb' + rnd();
+  await a('POST', '/registro', { usuario: ua, nombre: 'Ana', clave: 'clave123' });
+  await b('POST', '/registro', { usuario: ub, nombre: 'Beto', clave: 'clave123' });
+  const pa = 'pidregaloA' + rnd(), pb = 'pidregaloB' + rnd();
+  let r = await a('GET', `/tienda?pid=${pa}`);
+  const id = r.data.diarias.map((x) => r.data.skins.find((s) => s.id === x)).sort((x, y) => x.precio - y.precio)[0].id;
+  assert.equal((await a('POST', '/tienda/regalar', { pid: pa, skin: id, para: ub })).status, 403, 'solo a amigos');
+  await a('POST', '/amigos', { accion: 'pedir', usuario: ub });
+  await b('POST', '/amigos', { accion: 'aceptar', usuario: ua });
+  r = await a('POST', '/tienda/regalar', { pid: pa, skin: id, para: ub });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.para, 'Beto');
+  r = await b('GET', `/tienda?pid=${pb}`);
+  assert.ok(r.data.mias.includes(id), 'le llegó');
+  assert.equal(r.data.regalos[0].de, 'Ana');
+  assert.equal((await b('GET', `/tienda?pid=${pb}`)).data.regalos.length, 0, 'el aviso sale una sola vez');
+  assert.equal((await a('POST', '/tienda/regalar', { pid: pa, skin: id, para: ub })).status, 400, 'ya la tiene');
+});
+
+test('premios: cada partida deja fichas, más si ganás, con tope diario', async () => {
+  const { premiar, PREMIOS, TOPE_DIARIO } = await import('../premios.js');
+  const { saldo, quien } = await import('../../games/casino/lib/fichas.js');
+  const pid = 'pidpremio' + rnd();
+  assert.equal(await premiar(pid, null, 'victoria', 100), PREMIOS.victoria + 100);
+  assert.equal(await premiar(pid, null, 'derrota'), PREMIOS.derrota);
+  assert.equal(await premiar(pid, null, 'abortada'), 0);
+  assert.equal(await saldo(quien(pid)), 8_000 + PREMIOS.victoria + 100 + PREMIOS.derrota);
+  for (let i = 2; i < TOPE_DIARIO; i++) await premiar(pid, null, 'derrota');
+  assert.equal(await premiar(pid, null, 'victoria'), 0, 'pasado el tope no paga');
 });

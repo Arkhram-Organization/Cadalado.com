@@ -6,6 +6,7 @@ import { createCore, findTimeControl } from '../public/js/core.js';
 import { getStore } from '../../../shared/store.js';
 import { cleanName } from './util.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { premiar } from '../../../shared/premios.js';
 
 export const core = createCore(Chess);
 
@@ -147,7 +148,9 @@ async function saveHistory(room) {
   const r = g.result;
   for (const c of ['w', 'b']) {
     const p = g.players[c];
-    if (!p?.uid) continue;
+    if (!p) continue;
+    if (r.reason !== 'aborted') await premiar(p.pid, p.uid, !r.winner ? 'tablas' : r.winner === c ? 'victoria' : 'derrota', Math.min(g.moves.length, 80) * 5);
+    if (!p.uid) continue;
     const rival = g.players[c === 'w' ? 'b' : 'w'];
     await registrarPartida(p.uid, {
       juego: 'ajedrez',

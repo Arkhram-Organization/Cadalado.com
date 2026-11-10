@@ -49,6 +49,12 @@ export async function handle(request) {
       try { return json(await tienda.comprar(pid, await c.usuarioActual(request), String(body.skin || ''))); }
       catch (e) { return json({ error: e.message }, e.status || 400); }
     }
+    if (ruta === '/tienda/regalar' && metodo === 'POST') {
+      const pid = String(body.pid || '');
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(pid)) return json({ error: 'Identificador inválido' }, 400);
+      try { return json(await tienda.regalar(pid, await c.usuarioActual(request), String(body.skin || ''), String(body.para || ''))); }
+      catch (e) { return json({ error: e.message }, e.status || 400); }
+    }
     if (ruta === '/look' && metodo === 'POST') {
       return json({ usuario: await c.guardarLook(await necesitaCuenta(request), body.look) });
     }

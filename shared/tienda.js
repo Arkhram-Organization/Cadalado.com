@@ -1,6 +1,8 @@
 // La tienda de skins: los personajes del elenco se compran con las mismas fichas del casino de Dobro.
 // Las skins compradas quedan en tu cuenta (o en tu dispositivo, si jugás sin cuenta).
 import { getStore } from './store.js';
+import { usuarioPorNombre } from './cuenta.js';
+import { cargaEspecial } from './premios.js';
 import { quien, saldo, mover } from '../games/casino/lib/fichas.js';
 
 export const RAREZAS = {
@@ -10,28 +12,28 @@ export const RAREZAS = {
   legendaria: { nombre: 'Legendaria', color: '#ffb020' },
   mitica: { nombre: 'Mítica', color: '#ff3b8a' },
 };
-// Cuanto más exclusiva, más cara. Las que tienen modelo 3D propio son las mejores.
+// Cuanto más exclusiva, más cara: míticas 12.500, legendarias 7.500, épicas 5.500.
 // Cada una con su frase célebre, que sale en la portada.
 export const SKINS = [
   { id: 'capitan', rareza: 'comun', precio: 800, frase: '¡Ningún pibe se queda sin mate!' },
   { id: 'chapa', rareza: 'comun', precio: 800, frase: 'Mi batería está al 3%. Igual corro.' },
   { id: 'colon', rareza: 'comun', precio: 1_200, frase: '¡Tierra a la vista!' },
   { id: 'claude', rareza: 'comun', precio: 1_200, frase: 'Si encuentran un bug, era una función.' },
-  { id: 'angie', rareza: 'rara', precio: 3_500, frase: '¿Vieron a Nacho? Qué lindo que es Nacho.' },
-  { id: 'olcho', rareza: 'rara', precio: 3_500, frase: 'Hola, soy la rata. Jaja.' },
-  { id: 'sandra', rareza: 'rara', precio: 4_000, frase: 'Desde el caso Bernstein no volví a ser la misma.' },
-  { id: 'franba', rareza: 'epica', precio: 7_500, frase: 'No me estoy quedando pelado. Es la luz.', nuevo: true },
-  { id: 'julo', rareza: 'epica', precio: 7_500, frase: 'Hice un deploy en la heladera. Anda.' },
-  { id: 'faur', rareza: 'epica', precio: 7_500, frase: 'Uno más y me voy. Mentira, me quedo.' },
-  { id: 'volcho', rareza: 'epica', precio: 8_000, frase: '¿Quién? El volcho.' },
-  { id: 'glinsky', rareza: 'epica', precio: 8_500, frase: 'Esto es una tecnología exponencial, ¿se dan cuenta?' },
-  { id: 'angeles', rareza: 'legendaria', precio: 15_000, frase: 'Mi stack: HTML, CSS y danza contemporánea.' },
-  { id: 'dobro', rareza: 'legendaria', precio: 18_000, frase: 'La casa siempre gana. La casa soy yo.' },
-  { id: 'mati', rareza: 'mitica', precio: 40_000, frase: 'Queque.' },
+  { id: 'angie', rareza: 'rara', precio: 3_000, frase: '¿Vieron a Nacho? Qué lindo que es Nacho.' },
+  { id: 'olcho', rareza: 'rara', precio: 3_000, frase: 'Hola, soy la rata. Jaja.' },
+  { id: 'sandra', rareza: 'rara', precio: 3_500, frase: 'Desde el caso Bernstein no volví a ser la misma.' },
+  { id: 'franba', rareza: 'legendaria', precio: 7_500, frase: 'No me estoy quedando pelado. Es la luz.', nuevo: true },
+  { id: 'julo', rareza: 'epica', precio: 5_500, frase: 'Hice un deploy en la heladera. Anda.' },
+  { id: 'faur', rareza: 'epica', precio: 5_500, frase: 'Uno más y me voy. Mentira, me quedo.' },
+  { id: 'volcho', rareza: 'epica', precio: 5_500, frase: '¿Quién? El volcho.' },
+  { id: 'glinsky', rareza: 'epica', precio: 5_500, frase: 'Esto es una tecnología exponencial, ¿se dan cuenta?' },
+  { id: 'angeles', rareza: 'legendaria', precio: 7_500, frase: 'Mi stack: HTML, CSS y danza contemporánea.' },
+  { id: 'dobro', rareza: 'mitica', precio: 12_500, frase: 'La casa siempre gana. La casa soy yo.' },
+  { id: 'mati', rareza: 'mitica', precio: 12_500, frase: 'Queque.' },
 ];
 
 // La tienda rota todos los días a la medianoche de Argentina: no está todo en venta, solo un par.
-// 3 destacadas (una de las top, las demás épicas para arriba) y 4 diarias (comunes y raras, alguna épica).
+// 3 destacadas (una mítica o legendaria, la nueva y una épica) y 4 diarias (comunes y raras, alguna épica).
 const DIA_MS = 86_400_000, ARG_MS = 3 * 3_600_000;
 export const diaDeHoy = (ahora = Date.now()) => Math.floor((ahora - ARG_MS) / DIA_MS);
 function mezclar(lista, semilla) {
@@ -42,7 +44,7 @@ function mezclar(lista, semilla) {
   return a;
 }
 export function rotacion(dia = diaDeHoy()) {
-  const top = mezclar(SKINS.filter((s) => s.rareza === 'mitica' || s.rareza === 'legendaria'), dia);
+  const top = mezclar(SKINS.filter((s) => (s.rareza === 'mitica' || s.rareza === 'legendaria') && !s.nuevo), dia);
   const fijas = SKINS.filter((s) => s.nuevo);
   const epicas = mezclar(SKINS.filter((s) => s.rareza === 'epica' && !s.nuevo), dia * 31 + 7);
   const destacadas = [top[0], ...fijas, ...epicas].slice(0, 3);
@@ -60,8 +62,9 @@ export async function mias(q) {
 export async function tienda(pid, u) {
   const q = quien(pid, u?.id);
   const dia = diaDeHoy(), rot = rotacion(dia);
+  await cargaEspecial(u).catch(() => 0);
   return {
-    saldo: await saldo(q), mias: await mias(q), rarezas: RAREZAS, cuenta: !!u,
+    saldo: await saldo(q), mias: await mias(q), rarezas: RAREZAS, cuenta: !!u, regalos: u ? await regalosNuevos(u) : [],
     skins: SKINS,
     ...rot,
     renueva: (dia + 1) * DIA_MS + ARG_MS,
@@ -79,6 +82,34 @@ export async function comprar(pid, u, id) {
   await getStore().set(clave(q), JSON.stringify(nuevas), 365 * 86400);
   return { saldo: restan, mias: nuevas };
 }
+
+// ---------- regalos: comprás una skin de la tienda de hoy y le llega a un amigo ----------
+const err = (m, status = 400) => Object.assign(new Error(m), { status });
+export async function regalar(pid, u, id, para) {
+  if (!u) throw err('Para regalar tenés que entrar con tu cuenta.', 401);
+  const skin = SKINS.find((s) => s.id === id);
+  if (!skin) throw err('Esa skin no existe', 404);
+  if (!enVenta().includes(id)) throw err('Hoy no está en la tienda. Volvé mañana.');
+  const otro = await usuarioPorNombre(String(para || ''));
+  if (!otro || otro.id === u.id) throw err('Elegí a un amigo.', 404);
+  if ((await getStore().hget(`amigos:${u.id}`, otro.id)) !== 'amigo') throw err('Solo se le regala a tus amigos.', 403);
+  const qOtro = quien(null, otro.id);
+  const suyas = await mias(qOtro);
+  if (suyas.includes(id)) throw err(`${otro.nombre} ya la tiene.`);
+  const q = quien(pid, u.id);
+  const restan = await mover(q, -skin.precio);
+  await getStore().set(clave(qOtro), JSON.stringify([...suyas, id]), 365 * 86400);
+  await getStore().lpush(`regalos:${otro.id}`, JSON.stringify({ de: u.nombre, usuario: u.usuario, skin: id, ts: Date.now() }), 50, 365 * 86400);
+  return { saldo: restan, mias: await mias(q), para: otro.nombre };
+}
+async function regalosNuevos(u) {
+  const store = getStore();
+  const visto = Number(await store.get(`regalos-visto:${u.id}`)) || 0;
+  const lista = (await store.lrange(`regalos:${u.id}`, 0, 9)).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter((x) => x && x.ts > visto);
+  if (lista.length) await store.set(`regalos-visto:${u.id}`, String(lista[0].ts), 365 * 86400);
+  return lista;
+}
+
 // ¿Puede usar esta skin? (las del elenco hay que comprarlas)
 export async function puedeUsar(pid, u, id) {
   if (!id) return true;

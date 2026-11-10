@@ -3,6 +3,7 @@
 // los bots (NPC de cadalado) los simula el navegador del anfitrión y él avisa sus bajas.
 import { crearJuego, idPublico } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
 import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
@@ -314,15 +315,19 @@ export const royale = crearJuego({
     const host = r.jugadores[r.host];
     return { titulo: host ? `Battle Shmitz de ${host.nombre}` : 'Battle Shmitz', fase: r.fase, jugadores: Object.keys(r.jugadores).length, bots: r.bots };
   },
-  async despues(r, antes) {
+  async despues(r, antes, ctx) {
     if (r.fase !== 'fin' || antes.fase === 'fin') return;
     const total = r.participantes.length + r.botNpc.length;
+    const pagos = [];
     for (const pid of r.participantes) {
       const j = r.jugadores[pid];
-      if (!j?.uid) continue;
+      if (!j) continue;
       const yo = idPublico(pid);
       const gano = r.ganador === yo;
       const b = r.bajas.find((x) => x.id === yo);
+      const puesto = gano ? 1 : b?.puesto || total;
+      pagos.push({ nombre: j.nombre, monto: await premiar(pid, j.uid, gano ? 'victoria' : 'derrota', (r.kills[yo] || 0) * 120 + (total - puesto) * 40) });
+      if (!j.uid) continue;
       await registrarPartida(j.uid, {
         juego: 'royale',
         sala: r.code,
@@ -333,6 +338,8 @@ export const royale = crearJuego({
         rivales: [...r.participantes.filter((p) => p !== pid).map((p) => r.jugadores[p]?.nombre), ...r.botNpc.map((_, i) => nombreBot(r, i))].filter(Boolean).slice(0, 6),
       });
     }
+    const aviso = avisoPremios(pagos);
+    if (aviso) ctx?.sistema?.(aviso);
   },
   // Plan B de posiciones (si dos navegadores no se conectan directo). El anfitrión manda también sus bots.
   async rutas(ruta, request, { json, readJson, limpiarPid }) {

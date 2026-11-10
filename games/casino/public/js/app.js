@@ -94,7 +94,7 @@ async function salon() {
       <section class="panel">
         <h2 style="font-size:22px;margin-bottom:12px">Entrar con código</h2>
         <form class="fila-form" data-unirse><input class="entrada" maxlength="16" placeholder="Ej: K7QX2" autocapitalize="characters" required><button class="btn">Entrar</button></form>
-        <p class="etq" style="margin-top:10px">Arrancás con 10.000 fichas. Si te quedás sin nada, la casa te presta.</p>
+        <p class="etq" style="margin-top:10px">Arrancás con 8.000 fichas y ganás más en cada partida de cualquier juego. Si te quedás sin nada, la casa te presta.</p>
       </section>
     </div>
   </div>`;

@@ -9,6 +9,7 @@ import { MODES, newGame, act, nextHand, rematch, viewFor, waitingFor, team, clos
 import { botAction, botSena, botClaims } from '../public/js/bot.js';
 import { getStore } from '../../../shared/store.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
+import { premiar } from '../../../shared/premios.js';
 import { quien, mover } from '../../casino/lib/fichas.js';
 import { NPCS } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
@@ -647,8 +648,10 @@ async function guardarHistorial(r) {
   const t = g.winner;
   for (let i = 0; i < r.seats.length; i++) {
     const s = r.seats[i];
-    if (!s?.uid) continue;
+    if (!s) continue;
     const mio = team(i);
+    if (!s.bot) await premiar(s.pid, s.uid, t == null ? 'tablas' : t === mio ? 'victoria' : 'derrota');
+    if (!s.uid) continue;
     await registrarPartida(s.uid, {
       juego: 'truco',
       sala: r.code,

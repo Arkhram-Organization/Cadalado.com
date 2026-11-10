@@ -2,7 +2,7 @@
 // Las operaciones son atómicas (INCRBY): dos mesas a la vez no pueden gastar las mismas fichas.
 import { getStore } from '../../../shared/store.js';
 
-export const INICIAL = 10_000;
+export const INICIAL = 8_000;
 const AYUDA = 2_000;
 const AYUDA_MS = 10 * 60_000;
 
