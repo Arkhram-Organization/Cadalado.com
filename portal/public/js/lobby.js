@@ -23,12 +23,12 @@ export async function montarLobby(raiz) {
   if (u) { cuenta.textContent = u.nombre; cuenta.href = '/club'; }
 
   // ---------------- entradas de los juegos
-  let modo = Math.max(0, JUEGOS.findIndex((j) => j.id === (localStorage.getItem('cadalado.modo') || 'royale')));
+  let modo = Math.max(0, JUEGOS.findIndex((j) => j.id === (localStorage.getItem('cadalado.modo') || 'casino')));
   const entradas = $('[data-entradas]', raiz);
-  // el casino va en el medio y grande (con la mesa de Dobro); cada juego con su imagen y su botón Jugar
+  // el casino va primero y grande (con la mesa de Dobro); cada juego con su imagen y su botón Jugar
   const orden = JUEGOS.map((j, i) => i).filter((i) => JUEGOS[i].id !== 'casino');
   const iCasino = JUEGOS.findIndex((j) => j.id === 'casino');
-  if (iCasino >= 0) orden.splice(Math.floor(orden.length / 2), 0, iCasino);
+  if (iCasino >= 0) orden.unshift(iCasino);
   entradas.innerHTML = orden.map((i) => { const j = JUEGOS[i]; return `<div class="lb-entrada ${j.id === 'casino' ? 'grande' : ''}" data-i="${i}" style="--c:${j.color}" tabindex="0" role="button" aria-label="Ver ${esc(j.nombre)}">
       <span class="lb-img"><img src="${j.captura}" alt="" loading="lazy"><span class="lb-sala" data-sala="${j.id}"></span></span>
       <span class="lb-txt"><b>${esc(j.nombre)}</b><small>${esc(j.linea)}</small></span>

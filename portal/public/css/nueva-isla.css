@@ -6,3 +6,34 @@
 .game-jugar{background:var(--lima);color:#1b2213;font:800 12px/1 'Barlow Condensed',sans-serif;letter-spacing:1px;text-transform:uppercase;padding:7px 14px;border-radius:5px}
 .game:hover .game-jugar{filter:brightness(1.08)}
 .game-meta{align-items:center}
+/* El casino de Dobro: ocupa los 3 lugares de la fila, todo dorado y animado */
+@property --oro-giro{syntax:'<angle>';inherits:false;initial-value:0deg}
+.game.casino-oro{grid-column:1/-1;position:relative;isolation:isolate;display:grid;grid-template-columns:1.55fr 1fr;min-height:360px;border:0;border-radius:12px;padding:3px;overflow:hidden;background:conic-gradient(from var(--oro-giro),#7a5410,#f2c94c,#fff3c0,#d4a017,#7a5410,#f2c94c,#fff3c0,#7a5410);animation:oro-giro 5s linear infinite,oro-latido 3s ease-in-out infinite;box-shadow:0 0 30px #f2c94c44,0 20px 60px #000a}
+.game.casino-oro:hover{transform:translateY(-6px) scale(1.005);box-shadow:0 0 60px #f2c94c88,0 24px 70px #000c}
+.casino-oro>.game-art,.casino-oro>.game-body{position:relative;z-index:1}
+.casino-oro .game-art{height:auto;border-radius:10px 0 0 10px;background:#2a1a08}
+.casino-oro .game-art img{filter:saturate(1.15) contrast(1.05)}
+.casino-oro .game-art:after{inset:0;background:linear-gradient(90deg,transparent 55%,#1a1206 100%),linear-gradient(transparent 60%,#1a1206cc)}
+.casino-oro .game-art::before{content:'';position:absolute;z-index:2;inset:0;background:linear-gradient(105deg,transparent 35%,#fff6c855 48%,#ffffffaa 50%,#fff6c855 52%,transparent 65%);transform:translateX(-120%);animation:oro-brillo 3.6s ease-in-out infinite;pointer-events:none}
+.casino-oro .game-body{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:30px 34px;border-radius:0 10px 10px 0;background:radial-gradient(ellipse at 70% 0%,#4a3510 0%,#1f1608 55%,#140e05 100%)}
+.oro-titulo small{font:700 11px Barlow,sans-serif;letter-spacing:3px;text-transform:uppercase;color:#f2c94c;opacity:.85}
+.casino-oro .game-body h3{font:800 clamp(40px,4.4vw,64px)/.92 'Barlow Condensed',sans-serif;margin:8px 0 4px;background:linear-gradient(100deg,#a8761a 0%,#f2c94c 25%,#fffbe6 40%,#f2c94c 55%,#b8862a 75%,#f2c94c 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:oro-texto 4s linear infinite;filter:drop-shadow(0 2px 12px #f2c94c55)}
+.casino-oro .game-body p{color:#e9dcb8;font-size:15px;min-height:0;margin:8px 0 14px}
+.oro-juegos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.oro-juegos span{border:1px solid #f2c94c66;background:#f2c94c14;color:#ffe9a8;border-radius:100px;padding:6px 13px;font:700 12px Barlow,sans-serif;letter-spacing:1px;text-transform:uppercase}
+.casino-oro .game-meta{border-top-color:#f2c94c33;color:#e6d29c;font-size:11px}
+.casino-oro .game-jugar{background:linear-gradient(180deg,#ffe58a,#f2c94c 45%,#c9961e);color:#2a1a04;font-size:17px;padding:11px 26px;border-radius:7px;box-shadow:0 0 0 0 #f2c94caa;animation:oro-pulso 1.8s infinite}
+.tag.oro{background:linear-gradient(90deg,#c9961e,#f2c94c);color:#2a1a04;border:0;font-size:10px}
+.oro-luz{position:absolute;z-index:2;top:-30%;left:-10%;width:60%;height:160%;pointer-events:none;background:radial-gradient(ellipse,#ffe9a826,transparent 60%);animation:oro-luz 7s ease-in-out infinite alternate}
+.oro-chispas{position:absolute;z-index:3;inset:0;pointer-events:none;overflow:hidden;border-radius:12px}
+.oro-chispas i{position:absolute;bottom:-12px;left:calc(var(--i) * 7.1% + 2%);width:6px;height:6px;border-radius:50%;background:#fff3c0;box-shadow:0 0 10px 3px #f2c94ccc;opacity:0;animation:oro-chispa calc(3.2s + var(--i) * .23s) linear infinite;animation-delay:calc(var(--i) * -.61s)}
+.oro-chispas i:nth-child(3n){width:4px;height:4px}.oro-chispas i:nth-child(4n){width:8px;height:8px;border-radius:1px;transform:rotate(45deg)}
+@keyframes oro-giro{to{--oro-giro:360deg}}
+@keyframes oro-latido{50%{box-shadow:0 0 55px #f2c94c77,0 20px 60px #000a}}
+@keyframes oro-brillo{0%,15%{transform:translateX(-120%)}60%,100%{transform:translateX(120%)}}
+@keyframes oro-texto{to{background-position:-250% 0}}
+@keyframes oro-pulso{0%{box-shadow:0 0 0 0 #f2c94caa}70%{box-shadow:0 0 0 14px #f2c94c00}100%{box-shadow:0 0 0 0 #f2c94c00}}
+@keyframes oro-luz{to{transform:translateX(150%)}}
+@keyframes oro-chispa{0%{transform:translateY(0) scale(.6);opacity:0}10%{opacity:1}80%{opacity:.9}100%{transform:translateY(-400px) translateX(20px) scale(1.1);opacity:0}}
+@media(max-width:820px){.game.casino-oro{grid-template-columns:1fr;min-height:0}.casino-oro .game-art{height:230px;border-radius:10px 10px 0 0}.casino-oro .game-art:after{background:linear-gradient(transparent 50%,#1a1206)}.casino-oro .game-body{border-radius:0 0 10px 10px;padding:22px}}
+@media(prefers-reduced-motion:reduce){.game.casino-oro,.casino-oro *{animation:none!important}}
