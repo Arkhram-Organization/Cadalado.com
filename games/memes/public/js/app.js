@@ -4,7 +4,7 @@ import { PLANTILLAS } from './plantillas.js';
 
 const PL = new Map(PLANTILLAS.map((p) => [p.id, p]));
 const app = document.querySelector('#app');
-const COLOR = '#ff4fa3';
+const COLOR = '#c5f04a';
 const VOTOS = [
   [1, '1', 'Nada'],
   [2, '2', 'Meh'],
@@ -40,7 +40,7 @@ function ruteo() {
 function memeHtml(plantillaId, textos, { editor = false } = {}) {
   const p = PL.get(plantillaId);
   if (!p) return '<div class="meme" style="aspect-ratio:1"></div>';
-  return `<div class="meme" style="aspect-ratio:${p.w}/${p.h}">
+  return `<div class="meme" style="aspect-ratio:${p.w}/${p.h};--meme-ratio:${p.w / p.h}">
     <img src="${esc(p.url)}" alt="${esc(p.nombre)}" referrerpolicy="no-referrer" draggable="false">
     ${textos.map((t, i) => textoHtml(t, i, editor)).join('')}
   </div>`;
@@ -292,9 +292,9 @@ function abrirSala(code) {
       const v = est.voto;
       c.innerHTML = `${cabeza(`Meme ${v.idx + 1} de ${v.total}`, `<span class="chip">${v.votaron}/${v.pueden} votaron</span>`)}
         <div class="marco-meme">${memeHtml(v.plantilla, v.textos)}</div>
-        ${v.esMio ? '<div class="secreto">Este es tuyo. No digas nada y mirá cómo lo votan.</div>' : `<div class="votos">${VOTOS.map(([n, e, t]) => `<button data-voto="${n}" class="${v.miVoto === n ? 'on' : ''}"><span>${e}</span>${t}</button>`).join('')}</div>`}`;
+        ${v.esMio ? '<div class="secreto">Este es tuyo. No digas nada y mirá cómo lo votan.</div>' : `<div class="votos" role="group" aria-label="Puntuar meme">${VOTOS.map(([n, e, t]) => `<button type="button" data-voto="${n}" aria-label="${n} puntos: ${t}" aria-pressed="${v.miVoto === n}" class="${v.miVoto === n ? 'on' : ''}"><span>${e}</span><b>${t}</b></button>`).join('')}</div>`}`;
       c.querySelectorAll('[data-voto]').forEach((b) => (b.onclick = () => {
-        c.querySelectorAll('[data-voto]').forEach((x) => x.classList.toggle('on', x === b));
+        c.querySelectorAll('[data-voto]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
         sala.enviar({ t: 'votar', n: Number(b.dataset.voto) });
       }));
       return;

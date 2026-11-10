@@ -8,6 +8,7 @@ export function montarBlackjack(zona, h) {
   let sel = 100;
   let est = null;
   let miLugar = null;
+  let sentandose = false;
   zona.innerHTML = `
     <div class="pano bj3d-pano">
       <div class="bj3d" data-escena><div class="bj3d-ayuda">Arrastrá para mirar la mesa · rueda para acercar</div><button class="btn btn-chico bj3d-full" data-full title="Pantalla completa">Pantalla completa</button></div>
@@ -85,6 +86,14 @@ export function montarBlackjack(zona, h) {
       const antes = est;
       est = e;
       const mio = e.asientos.findIndex((a) => a?.soyYo);
+      // Entrar a una mesa libre significa sentarse: se evita la pantalla previa de elección.
+      if (mio < 0 && !sentandose) {
+        const libre = e.asientos.findIndex((a) => !a);
+        if (libre >= 0) {
+          sentandose = true;
+          h.enviar({ t: 'sentarse', asiento: libre }).then(() => { sentandose = false; });
+        }
+      }
       if (mio !== miLugar) {
         miLugar = mio;
         mesa.mirarDesde(mio);
@@ -122,7 +131,7 @@ export function montarBlackjack(zona, h) {
     },
     reloj() {
       if (!est) return;
-      const total = { apuestas: 15000, jugando: 20000, banca: 950, pago: 6000 }[est.fase] || 1;
+      const total = { apuestas: 35000, jugando: 30000, banca: 950, pago: 6000 }[est.fase] || 1;
       const q = est.fase === 'espera' ? 0 : Math.max(0, est.fin - h.ahora());
       $('[data-reloj]').style.transform = `scaleX(${Math.min(1, q / total)})`;
       if (est.fase === 'apuestas') h.estadoMesa(`Hagan sus apuestas · ${Math.ceil(q / 1000)}`, 'abierta');

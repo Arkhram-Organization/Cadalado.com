@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { handle } from '../club-api.js';
+import { haxball } from '../../games/haxball/lib/haxball.js';
 
 function cliente(ip) {
   let cookie = '';
@@ -24,9 +25,16 @@ test('grupos: sin cuenta, lobby abierta, otro se une con la flechita, el líder 
   r = await b('POST', '/grupo', { pid: pb, nombre: 'Beto', accion: 'unirse', id });
   assert.equal(r.data.grupo.miembros.length, 2);
   assert.equal((await b('POST', '/grupo', { pid: pb, accion: 'jugar', url: '/royale/' })).status, 403);
-  await a('POST', '/grupo', { pid: pa, accion: 'jugar', url: '/haxball/sala/ABCDE' });
+  assert.equal((await b('POST', '/grupo', { pid: pb, accion: 'config', bots: 4 })).status, 403);
+  assert.equal((await a('POST', '/grupo', { pid: pa, accion: 'jugar', url: '/haxball/sala/ABCDE' })).status, 400);
+  await a('POST', '/grupo', { pid: pa, accion: 'juego', juego: 'haxball' });
+  await a('POST', '/grupo', { pid: pa, accion: 'config', bots: 2, minutos: 5, goles: 7 });
+  const creado = await haxball.handle(new Request('http://localhost/api/haxball/crear', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pid: pa, nombre: 'Ana', opciones: { bots: 2, minutos: 5, goles: 7 } }) }));
+  const { code } = await creado.json();
+  assert.equal((await a('POST', '/grupo', { pid: pa, accion: 'jugar', url: `/haxball/sala/${code}` })).status, 200);
   r = await b('GET', `/grupo?pid=${pb}&nombre=Beto`);
-  assert.equal(r.data.grupo.ir.url, '/haxball/sala/ABCDE');
+  assert.equal(r.data.grupo.ir.url, `/haxball/sala/${code}`);
+  assert.equal(r.data.grupo.config.goles, 7);
   // el líder se va: queda Beto de líder
   await a('POST', '/grupo', { pid: pa, accion: 'salir' });
   r = await b('GET', `/grupo?pid=${pb}&nombre=Beto`);

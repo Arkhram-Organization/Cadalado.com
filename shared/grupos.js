@@ -8,6 +8,7 @@ import { limpiarLook } from './public/look.js';
 const TTL = 3 * 3600;
 const VIVO_MS = 40_000; // si no aparece en 40 s, se fue
 const MAX = 8;
+const CONFIG_INICIAL = { royale:{bots:7}, carrera:{bots:5}, memes:{bots:2}, haxball:{bots:1,minutos:3,goles:3,estadio:'classic'}, casino:{tipo:'blackjack'} };
 const err = (m, s = 400) => new ErrorCuenta(m, s);
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };
 const codigo = () => Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
@@ -36,7 +37,7 @@ async function guardar(g) {
   return g;
 }
 const vista = (g, yo) => g && {
-  id: g.id, abierto: g.abierto, juego: g.juego, ir: g.ir, soyLider: g.lider === yo.k,
+  id: g.id, abierto: g.abierto, juego: g.juego, config: g.config || CONFIG_INICIAL[g.juego] || {}, ir: g.ir, soyLider: g.lider === yo.k,
   miembros: g.miembros.map((m) => ({ nombre: m.nombre, usuario: m.usuario || null, look: m.look, lider: m.k === g.lider, yo: m.k === yo.k })),
 };
 
@@ -70,7 +71,7 @@ export async function miGrupo(yo) {
   const s = getStore();
   let g = await leer(await s.get(`grupo-de:${yo.k}`));
   if (!g || !g.miembros.some((m) => m.k === yo.k)) {
-    g = { id: codigo(), lider: yo.k, abierto: false, juego: 'royale', ir: null, miembros: [], creado: Date.now() };
+    g = { id: codigo(), lider: yo.k, abierto: false, juego: 'royale', config: {...CONFIG_INICIAL.royale}, ir: null, miembros: [], creado: Date.now() };
     await s.set(`grupo:${g.id}`, JSON.stringify(g), TTL);
     return vista(await entrar(yo, g.id), yo);
   }
@@ -107,13 +108,33 @@ export async function accionGrupo(yo, body) {
       break;
     case 'juego':
       if (!lider) throw err('El juego lo elige el líder.', 403);
-      if (typeof body.juego === 'string' && /^[a-z]{3,12}$/.test(body.juego)) g.juego = body.juego;
+      if (typeof body.juego === 'string' && /^[a-z]{3,12}$/.test(body.juego) && body.juego !== g.juego) {g.juego = body.juego;g.config={...(CONFIG_INICIAL[g.juego]||{})};g.ir=null;}
       break;
+    case 'config': {
+      if (!lider) throw err('Solo el líder configura la sala.', 403);
+      const base=CONFIG_INICIAL[g.juego]||{};
+      const siguiente={...base,...g.config};
+      if ('bots' in base && Number.isInteger(Number(body.bots))) siguiente.bots=Math.max(0,Math.min(g.juego==='royale'?15:g.juego==='haxball'?8:g.juego==='carrera'?15:12,Number(body.bots)));
+      if(g.juego==='haxball'){
+        if(Number.isInteger(Number(body.minutos)))siguiente.minutos=Math.max(0,Math.min(30,Number(body.minutos)));
+        if(Number.isInteger(Number(body.goles)))siguiente.goles=Math.max(0,Math.min(30,Number(body.goles)));
+        if(['classic','easy','small','big','rounded','bigEasy','bigRounded','huge'].includes(body.estadio))siguiente.estadio=body.estadio;
+      }
+      if(g.juego==='casino'&&['blackjack','ruleta','slots'].includes(body.tipo))siguiente.tipo=body.tipo;
+      g.config=siguiente;
+      break;
+    }
     case 'jugar': {
       if (!lider) throw err('Arranca el líder.', 403);
       if (g.ir?.url === String(body.url || '')) break; // ya estaban yendo ahí
       const url = String(body.url || '');
       if (!/^\/[a-z]{3,12}\/((sala|mesa|game)\/[A-Za-z0-9-]{3,24})?$/.test(url)) throw err('Destino inválido.');
+      if(!url.startsWith('/'+g.juego+'/'))throw err('Primero elegí ese juego para la lobby.');
+      const m=url.match(/^\/([a-z]{3,12})\/(?:sala|mesa|game)\/([A-Za-z0-9-]{3,24})$/);
+      if(m && !(await s.get(`sala:${m[1]}:${m[2].toUpperCase()}`))){
+        const publica=m[1]==='casino' && !!(await import('../games/casino/lib/casino.js')).MESAS_PUBLICAS[m[2].toUpperCase()];
+        if(!publica)throw err('La sala todavía no está lista. Probá de nuevo.');
+      }
       g.ir = { url, ts: Date.now() };
       break;
     }

@@ -201,6 +201,7 @@ export function toast(texto, mal = false) {
 let actx;
 export function sonar(tipo = 'clic') {
   try {
+    if (localStorage.getItem('cadalado.audio') === 'silencio') return;
     actx ??= new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
     const t = actx.currentTime;

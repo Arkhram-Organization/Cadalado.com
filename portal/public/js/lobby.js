@@ -7,7 +7,7 @@ import { lookParaDibujo, LOOK_BASE } from '/comun/look.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { frase } from '/comun/npcs.js';
 import { JUEGOS } from './datos.js';
-import { yo, esc, api } from './comun.js';
+import { yo, esc, api, toast } from './comun.js';
 import { montarGrupo } from './grupo.js';
 import { lookDeNombre } from '/comun/avatar.js';
 
@@ -35,6 +35,7 @@ export async function montarLobby(raiz) {
       <button class="lb-jugar-chico" data-jugar-juego="${i}">Jugar</button></div>`; }).join('');
   let grupoApi = null;
   const elegir = (i, desdeGrupo = false) => {
+    if (!desdeGrupo && grupoApi?.grupo?.miembros.length > 1 && !grupoApi.grupo.soyLider) { toast('El líder elige el juego para toda la lobby.'); return false; }
     modo = i; localStorage.setItem('cadalado.modo', JUEGOS[i].id);
     if (!desdeGrupo) grupoApi?.elegirJuego(JUEGOS[i].id);
     entradas.querySelectorAll('.lb-entrada').forEach((b) => b.classList.toggle('on', +b.dataset.i === i));
@@ -48,10 +49,11 @@ export async function montarLobby(raiz) {
       fondo.append(capa); requestAnimationFrame(() => capa.classList.add('ver'));
       while (fondo.children.length > 2) fondo.firstChild.remove();
     }
+    return true;
   };
   entradas.onclick = (e) => {
     const jb = e.target.closest('[data-jugar-juego]');
-    if (jb) { e.stopPropagation(); const i = +jb.dataset.jugarJuego; elegir(i); return grupoApi?.jugar(JUEGOS[i].id, JUEGOS[i].url); }
+    if (jb) { e.stopPropagation(); const i = +jb.dataset.jugarJuego; if(elegir(i)) return grupoApi?.jugar(JUEGOS[i].id, JUEGOS[i].url); return; }
     const b = e.target.closest('[data-i]'); if (b) elegir(+b.dataset.i);
   };
   entradas.onkeydown = (e) => { const b = e.target.closest('[data-i]'); if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); elegir(+b.dataset.i); } };
@@ -192,7 +194,7 @@ export async function montarLobby(raiz) {
       btnLobbys.classList.toggle('con-gente', n > 1);
       const lider = g?.miembros.find((m) => m.lider);
       const sigo = n > 1 && !g.soyLider;
-      if (sigo && g.juego) { const i = JUEGOS.findIndex((j) => j.id === g.juego); if (i >= 0 && i !== modo) elegir(i, true); }
+      if (n > 1 && g.juego) { const i = JUEGOS.findIndex((j) => j.id === g.juego); if (i >= 0 && i !== modo) elegir(i, true); }
       jugarBtn.classList.toggle('esperando', sigo);
       jugarBtn.querySelector('small').textContent = sigo ? `Elige ${lider?.nombre || 'el líder'}` : n > 1 ? `Jugar con tu lobby (${n})` : 'Jugar a';
     },

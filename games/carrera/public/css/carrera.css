@@ -1,4 +1,4 @@
-:root { --juego: #4fd1c5; }
+:root { --juego: #c5f04a; }
 body.en-carrera { overflow: hidden; }
 .juego { position: fixed; inset: 56px 0 0 0; background: #8fd3ff; touch-action: none; user-select: none; -webkit-user-select: none; }
 .juego canvas { width: 100%; height: 100%; display: block; }
@@ -87,3 +87,54 @@ kbd { font: 700 11px var(--mono); padding: 2px 6px; border-radius: 5px; backgrou
 .tabla-res .mono { color: #4a3f5c; }
 .podio-top div { background: #fff; border: 2px solid #16101f; color: #16101f; }
 .podio-top .p1 { background: #ffd166; }
+
+/* Pantallas de carrera con la identidad del lobby: carbón, papel y lima. */
+body:has(.menu) { --juego: #c5f04a; background: radial-gradient(ellipse at 45% 16%, #2c3923, #171b15 52%, #141413); }
+body:has(.menu) .menu::before { background: radial-gradient(ellipse at 50% 20%, #2b3923, transparent 64%); }
+body:has(.menu) .menu-hero h1 { color: #efede4; text-shadow: none; -webkit-text-stroke: 0; }
+body:has(.menu) .menu-hero h1 em { color: #c5f04a; }
+body:has(.menu) .menu-hero p { color: #b9c0ae; text-shadow: none; }
+body:has(.menu) .menu-hero .etq, body:has(.menu) .menu .panel { background: #1d211b; color: #efede4; border: 1px solid #414b38; border-radius: 12px; box-shadow: none; transform: none; }
+body:has(.menu) .menu .panel h2, body:has(.menu) .menu label { color: #efede4; }
+body:has(.menu) .menu .entrada { background: #141713; color: #efede4; border: 1px solid #566449; }
+body:has(.menu) .menu .btn { border: 1px solid #566449; border-radius: 8px; box-shadow: none; }
+body:has(.menu) .menu .btn-lima { --f: #c5f04a; --t: #1c2415; border-color: #c5f04a; }
+body:has(.menu) .menu .sala-fila, body:has(.menu) .menu .sala-fila:nth-child(n) { background: #252b22; color: #efede4; border: 1px solid #414b38; }
+body:has(.menu) .menu .sala-fila .q small, body:has(.menu) .menu .vacio { color: #b9c0ae; }
+
+.panel-flota { top: 68px; left: 12px; width: min(470px, calc(100% - 24px)); max-height: calc(100% - 80px); overflow: hidden; padding: 15px; background: #1d211bee; color: #efede4; border: 1px solid #586c46; border-radius: 14px; box-shadow: 0 24px 70px #0009; backdrop-filter: blur(14px); }
+.panel-flota h2 { color: #efede4; font-size: 25px; margin: 2px 0 5px; }
+.panel-flota p { color: #b9c0ae; margin: 5px 0 8px; }
+.panel-flota .etq { color: #c5f04a; }
+.panel-flota .lista-j { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; max-height: min(37vh, 320px); overflow: auto; margin: 9px 0; scrollbar-width: thin; scrollbar-color: #586c46 transparent; }
+.panel-flota .lista-j div, .panel-flota .lista-j div:nth-child(n) { background: #283024; color: #efede4; border: 1px solid #44523c; border-radius: 8px; min-width: 0; padding: 5px 6px; gap: 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel-flota .lista-j i { width: 15px; height: 18px; flex: none; }
+.panel-flota .lista-j small { color: #b9c0ae; font-size: 10px; }
+.panel-flota .lista-j div.dorado { background: #424326; border-color: #d2bb6b; }
+.panel-flota .colores { margin: 5px 0 10px; gap: 5px; }
+.panel-flota .colores button { width: 24px; height: 27px; border-radius: 7px; border-width: 2px; }
+.panel-flota .teclas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; color: #b9c0ae; font-size: 11px; margin-top: 8px; }
+.panel-flota .teclas kbd { color: #c5f04a; }
+.panel-flota .btn { border: 1px solid #586c46; border-radius: 8px; box-shadow: none; }
+.panel-flota .btn-lima { --f: #c5f04a; --t: #1c2415; border-color: #c5f04a; }
+.panel-flota .entrada { background: #141713; color: #efede4; border: 1px solid #586c46; box-shadow: none; }
+.panel-flota .tabla-res { max-height: 42vh; overflow: auto; }
+.panel-flota .tabla-res div { background: #252d22; color: #efede4; border: 1px solid #414b38; }
+.panel-flota .tabla-res .mono { color: #b9c0ae; }
+.podio-flota { left: 50%; top: 50%; width: min(660px, calc(100% - 24px)); max-height: calc(100% - 26px); overflow: auto; }
+.podio-top div { background: #252d22; color: #efede4; border: 1px solid #586c46; }
+.podio-top .p1 { background: linear-gradient(#394d26, #252d22); border-color: #c5f04a; }
+.podio-avatar { display: block; width: 72px; height: 72px; margin: 0 auto 4px; animation: podio-baila 1s ease-in-out infinite alternate; }
+.podio-avatar svg { width: 100%; height: 100%; }
+.podio-top .p1 .podio-avatar { width: 98px; height: 98px; }
+@keyframes podio-baila { to { transform: translateY(-7px) rotate(4deg); } }
+.eliminacion { inset: 0; z-index: 25; display: grid; place-content: center; justify-items: center; gap: 18px; background: #0c110dbd; backdrop-filter: blur(7px); color: #efede4; }
+.elim-cinta { width: min(100vw, 900px); padding: 20px 34px; display: grid; justify-items: center; gap: 4px; background: linear-gradient(105deg, #793c31, #c84e4e 45%, #793c31); border-block: 4px solid #efede4; box-shadow: 0 12px 0 #141413, 0 22px 80px #000a; transform: rotate(-2deg); animation: elim-entra .55s cubic-bezier(.1,1.35,.2,1) both; }
+.elim-cinta small { font: 700 12px var(--mono); letter-spacing: .2em; text-transform: uppercase; }
+.elim-cinta strong { font: 900 clamp(68px, 13vw, 158px)/.85 var(--titulo); text-transform: uppercase; letter-spacing: -.035em; -webkit-text-stroke: 2px #141413; paint-order: stroke fill; text-shadow: 6px 8px 0 #141413; }
+.elim-cinta span { font: 800 20px var(--titulo); text-transform: uppercase; }
+.elim-lista { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 7px; max-width: 700px; padding: 12px; border-radius: 10px; background: #1d211bef; border: 1px solid #586c46; }
+.elim-lista b { color: #c5f04a; margin-right: 7px; }
+.elim-lista span { background: #303b29; border-radius: 6px; padding: 4px 9px; }
+@keyframes elim-entra { from { opacity: 0; transform: translateY(-90px) scale(1.4) rotate(-7deg); } }
+@media (max-width: 600px) { .panel-flota { top: 58px; padding: 11px; } .panel-flota .lista-j { max-height: 31vh; } .elim-cinta { padding: 16px; } }

@@ -6,15 +6,17 @@ import { avatarSvg, lookDeId, lookDeJugador } from '/comun/avatar.js';
 import { Red } from '/comun/red.js';
 import { GESTOS } from '/comun/gestos.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
-import { generarMapa, zona, ARMAS, VIDA, ESCUDO_MAX, LADO, rng } from './mundo.js';
+import { generarMapa, zona, ARMAS, RAREZAS, CAJAS, MATERIALES, danoArea, VIDA, ESCUDO_MAX, LADO, TAM, LUGARES, lugarEn, rng } from './mundo.js';
 import { spritesPersona, spritesBotin, pintarMapa, copa, miniMapa, SP_W, SP_H } from './sprites.js';
 import { Peleador, CerebroBot, avanzarBala, nuevaBala, danoZona, CODIGO_ARMA, ARMA_DE_CODIGO } from './juego.js';
+import { DURACION_COLECTIVO, posicionColectivo, saltoAutomatico, tiempoParaLugar } from './colectivo.js';
+import { alinearPieza, validarPieza } from './construccion.js';
 
 const app = document.querySelector('#app');
 const COLOR = '#ff6b5b';
 const AV = ['#ff4fa3', '#7aa2ff', '#ffd166', '#9be15d', '#c084fc', '#4fd1c5', '#ff7a45', '#f4f1ea'];
 const colorDe = (id) => AV[parseInt(String(id).slice(0, 6), 36) % AV.length];
-const cuenta = await marco({ juego: 'Último en pie', color: COLOR, volver: '/royale/' });
+const cuenta = await marco({ juego: 'Battle Shmitz', color: COLOR, volver: '/royale/' });
 let limpiar = [];
 
 function ir(ruta) {
@@ -39,11 +41,11 @@ function ruteo() {
 
 // ---------------------------------------------------------------- menú
 function menu() {
-  document.title = 'Último en pie · cadalado';
+  document.title = 'Battle Shmitz · cadalado';
   app.innerHTML = `
   <div class="menu">
-    <div class="menu-hero"><div><span class="etq">Battle royale 3D · vista desde arriba · hasta 24</span><h1>Último <em>en pie.</em></h1>
-      <p>Caés con una pistola. Equipá seis casilleros con armas, granadas y curaciones. Usá los objetos cuando los necesites, buscá refugio y ganale a la zona. La isla es 3D; la vista desde arriba sigue siendo la de siempre.</p></div></div>
+    <div class="menu-hero"><div><span class="etq">Battle royale 3D · vista desde arriba · hasta 24</span><h1>Battle <em>Shmitz.</em></h1>
+      <p>Saltá del colectivo, elegí dónde caer y explorá ocho lugares. Juntá armas, materiales y botín, construí refugios y quedate dentro de la zona. Tenés cinco casilleros y un pico aparte.</p></div></div>
     <section class="panel">
       <h2>Armar una partida</h2>
       <form data-crear style="display:grid;gap:12px">
@@ -59,7 +61,7 @@ function menu() {
       <h2 style="margin-top:22px">Partidas abiertas</h2>
       <div class="salas" data-salas><div class="vacio">Buscando…</div></div>
       <h2 style="margin-top:22px">Cómo se juega</h2>
-      <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>moverse</span><span><kbd>Mouse</kbd></span><span>apuntar y disparar</span><span><kbd>E</kbd></span><span>recoger objeto</span><span><kbd>R</kbd></span><span>recargar</span><span><kbd>Q</kbd> / <kbd>1–6</kbd></span><span>elegir casillero</span><span><kbd>F</kbd> / clic</span><span>usar objeto (quedate quieto)</span><span><kbd>X</kbd></span><span>soltar objeto</span></div>
+      <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>movete</span><span><kbd>Mouse</kbd></span><span>apuntá y dispará</span><span><kbd>Espacio</kbd></span><span>saltá del colectivo</span><span><kbd>M</kbd></span><span>abrí el mapa</span><span><kbd>E</kbd></span><span>agarrá objetos o abrí cofres</span><span><kbd>1–5</kbd></span><span>elegí casillero</span><span><kbd>C</kbd></span><span>sacá el pico</span><span><kbd>Q</kbd></span><span>construí</span><span><kbd>F</kbd> / <kbd>R</kbd></span><span>elegí pieza / rotala</span></div>
     </section>
   </div>`;
   app.querySelector('[data-crear]').onsubmit = async (e) => {
@@ -97,7 +99,7 @@ function menu() {
 
 // ---------------------------------------------------------------- partida
 function abrirSala(code) {
-  document.title = `Último en pie ${code} · cadalado`;
+  document.title = `Battle Shmitz ${code} · cadalado`;
   document.body.classList.add('en-isla');
   app.innerHTML = `
   <div class="isla">
@@ -105,7 +107,8 @@ function abrirSala(code) {
     <div class="capa hud-izq"><div class="chip-hud"><span class="etq">Sala</span><b>${esc(code)}</b><button class="btn btn-chico" data-copiar>Invitar</button></div>
       <div class="chip-hud hidden" data-vivos></div></div>
     <div class="capa hud-zona hidden" data-zona></div>
-    <div class="capa hud-der"><canvas class="mini" data-mini width="132" height="132"></canvas><div class="feed" data-feed></div><div class="chip-hud red-hud" data-red>● —</div></div>
+    <div class="capa hud-der"><canvas class="mini" data-mini width="132" height="132" title="Tocá para abrir el mapa"></canvas><div class="chip-hud" data-materiales></div><div class="feed" data-feed></div><div class="chip-hud red-hud" data-red>● —</div></div>
+    <div class="capa mapa-grande hidden" data-mapa-grande><div><b>Mapa de Battle Shmitz</b><span>Tocá M para cerrar</span></div><canvas width="600" height="600"></canvas></div>
     <div class="capa hud-abajo hidden" data-abajo>
       <div class="barras"><div class="barra escudo"><i data-escudo></i></div><div class="barra vida"><i data-vida></i><span data-vida-n></span></div></div>
       <div class="slots" data-slots></div>
@@ -117,11 +120,14 @@ function abrirSala(code) {
     <div class="capa panel-isla fin hidden" data-fin></div>
     <div class="capa espectar hidden" data-espectar><button class="btn btn-chico" data-esp="-1">&lsaquo;</button><span>Mirando a <b data-esp-n></b></span><button class="btn btn-chico" data-esp="1">&rsaquo;</button></div>
     <div class="capa chat-mini"><div class="log" data-log></div><form data-chat><input class="entrada" maxlength="200" placeholder="Chat… (Enter)" autocomplete="off"></form></div>
-    <div class="capa tactil" data-tactil><div class="joy izq" data-joy="mov"><i></i></div><div class="joy der" data-joy="tiro"><i></i></div><button class="btn-t" data-btn="E">AGARRAR</button><button class="btn-t b2" data-btn="Q">ARMA</button></div>
+    <div class="capa tactil" data-tactil><div class="joy izq" data-joy="mov"><i></i></div><div class="joy der" data-joy="tiro"><i></i></div><button class="btn-t" data-btn="E">AGARRAR</button><button class="btn-t b2" data-btn="Q">CONSTRUIR</button><button class="btn-t b3" data-btn="Space">SALTAR</button><button class="btn-t b4" data-btn="Pico">PICO</button></div>
   </div>`;
   const $ = (s) => app.querySelector(s);
   const lienzo = $('[data-lienzo]');
   const vista = new Isla3D(lienzo);
+  const cambiarCamara = (e) => { vista.modoCamara = e.detail === 'tercera' ? 'tercera' : 'superior'; };
+  addEventListener('cadalado:camara', cambiarCamara);
+  limpiar.push(() => removeEventListener('cadalado:camara', cambiarCamara));
   limpiar.push(()=>vista.dispose());
   // gestos tipo Fortnite: mantenés la B, movés el mouse y soltás
   const rueda = ruedaGestos({ puede: () => !!yo?.vivo, alElegir: (id) => { const g = GESTOS.find((x) => x.id === id); if (g && yo?.vivo && !yo.mueve) { yo.gesto = g.id; yo.gestoT = g.dur; } } });
@@ -161,6 +167,10 @@ function abrirSala(code) {
   let mundo = null;
   let mapaPintado = null;
   let mini = null;
+  let abiertos = new Set();
+  let firmaConstrucciones = '';
+  let firmaFuentes = '';
+  let ultimoLugar = null;
   let yo = null;
   let balas = [];
   let granadas = [];
@@ -196,6 +206,22 @@ function abrirSala(code) {
       for (const id of e.tomados) tomados.add(id);
       if(mundo) {let nuevo=false;for(const b of e.sueltos||[])if(!mundo.botin.some(x=>x.id===b.id)){mundo.botin.push(b);nuevo=true;}if(nuevo)vista.preparar(mundo);}
       if (e.fase !== fase) cambioDeFase(e.fase);
+      abiertos = new Set(e.abiertos || []);
+      if (mundo) {
+        const firma = JSON.stringify(e.construcciones || []);
+        if (firma !== firmaConstrucciones) { firmaConstrucciones = firma; mundo.construcciones = e.construcciones || []; vista.actualizarConstrucciones(mundo.construcciones); }
+        const fuentes = JSON.stringify(e.fuentes || {});
+        if (fuentes !== firmaFuentes) {
+          firmaFuentes = fuentes;
+          for (const [id, estado] of Object.entries(e.fuentes || {})) {
+            if (id.startsWith('o')) { const o = mundo.obstaculos.find(o => o.id === id); if (o) o.roto = estado.vida <= 0; }
+            else if (id.startsWith('m') && estado.vida <= 0) mundo.t[Number(id.slice(1))] = 3;
+          }
+          vista.preparar(mundo); vista.actualizarConstrucciones(mundo.construcciones || []);
+        }
+      }
+      if (yo) yo.materiales = {...e.materiales?.[yoId()]};
+      for (const [id,b] of botsSim) b.p.materiales = {...e.materiales?.[id]};
       pintarPaneles();
     },
     onEvento: (ev) => {
@@ -223,7 +249,7 @@ function abrirSala(code) {
       ir('/royale/');
     },
   });
-  recordar('royale', `/royale/sala/${code}`, `Último en pie ${code}`);
+  recordar('royale', `/royale/sala/${code}`, `Battle Shmitz ${code}`);
   limpiar.push(() => {
     sala.cerrar();
     red.actual?.cerrar();
@@ -231,10 +257,10 @@ function abrirSala(code) {
   });
 
   // Estado compacto: yo (y, si soy anfitrión, los bots después de '#')
-  const codificarP = (p) => `${p.x | 0},${p.y | 0},${p.ang.toFixed(2)},${p.vida | 0},${p.escudo | 0},${CODIGO_ARMA[p.arma.tipo]},${p.mueve ? 1 : 0},${p.vivo ? 1 : 0},${p.gesto ? GESTOS.findIndex((g) => g.id === p.gesto) + 1 : 0}`;
+  const codificarP = (p) => `${p.x | 0},${p.y | 0},${p.ang.toFixed(2)},${p.vida | 0},${p.escudo | 0},${CODIGO_ARMA[p.arma.tipo]},${p.mueve ? 1 : 0},${p.vivo ? 1 : 0},${p.gesto ? GESTOS.findIndex((g) => g.id === p.gesto) + 1 : 0},${p.altura | 0},${p.enColectivo ? 1 : 0},${p.paracaidas ? 1 : 0},${p.usando?.tipo || ''},${p.usando ? (1-p.usando.restante/p.usando.total).toFixed(2) : 0}`;
   const decodificarP = (s) => {
-    const [x, y, ang, vida, escudo, arma, mueve, vivo, gesto] = s.split(',');
-    return { x: +x, y: +y, ang: +ang, vida: +vida, escudo: +escudo, arma: ARMA_DE_CODIGO[arma] || 'pistola', mueve: mueve === '1', vivo: vivo === '1', gesto: GESTOS[(+gesto || 0) - 1]?.id || null };
+    const [x, y, ang, vida, escudo, arma, mueve, vivo, gesto, altura, enColectivo, paracaidas, uso, progreso] = s.split(',');
+    return { x: +x, y: +y, ang: +ang, vida: +vida, escudo: +escudo, arma: ARMA_DE_CODIGO[arma] || 'pistola', mueve: mueve === '1', vivo: vivo === '1', gesto: GESTOS[(+gesto || 0) - 1]?.id || null, altura: +altura || 0, enColectivo: enColectivo === '1', paracaidas: paracaidas === '1', usando: OBJETOS[uso] ? {tipo:uso,progreso:+progreso||0} : null };
   };
   function recibir(id, s) {
     const [mio, botsTxt] = String(s).split('#');
@@ -265,10 +291,13 @@ function abrirSala(code) {
       const d = ARMAS[m.arma] || ARMAS.pistola;
       const r = rng(Math.floor(m.s * 1e6));
       for (let k = 0; k < d.perdigones; k++) {
-        const b = nuevaBala(m.de || de, m.x, m.y, m.a + (r() - 0.5) * d.dispersion * 2, m.arma);
+        const b = nuevaBala(m.de || de, m.x, m.y, m.a + (r() - 0.5) * d.dispersion * 2, m.arma, m.rareza);
         b.visual = true;
         balas.push(b);
       }
+    } else if (m.k === 'salto') {
+      const remoto = remotos.get(m.de || de);
+      if (remoto) { remoto.obj.enColectivo = false; remoto.obj.altura = 85; remoto.obj.x = m.x; remoto.obj.y = m.y; }
     } else if (m.k === 'dano' && yo?.vivo && fase === 'partida') {
       recibirDano(m.d, m.por);
     } else if (m.k === 'danoBot' && soyAnfitrion()) {
@@ -283,7 +312,8 @@ function abrirSala(code) {
   function prepararMundo(semilla) {
     if (claveMundo === semilla) return;
     claveMundo = semilla;
-    mundo = generarMapa(semilla);
+    mundo = structuredClone(generarMapa(semilla));
+    firmaConstrucciones = ''; firmaFuentes = '';
     vista.preparar(mundo);
     mini = miniMapa(mundo);
   }
@@ -316,13 +346,16 @@ function abrirSala(code) {
     if (est.participantes.includes(yoId())) {
       const s = lugar(yoId());
       yo = new Peleador(yoId(), s.x, s.y);
+      yo.subirColectivo();
     } else yo = null; // entró mirando
     // los bots: cada uno con su lugar (los simula el anfitrión)
     est.botNpc.forEach((_, i) => {
       const id = 'bot' + i;
       const s = lugar(id);
       const p = new Peleador(id, s.x, s.y);
-      botsSim.set(id, { p, cerebro: new CerebroBot(p, rng((est.semilla + i * 7919) >>> 0)) });
+      p.subirColectivo();
+      const destino = LUGARES[i % LUGARES.length];
+      botsSim.set(id, { p, destino, salto: tiempoParaLugar(est.semilla, destino), cerebro: new CerebroBot(p, rng((est.semilla + i * 7919) >>> 0)) });
     });
     try {const save=JSON.parse(sessionStorage.getItem(guardadoClave)||'null');if(save?.semilla===est.semilla&&save.id===yoId()){if(yo&&save.yo)Object.assign(yo,save.yo,{vivo:est.vivos.includes(yoId())});for(const [id,data] of save.bots||[])if(botsSim.has(id))Object.assign(botsSim.get(id).p,data,{vivo:est.vivos.includes(id)});}}catch{}
     if (soyAnfitrion()) {
@@ -341,12 +374,12 @@ function abrirSala(code) {
       const firma = JSON.stringify([online.map((j) => j.id), e.bots, e.botNpc, e.host]);
       if (lob.dataset.firma !== firma) {
         lob.dataset.firma = firma;
-        lob.innerHTML = `<h2>En el barco, rumbo a la isla</h2>
+        lob.innerHTML = `<h2>Subí al colectivo de Battle Shmitz</h2>
           <p>${esHost ? 'Cuando estén todos, ¡largá!' : `Larga ${esc(e.jugadores.find((j) => j.id === e.host)?.nombre || '')}.`} Caés con una pistola: buscá algo mejor en las casas.</p>
           <div class="gente">${online.map((j) => `<div><span class="av">${avatarSvg(lookDeJugador(j, j.id, colorDe(j.id)))}</span>${esc(j.nombre)}${j.id === e.yo ? ' (vos)' : ''}</div>`).join('')}
             ${e.botNpc.map((n, i) => `<div class="${n === 'mati' ? 'dorado' : ''}"><span class="av">${avatarSvg({ ...POR_ID[n]?.look })}</span>${esc(e.botNombres[i])}<small>bot</small></div>`).join('')}</div>
           ${esHost ? `<div class="fila-lob"><select class="entrada" data-bots>${[0, 3, 5, 7, 9, 11, 15].map((n) => `<option ${n === e.bots ? 'selected' : ''} value="${n}">${n} bots</option>`).join('')}</select><button class="btn btn-lima btn-grande" data-largar>¡A la isla!</button></div>` : ''}
-          <div class="teclas-menu"><span><kbd>W A S D</kbd></span><span>moverse</span><span><kbd>Mouse</kbd></span><span>apuntar y disparar</span><span><kbd>E</kbd></span><span>agarrar arma</span><span><kbd>R</kbd></span><span>recargar</span><span><kbd>Q</kbd></span><span>cambiar casillero</span><span><kbd>F</kbd> / clic</span><span>usar objeto seleccionado</span><span><kbd>X</kbd></span><span>soltar objeto</span></div>`;
+          <div class="teclas-menu"><span><kbd>Espacio</kbd></span><span>saltá del colectivo</span><span><kbd>W A S D</kbd></span><span>movete y dirigí la caída</span><span><kbd>M</kbd></span><span>abrí el mapa</span><span><kbd>E</kbd></span><span>agarrá o abrí cofres</span><span><kbd>C</kbd></span><span>usá el pico</span><span><kbd>Q</kbd></span><span>construí paredes o escaleras</span></div>`;
         lob.querySelector('[data-bots]')?.addEventListener('change', (ev) => sala.enviar({ t: 'bots', n: Number(ev.target.value) }));
         lob.querySelector('[data-largar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
       }
@@ -357,9 +390,9 @@ function abrirSala(code) {
       fin.dataset.partida = e.partidas;
       const orden = [...(e.ganador ? [{ id: e.ganador, nombre: e.ganadorNombre, puesto: 1 }] : []), ...[...e.bajas].reverse()];
       const gane = e.ganador === e.yo;
-      fin.innerHTML = `<h2>${gane ? '¡Sos el último en pie!' : e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}` : 'Terminó'}</h2>
+      fin.innerHTML = `<h2>${gane ? '¡Sos el ganador de Battle Shmitz!' : e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}` : 'Terminó'}</h2>
         <div class="tabla">${orden.map((x, i) => `<div class="${x.id === e.yo ? 'yo' : ''}"><b>${i + 1}º</b><span>${esc(x.nombre)}</span><span class="mono">${e.kills[x.id] || 0} elim.</span></div>`).join('')}</div>
-        ${esHost ? '<button class="btn btn-lima btn-grande" data-otra style="width:100%;margin-top:12px">Otra partida</button>' : '<p>En unos segundos vuelven al barco.</p>'}`;
+        ${esHost ? '<button class="btn btn-lima btn-grande" data-otra style="width:100%;margin-top:12px">Otra partida</button>' : '<p>En unos segundos vuelven al colectivo.</p>'}`;
       fin.querySelector('[data-otra]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
     }
   }
@@ -376,6 +409,35 @@ function abrirSala(code) {
     $('[data-aviso]').innerHTML = `<span class="${malo ? 'malo' : ''}">${esc(texto)}</span>`;
     clearTimeout(aviso.t);
     aviso.t = setTimeout(() => ($('[data-aviso]').innerHTML = ''), 1800);
+  }
+  function dibujarMapa(canvas, foco, z, grande = false) {
+    if (!mini) return;
+    const g = canvas.getContext('2d');
+    const lado = canvas.width, escalaMapa = lado / LADO;
+    g.clearRect(0, 0, lado, lado);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(mini, 0, 0, lado, lado);
+    if (z) {
+      g.strokeStyle = '#fff'; g.lineWidth = grande ? 3 : 1;
+      g.beginPath(); g.arc(z.x * escalaMapa, z.y * escalaMapa, z.r * escalaMapa, 0, Math.PI * 2); g.stroke();
+      g.setLineDash(grande ? [8, 6] : [2, 2]);
+      g.beginPath(); g.arc(z.siguiente.x * escalaMapa, z.siguiente.y * escalaMapa, z.siguiente.r * escalaMapa, 0, Math.PI * 2); g.stroke();
+      g.setLineDash([]);
+    }
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `800 ${grande ? 15 : 7}px Barlow, sans-serif`;
+    g.lineWidth = grande ? 4 : 2;
+    g.strokeStyle = '#141413'; g.fillStyle = '#fff';
+    for (const l of LUGARES) {
+      const x = (l.x + l.w / 2) * 16 * escalaMapa, y = (l.y + l.h / 2) * 16 * escalaMapa;
+      const texto = grande ? l.nombre : l.corto;
+      g.strokeText(texto, x, y); g.fillText(texto, x, y);
+    }
+    if (foco) {
+      g.fillStyle = '#c5f04a';
+      g.beginPath(); g.arc(foco.x * escalaMapa, foco.y * escalaMapa, grande ? 6 : 2.5, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#141413'; g.lineWidth = grande ? 2 : 1; g.stroke();
+    }
   }
 
   // ---------------------------------------------------------------- daño
@@ -395,6 +457,13 @@ function abrirSala(code) {
     if (!b.p.vivo) return;
     numeros.push({ x: b.p.x, y: b.p.y - 16, texto: String(Math.round(d)), hasta: performance.now() + 700 });
     const murio = b.p.dano(d);
+    if(!murio && (b.p.materiales?.madera||0)>=10 && Math.random()<.27){
+      const atacante=por===yoId()?yo:remotos.get(por)?.obj;
+      const ang=atacante?Math.atan2(atacante.y-b.p.y,atacante.x-b.p.x):b.p.ang;
+      const punto=alinearPieza(b.p.x+Math.cos(ang)*27,b.p.y+Math.sin(ang)*27);
+      const pieza={id:'pieza-'+b.p.id+'-'+Date.now(),...punto,tipo:'pared',material:'madera',rotacion:Math.abs(Math.cos(ang))>Math.abs(Math.sin(ang))?1:0};
+      if(validarPieza(mundo,mundo.construcciones||[],pieza,b.p.materiales))sala.enviar({t:'construir',bot:b.p.id,pieza});
+    }
     if (murio) {
       sala.enviar({ t: 'muerte', victima: b.p.id, por });
       if (Math.random() < 0.35) sala.enviar({ t: 'botdice', bot: b.p.id, situacion: 'pierde' });
@@ -423,6 +492,17 @@ function abrirSala(code) {
   const teclas = new Set();
   const mouse = { x: 0, y: 0, abajo: false };
   let pedirAgarrar = false;
+  let pedirSalto = false;
+  let modoConstruccion = false;
+  let picoActivo = false;
+  let tipoPieza = 'pared';
+  let materialPieza = 'madera';
+  let rotacionPieza = 0;
+  let pedirColocar = false;
+  let ultimoGolpe = 0;
+  let cofreActual = null;
+  let tactilE = false;
+  let mira = false;
   let recogiendo = false;
   const abajo = (e) => {
     if (e.target.closest('input, select, textarea')) return;
@@ -431,13 +511,19 @@ function abrirSala(code) {
       return e.preventDefault();
     }
     if (!teclas.has(e.code)) {
-      if (e.code === 'KeyR') yo?.recargar();
+      if (e.code === 'KeyR') { if (modoConstruccion) rotacionPieza = (rotacionPieza + 1) % 4; else yo?.recargar(); }
+      if (e.code === 'KeyM') { const panel=$('[data-mapa-grande]');panel.classList.toggle('hidden');if(!panel.classList.contains('hidden'))dibujarMapa(panel.querySelector('canvas'),yo,est?.fase==='partida'?zona(est.semilla,Math.max(0,(sala.ahora()-est.inicio)/1000)):null,true); }
+      if (e.code === 'Space') pedirSalto = true;
       if (e.code === 'KeyE') pedirAgarrar = true;
-      if (e.code === 'KeyQ') yo?.cambiar();
-      if (e.code === 'Digit1') yo?.cambiar(0);
-      if (/^Digit[2-6]$/.test(e.code)) yo?.cambiar(Number(e.code.slice(-1))-1);
-      if (e.code === 'KeyF') usarObjeto();
-      if (e.code === 'KeyX' && yo?.slots[yo.actual]) { const it=yo.slots[yo.actual]; const id='drop-'+yoId()+'-'+Date.now(); const b={id,tipo:it.tipo,item:{...it},x:Math.max(0,Math.min(LADO,yo.x+Math.cos(yo.ang)*16)),y:Math.max(0,Math.min(LADO,yo.y+Math.sin(yo.ang)*16))}; mundo.botin.push(b);sala.enviar({t:'soltar',b});yo.slots[yo.actual]=null;yo.usando=null;red.actual?.todos({k:'drop',b,n:Math.random()});vista.preparar(mundo); }
+      if (e.code === 'KeyQ') { modoConstruccion = !modoConstruccion; picoActivo = false; }
+      if (e.code === 'KeyC') { picoActivo = !picoActivo; modoConstruccion = false; }
+      if (/^Digit[1-5]$/.test(e.code)) {
+        const n = Number(e.code.slice(-1));
+        if (modoConstruccion && n <= 3) materialPieza = ['madera','piedra','metal'][n - 1];
+        else { yo?.cambiar(n - 1); picoActivo = false; }
+      }
+      if (e.code === 'KeyF') { if (modoConstruccion) tipoPieza = tipoPieza === 'pared' ? 'escalera' : 'pared'; else usarObjeto(); }
+      if (e.code === 'KeyX' && yo?.slots[yo.actual]) { const it=yo.slots[yo.actual]; const id='drop-'+yoId()+'-'+Date.now(); const b={id,tipo:it.tipo,item:{...it},x:Math.max(0,Math.min(LADO,yo.x+Math.cos(yo.ang)*16)),y:Math.max(0,Math.min(LADO,yo.y+Math.sin(yo.ang)*16))};sala.enviar({t:'soltar',b}).then(r=>{if(r&&!r.error){mundo.botin.push(b);yo.slots[yo.actual]=null;yo.usando=null;red.actual?.todos({k:'drop',b,n:Math.random()});vista.preparar(mundo);}}); }
       if (mirando() && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) espectando += e.code === 'ArrowLeft' ? -1 : 1;
     }
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -446,6 +532,8 @@ function abrirSala(code) {
   const arriba = (e) => teclas.delete(e.code);
   const perderFoco=()=>{teclas.clear();mouse.abajo=false;};addEventListener('blur',perderFoco);limpiar.push(()=>removeEventListener('blur',perderFoco));
   addEventListener('keydown', abajo);
+  $('[data-mini]').addEventListener('click', () => {const panel=$('[data-mapa-grande]');panel.classList.toggle('hidden');if(!panel.classList.contains('hidden'))dibujarMapa(panel.querySelector('canvas'),yo,est?.fase==='partida'?zona(est.semilla,Math.max(0,(sala.ahora()-est.inicio)/1000)):null,true);});
+  $('[data-mapa-grande]').addEventListener('click', () => $('[data-mapa-grande]').classList.add('hidden'));
   addEventListener('keyup', arriba);
   lienzo.addEventListener('pointermove', (e) => {
     const r = lienzo.getBoundingClientRect();
@@ -454,10 +542,13 @@ function abrirSala(code) {
   });
   lienzo.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' && e.button === 0) mouse.abajo = true;
+    if (e.button === 0 && modoConstruccion) pedirColocar = true;
+    if (e.button === 2) mira = true;
   });
-  const soltar = () => (mouse.abajo = false);
+  lienzo.addEventListener('contextmenu', e => e.preventDefault());
+  const soltar = () => { mouse.abajo = false; mira = false; };
   addEventListener('pointerup', soltar);
-  lienzo.addEventListener('wheel', (e) => yo?.cambiar(), { passive: true });
+  lienzo.addEventListener('wheel', (e) => { if(modoConstruccion) materialPieza = ['madera','piedra','metal'][(['madera','piedra','metal'].indexOf(materialPieza) + (e.deltaY > 0 ? 1 : 2)) % 3]; else yo?.cambiar(); }, { passive: true });
   limpiar.push(() => {
     removeEventListener('keydown', abajo);
     removeEventListener('keyup', arriba);
@@ -508,9 +599,12 @@ function abrirSala(code) {
   });
   app.querySelectorAll('[data-btn]').forEach((b) => b.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (b.dataset.btn === 'E') pedirAgarrar = true;
-    else yo?.cambiar();
+    if (b.dataset.btn === 'E') { pedirAgarrar = true; tactilE = true; }
+    else if (b.dataset.btn === 'Space') pedirSalto = true;
+    else if (b.dataset.btn === 'Q') { modoConstruccion = !modoConstruccion; picoActivo = false; }
+    else if (b.dataset.btn === 'Pico') { picoActivo = !picoActivo; modoConstruccion = false; }
   }));
+  app.querySelector('[data-btn="E"]').addEventListener('pointerup', () => tactilE = false);
 
   function usarObjeto() {
     if(fase!=='partida'||!yo?.vivo) return;
@@ -518,7 +612,29 @@ function abrirSala(code) {
     if(resultado==='granada') { const g={de:yoId(),x:yo.x,y:yo.y,vx:Math.cos(yo.ang)*110,vy:Math.sin(yo.ang)*110,t:0};granadas.push(g);red.actual?.todos({k:'granada',g,n:Math.random()}); }
     else if(!resultado && OBJETOS[yo.arma.tipo] && !yo.usando) aviso('No necesitás usar este objeto ahora');
   }
-  $('[data-slots]').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(b) {yo?.cambiar(+b.dataset.slot);if(OBJETOS[yo?.arma.tipo]) usarObjeto();}});
+  function colocarPieza() {
+    if (!yo?.vivo || fase !== 'partida' || yo.altura > 0 || yo.enColectivo) return;
+    const punto = vista.apuntar(mouse.x, mouse.y);
+    const pieza = { id: 'pieza-' + yoId() + '-' + Date.now(), ...alinearPieza(punto.x, punto.y), tipo: tipoPieza, material: materialPieza, rotacion: rotacionPieza };
+    if (!validarPieza(mundo, mundo.construcciones || [], pieza, yo.materiales || {})) { aviso('No podés construir ahí', true); return; }
+    sala.enviar({ t: 'construir', pieza }).then(r => { if (r?.error) aviso(r.error, true); else red.actual?.todos({k:'pieza',pieza,n:Math.random()}); });
+  }
+  function golpearFuente(ahora) {
+    if (!yo?.vivo || yo.altura > 0 || ahora - ultimoGolpe < 550) return;
+    const dx = Math.cos(yo.ang), dy = Math.sin(yo.ang);
+    const pieza = (mundo.construcciones || []).find(p=>p.vida>0&&Math.hypot(p.x-yo.x,p.y-yo.y)<42&&(p.x-yo.x)*dx+(p.y-yo.y)*dy>0);
+    if (pieza) { ultimoGolpe=ahora; sala.enviar({t:'danarPieza',id:pieza.id,dano:50}); return; }
+    const o = mundo.obstaculos.find(o => !o.roto && Math.hypot(o.x - yo.x, o.y - yo.y) < o.r + 27 && (o.x - yo.x) * dx + (o.y - yo.y) * dy > 0);
+    let id = o?.id;
+    if (!id) {
+      const x = Math.floor((yo.x + dx * 23) / 16), y = Math.floor((yo.y + dy * 23) / 16);
+      if (x >= 0 && x < TAM && y >= 0 && y < TAM && mundo.t[y * TAM + x] === 4) id = 'm' + (y * TAM + x);
+    }
+    if (!id) return;
+    ultimoGolpe = ahora;
+    sala.enviar({t:'picar',id}).then(r=>{if(!r?.error) {red.actual?.todos({k:'pico',id,n:Math.random()});aviso('¡Materiales juntados!');}});
+  }
+  $('[data-slots]').addEventListener('click',e=>{if(e.target.closest('[data-pico]')){picoActivo=!picoActivo;modoConstruccion=false;return;}const b=e.target.closest('[data-slot]');if(b) {yo?.cambiar(+b.dataset.slot);picoActivo=false;if(OBJETOS[yo?.arma.tipo]) usarObjeto();}});
   const mirando = () => (fase === 'partida' || fase === 'fin') && (!yo || !yo.vivo);
 
   // ---------------------------------------------------------------- bucle
@@ -534,11 +650,13 @@ function abrirSala(code) {
   let camY = 0;
   function cuadro(ms) {
     raf = requestAnimationFrame(cuadro);
-    const dt = Math.min(0.05, (ms - ultimo) / 1000);
+    const dtReal = Math.min(1, (ms - ultimo) / 1000);
+    const dt = Math.min(0.05, dtReal);
     ultimo = ms;
     if (!est || !mundo) return;
     const enJuego = fase === 'partida' || fase === 'cuenta' || fase === 'fin';
     const t = enJuego ? (sala.ahora() - est.inicio) / 1000 : ms / 1000;
+    const colectivo = fase === 'partida' && t < DURACION_COLECTIVO ? posicionColectivo(est.semilla, t) : null;
     const vivosIds = new Set(est.vivos || []);
 
     // cuenta regresiva
@@ -552,31 +670,61 @@ function abrirSala(code) {
     const puedoJugar = yo?.vivo && fase === 'partida' && t >= 0 && !document.querySelector('.cl-esc') && !document.activeElement?.matches('input,textarea') && !rueda.abierta;
     if (yo) {
       yo.tiempo(dt);
+      if (!puedoJugar && fase === 'partida' && t >= 0) {
+        if (yo.enColectivo) { const pos=posicionColectivo(est.semilla,t);yo.x=pos.x;yo.y=pos.y;if(saltoAutomatico(t)&&yo.saltar(pos.x,pos.y))red.actual?.todos({k:'salto',de:yoId(),x:yo.x,y:yo.y,n:Math.random()}); }
+        else if (yo.altura > 0) yo.caer(dtReal);
+      }
       if (puedoJugar) {
         const ix = (teclas.has('KeyD') || teclas.has('ArrowRight') ? 1 : 0) - (teclas.has('KeyA') || teclas.has('ArrowLeft') ? 1 : 0) + joys.mov.x;
         const iy = (teclas.has('KeyS') || teclas.has('ArrowDown') ? 1 : 0) - (teclas.has('KeyW') || teclas.has('ArrowUp') ? 1 : 0) + joys.mov.y;
-        yo.mover(mundo, ix, iy, dt);
+        if (yo.enColectivo) {
+          const pos = posicionColectivo(est.semilla, t);
+          yo.x = pos.x; yo.y = pos.y;
+          if (pedirSalto || saltoAutomatico(t)) {
+            yo.saltar(pos.x, pos.y);
+            red.actual?.todos({ k: 'salto', de: yoId(), x: yo.x, y: yo.y, n: Math.random() });
+          }
+        } else if (yo.altura > 0) yo.caer(dtReal, ix, iy);
+        else yo.mover(mundo, ix, iy, dt);
         // apuntar: con el mouse (o el joystick derecho)
         if (Math.hypot(joys.tiro.x, joys.tiro.y) > 0.2) yo.ang = Math.atan2(joys.tiro.y, joys.tiro.x);
         else {const a=vista.apuntar(mouse.x,mouse.y);yo.ang=Math.atan2(a.y-yo.y,a.x-yo.x);}
         const disparo = mouse.abajo || Math.hypot(joys.tiro.x, joys.tiro.y) > 0.65;
+        if (pedirColocar && modoConstruccion) colocarPieza();
+        pedirColocar = false;
+        if (disparo && picoActivo) golpearFuente(ms);
         // un gesto dura lo suyo; moverse o tirar lo corta
         if (yo.gesto) { yo.gestoT -= dt; if (yo.gestoT <= 0 || yo.mueve || disparo) yo.gesto = null; }
-        if (disparo && OBJETOS[yo.arma.tipo]) { if(!mouse.usado) usarObjeto();mouse.usado=true; } else if(!disparo) mouse.usado=false;
-        if (disparo) {
+        if (disparo && OBJETOS[yo.arma.tipo] && !modoConstruccion && !picoActivo) { if(!mouse.usado) usarObjeto();mouse.usado=true; } else if(!disparo) mouse.usado=false;
+        if (disparo && !modoConstruccion && !picoActivo) {
           const nuevas = yo.disparar();
           if (nuevas.length) {
             balas.push(...nuevas);
-            red.actual?.todos({ k: 'tiro', de: yoId(), x: Math.round(nuevas[0].x), y: Math.round(nuevas[0].y), a: +yo.ang.toFixed(3), arma: yo.arma.tipo, s: Math.random() });
+            red.actual?.todos({ k: 'tiro', de: yoId(), x: Math.round(nuevas[0].x), y: Math.round(nuevas[0].y), a: +yo.ang.toFixed(3), arma: yo.arma.tipo, rareza: yo.arma.rareza, s: Math.random() });
           }
         }
-        // Todos los objetos se guardan: nunca se consumen al pasar.
+        // Balas y materiales no ocupan casilleros: se juntan al pasar.
+        if (!recogiendo) for (const b of mundo.botin) {
+          if (tomados.has(b.id) || (b.cofre !== undefined && !abiertos.has(b.cofre)) || (!CAJAS[b.tipo] && !MATERIALES[b.tipo]) || Math.hypot(b.x - yo.x, b.y - yo.y) > 13) continue;
+          recogiendo = true;
+          sala.enviar({t:'agarrar',id:b.id}).then(r=>{if(!r?.error){tomados.add(b.id);red.actual?.todos({k:'agarre',id:b.id,n:Math.random()});if(CAJAS[b.tipo]){const c=CAJAS[b.tipo];yo.municion[c.municion]=Math.min(999,(yo.municion[c.municion]||0)+c.cantidad);}aviso((CAJAS[b.tipo]||MATERIALES[b.tipo]).nombre+' juntado');}}).finally(()=>recogiendo=false);
+          break;
+        }
+        const cercaCofre = mundo.botin.find(b=>b.tipo==='cofre'&&!abiertos.has(b.id)&&Math.hypot(b.x-yo.x,b.y-yo.y)<20);
+        if (cercaCofre && (teclas.has('KeyE') || tactilE)) {
+          if (cofreActual?.id !== cercaCofre.id) { cofreActual={id:cercaCofre.id,desde:ms,abriendo:false};sala.enviar({t:'iniciarCofre',id:cercaCofre.id}); }
+          if (ms-cofreActual.desde>=1000&&!cofreActual.abriendo) {cofreActual.abriendo=true;sala.enviar({t:'abrirCofre',id:cercaCofre.id}).then(r=>{if(!r?.error){abiertos.add(cercaCofre.id);aviso('¡Abriste un cofre!');}});}
+        } else cofreActual = null;
+        // Los objetos de inventario se agarran con E.
         if(pedirAgarrar&&!recogiendo) for (const b of mundo.botin) {
-          if (tomados.has(b.id) || Math.hypot(b.x-yo.x,b.y-yo.y)>18) continue;
-          const prueba={slots:yo.slots.map(s=>s?{...s}:null)};
-          if(!recoger(prueba,b.tipo,ARMAS,b.item)) {aviso('Inventario lleno · X suelta el objeto seleccionado');break;}
+          if (tomados.has(b.id) || b.tipo==='cofre' || CAJAS[b.tipo] || MATERIALES[b.tipo] || (b.cofre !== undefined && !abiertos.has(b.cofre)) || Math.hypot(b.x-yo.x,b.y-yo.y)>18) continue;
+          const item = {...b.item,id:b.id,rareza:b.rareza};
+          const prueba={slots:yo.slots.map(s=>s?{...s}:null),actual:yo.actual};
+          const plan=recoger(prueba,b.tipo,ARMAS,item);
+          if(!plan) {aviso('No podés agarrar ese objeto');break;}
           recogiendo=true;
-          sala.enviar({t:'agarrar',id:b.id}).then(r=>{if(r&&!r.error&&r.estado?.propietarios?.[b.id]===yoId()&&yo?.vivo){yo.recoger(b.tipo,b.item);tomados.add(b.id);red.actual?.todos({k:'agarre',id:b.id,n:Math.random()});aviso((OBJETOS[b.tipo]||ARMAS[b.tipo]).nombre+' en tu inventario');}}).finally(()=>recogiendo=false);break;
+          const cambio=plan.soltado?{id:'drop-'+yoId()+'-'+Date.now(),tipo:plan.soltado.tipo,item:plan.soltado,x:b.x,y:b.y}:null;
+          sala.enviar({t:'agarrar',id:b.id,cambio}).then(r=>{if(r&&!r.error&&r.estado?.propietarios?.[b.id]===yoId()&&yo?.vivo){yo.recoger(b.tipo,item);tomados.add(b.id);red.actual?.todos({k:'agarre',id:b.id,n:Math.random()});if(cambio){mundo.botin.push(cambio);red.actual?.todos({k:'drop',b:cambio,n:Math.random()});vista.preparar(mundo);}aviso((OBJETOS[b.tipo]||ARMAS[b.tipo]).nombre+' en tu inventario');}}).finally(()=>recogiendo=false);break;
         }
       }
       if(yo.vivo&&fase==='partida'&&t>=0) {
@@ -590,6 +738,7 @@ function abrirSala(code) {
 
       }
       pedirAgarrar = false;
+      pedirSalto = false;
       if (yo.vivo === false && !reportado && fase === 'partida') morir(muertePor || 'zona');
     }
 
@@ -613,28 +762,48 @@ function abrirSala(code) {
       if (!vivosIds.has(id)) continue;
       const k = Math.min(1, dt * 12);
       for (const c of ['x', 'y']) r.obj[c] += (r.meta[c] - r.obj[c]) * (Math.abs(r.meta[c] - r.obj[c]) > 80 ? 1 : k);
-      Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, gesto: r.meta.gesto, vivo: r.meta.vivo && vivosIds.has(id), id });
+      Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, gesto: r.meta.gesto, usando: r.meta.usando, altura:r.meta.altura, enColectivo:r.meta.enColectivo, paracaidas:r.meta.paracaidas, vivo: r.meta.vivo && vivosIds.has(id), id });
       if (r.obj.vivo) blancos.push(r.obj);
     }
     if (anfitrion) {
       for (const b of botsSim.values()) if (b.p.vivo) blancos.push(b.p);
-      const libres = mundo.botin.filter((x) => !tomados.has(x.id));
+      const libres = mundo.botin.filter((x) => !tomados.has(x.id) && x.tipo !== 'cofre' && (x.cofre === undefined || abiertos.has(x.cofre)));
       for (const b of botsSim.values()) {
         if (!b.p.vivo || t < 0) continue;
+        if (b.p.enColectivo) {
+          const pos = posicionColectivo(est.semilla, t);
+          b.p.x = pos.x; b.p.y = pos.y;
+          if (t >= b.salto || saltoAutomatico(t)) {b.p.saltar(pos.x, pos.y);red.actual?.todos({k:'salto',de:b.p.id,x:pos.x,y:pos.y,n:Math.random()});}
+          continue;
+        }
+        if (b.p.altura > 0) {
+          const x = (b.destino.x + 1) * 16, y = (b.destino.y + 1) * 16;
+          b.p.caer(dtReal, x - b.p.x, y - b.p.y);
+          continue;
+        }
         const sal = b.cerebro.paso(dt, mundo, est.semilla, t, blancos, libres);
         for (const bala of sal.balas) {
           balas.push(bala);
-          red.actual?.todos({ k: 'tiro', de: b.p.id, x: Math.round(bala.x), y: Math.round(bala.y), a: +b.p.ang.toFixed(3), arma: b.p.arma.tipo, s: Math.random() });
+          red.actual?.todos({ k: 'tiro', de: b.p.id, x: Math.round(bala.x), y: Math.round(bala.y), a: +b.p.ang.toFixed(3), arma: b.p.arma.tipo, rareza: b.p.arma.rareza, s: Math.random() });
+        }
+        if (!b.p.usando && (b.p.materiales?.madera||0)<40 && (!b.ultimoPico || ms-b.ultimoPico>1100)) {
+          const fuente=mundo.obstaculos.find(o=>!o.roto&&o.material==='madera'&&Math.hypot(o.x-b.p.x,o.y-b.p.y)<27);
+          if(fuente){b.ultimoPico=ms;sala.enviar({t:'picar',bot:b.p.id,id:fuente.id});}
         }
         if (sal.agarra && !tomados.has(sal.agarra.id)) {
           const it = sal.agarra;
-          if (it.tipo === 'botiquin' && b.p.vida < VIDA) b.p.vida = Math.min(VIDA, b.p.vida + 40);
-          else if ((it.tipo === 'escudo'||it.tipo==='mini') && b.p.escudo < ESCUDO_MAX) b.p.escudo = Math.min(ESCUDO_MAX, b.p.escudo + (it.tipo==='mini'?25:50));
-          else if(it.tipo==='venda'&&b.p.vida<75)b.p.vida=Math.min(75,b.p.vida+15);
-          else if (ARMAS[it.tipo] && (!b.p.slots[1] || it.tipo === 'rifle' || it.tipo === 'escopeta')) b.p.agarrarArma(it.tipo);
-          else continue;
+          if(CAJAS[it.tipo]||MATERIALES[it.tipo]){
+            tomados.add(it.id);
+            sala.enviar({t:'agarrar',id:it.id,bot:b.p.id}).then(r=>{if(r?.error)tomados.delete(it.id);else if(CAJAS[it.tipo]){const c=CAJAS[it.tipo];b.p.municion[c.municion]=(b.p.municion[c.municion]||0)+c.cantidad;}});
+            continue;
+          }
+          const item={...it.item,id:it.id,rareza:it.rareza};
+          const prueba={slots:b.p.slots.map(s=>s?{...s}:null),actual:b.p.actual};
+          const plan=recoger(prueba,it.tipo,ARMAS,item);
+          if(!plan)continue;
+          const cambio=plan.soltado?{id:'drop-'+b.p.id+'-'+Date.now(),tipo:plan.soltado.tipo,item:plan.soltado,x:it.x,y:it.y}:null;
           tomados.add(it.id);
-          sala.enviar({ t: 'agarrar', id: it.id });
+          sala.enviar({t:'agarrar',id:it.id,bot:b.p.id,cambio}).then(r=>{if(r?.error){tomados.delete(it.id);return;}b.p.recoger(it.tipo,item);if(ARMAS[it.tipo]){const i=b.p.slots.findIndex(s=>s?.id===it.id);if(i>=0)b.p.cambiar(i);}if(cambio){mundo.botin.push(cambio);vista.preparar(mundo);}});
           red.actual?.todos({ k: 'agarre', id: it.id, n: Math.random() });
         }
       }
@@ -651,7 +820,7 @@ function abrirSala(code) {
       for (const [id, r] of botsVistos) {
         const k = Math.min(1, dt * 12);
         for (const c of ['x', 'y']) r.obj[c] += (r.meta[c] - r.obj[c]) * (Math.abs(r.meta[c] - r.obj[c]) > 80 ? 1 : k);
-        Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, gesto: r.meta.gesto, vivo: r.meta.vivo && vivosIds.has(id), id });
+        Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, mueve: r.meta.mueve, gesto: r.meta.gesto, usando:r.meta.usando, altura:r.meta.altura, enColectivo:r.meta.enColectivo, paracaidas:r.meta.paracaidas, vivo: r.meta.vivo && vivosIds.has(id), id });
         if (r.obj.vivo) {
           listaBots.push(r.obj);
           blancos.push(r.obj);
@@ -666,12 +835,22 @@ function abrirSala(code) {
       const propia = !b.visual && (b.de === yoId() || (anfitrion && String(b.de).startsWith('bot')));
       const tocado = avanzarBala(mundo, b, dt, propia ? blancos : []);
       if (tocado && propia) impacto(b, tocado);
+      if (!b.viva && b.tipo === 'rpg' && !b.exploto) {
+        b.exploto = true; vista.explosion(b.x,b.y);
+        if (propia) {
+          for (const p of blancos) { const d=danoArea(b.dano,40,Math.hypot(p.x-b.x,p.y-b.y)); if(d>0) impacto({...b,dano:d},p); }
+          for (const p of mundo.construcciones || []) if(p.vida>0&&Math.hypot(p.x-b.x,p.y-b.y)<55) sala.enviar({t:'danarPieza',id:p.id,dano:200});
+        }
+      } else if (!b.viva && !tocado && propia) {
+        const pieza = (mundo.construcciones || []).find(p=>p.vida>0&&p.tipo==='pared'&&Math.abs(p.x-b.x)<20&&Math.abs(p.y-b.y)<20);
+        if(pieza) sala.enviar({t:'danarPieza',id:pieza.id,dano:b.dano});
+      }
     }
     balas = balas.filter((b) => b.viva);
 
     for(const gr of granadas) {
       gr.t+=dt;
-      if(gr.t<.8) {const nx=gr.x+gr.vx*dt,ny=gr.y+gr.vy*dt;const blocked=mundo.t[Math.floor(ny/16)*96+Math.floor(nx/16)]===4;if(blocked){gr.vx*=-.5;gr.vy*=-.5;}else{gr.x=nx;gr.y=ny;}}
+      if(gr.t<.8) {const nx=gr.x+gr.vx*dt,ny=gr.y+gr.vy*dt;const blocked=mundo.t[Math.floor(ny/16)*TAM+Math.floor(nx/16)]===4;if(blocked){gr.vx*=-.5;gr.vy*=-.5;}else{gr.x=nx;gr.y=ny;}}
       if(gr.t>=1.65&&!gr.exploto){gr.exploto=true;vista.explosion(gr.x,gr.y);if(!gr.visual) for(const p of blancos){const d=Math.hypot(p.x-gr.x,p.y-gr.y);if(d<58) impacto({de:gr.de,dano:Math.round(85*(1-d/70))},p);}}
     }
     granadas=granadas.filter(gr=>gr.t<1.7);
@@ -680,7 +859,7 @@ function abrirSala(code) {
     envio += dt;
     if (envio > 1 / 12 && enJuego && yo) {
       envio = 0;
-      try{const resumir=p=>({x:p.x,y:p.y,vida:p.vida,escudo:p.escudo,slots:p.slots,actual:p.actual,vivo:p.vivo});sessionStorage.setItem(guardadoClave,JSON.stringify({semilla:est.semilla,id:yoId(),yo:resumir(yo),bots:[...botsSim].map(([id,b])=>[id,resumir(b.p)])}));}catch{}
+      try{const resumir=p=>({x:p.x,y:p.y,vida:p.vida,escudo:p.escudo,slots:p.slots,actual:p.actual,vivo:p.vivo,altura:p.altura,enColectivo:p.enColectivo,paracaidas:p.paracaidas,municion:p.municion,usando:p.usando});sessionStorage.setItem(guardadoClave,JSON.stringify({semilla:est.semilla,id:yoId(),yo:resumir(yo),bots:[...botsSim].map(([id,b])=>[id,resumir(b.p)])}));}catch{}
       let s = codificarP(yo);
       if (anfitrion) s += '#' + [...botsSim.values()].map((b) => `${b.p.id}:${codificarP(b.p)}`).join(';');
       red.actual?.enviar(s);
@@ -703,7 +882,7 @@ function abrirSala(code) {
       }
       esp.classList.toggle('hidden', !lista.length);
     } else esp.classList.add('hidden');
-    if (!foco) foco = { x: LADO / 2 + Math.cos(ms / 9000) * 300, y: LADO / 2 + Math.sin(ms / 11000) * 300 }; // en el barco: paseo por la isla
+    if (!foco) foco = { x: LADO / 2 + Math.cos(ms / 9000) * 300, y: LADO / 2 + Math.sin(ms / 11000) * 300 };
     camX = Math.round(Math.max(0, Math.min(LADO - W, foco.x - W / 2)));
     camY = Math.round(Math.max(0, Math.min(LADO - H, foco.y - H / 2)));
     const gente = [];
@@ -711,7 +890,8 @@ function abrirSala(code) {
     for(const [id,r] of remotos) if(r.obj.vivo) gente.push({...r.obj,look:lookDe(id)});
     for(const p of listaBots) gente.push({...p,look:lookDe(p.id),arma:typeof p.arma==='string'?p.arma:p.arma?.tipo});
     const z=(fase==='partida'||fase==='fin')?zona(est.semilla,Math.max(0,t)):null;
-    vista.dibujar({mundo,gente,balas,tomados,foco,W,H,dt,ms,zona:z,granadas});
+    const apuntando = mira && yo?.arma.tipo === 'francotirador' && !modoConstruccion;
+    vista.dibujar({mundo,gente,balas,tomados,abiertos,foco,W:apuntando?W*1.35:W,H:apuntando?H*1.35:H,dt,ms,zona:z,granadas,colectivo});
     ctx.clearRect(0,0,overlay.width,overlay.height);
     const ahora=performance.now(),dpr=Math.min(2,devicePixelRatio);
     ctx.textAlign='center';
@@ -723,12 +903,37 @@ function abrirSala(code) {
       const gl=globos.get(p.id);if(gl&&gl.hasta>ahora){ctx.fillStyle='#fff';ctx.strokeText(gl.texto,sx,sy-20*dpr,250*dpr);ctx.fillText(gl.texto,sx,sy-20*dpr,250*dpr);}
     }
     for(let i=numeros.length-1;i>=0;i--){const n=numeros[i];if(n.hasta<ahora){numeros.splice(i,1);continue;}const p=vista.proyectar(n.x,n.y,28+(1-(n.hasta-ahora)/700)*12);ctx.font='900 '+18*dpr+'px Barlow';ctx.fillStyle=n.malo?'#ff9389':'#fff299';ctx.fillText(n.texto,p.x*overlay.width,p.y*overlay.height);}
+    ctx.font=`700 ${10*dpr}px Barlow, sans-serif`;
+    for(const b of mundo.botin) {
+      if(tomados.has(b.id)||(b.cofre!==undefined&&!abiertos.has(b.cofre)))continue;
+      if(yo?.enColectivo||Math.hypot(b.x-foco.x,b.y-foco.y)>110)continue;
+      const punto=vista.proyectar(b.x,b.y,13),x=punto.x*overlay.width,y=punto.y*overlay.height;
+      const nombre=OBJETOS[b.tipo]?.nombre||ARMAS[b.tipo]?.nombre||CAJAS[b.tipo]?.nombre||MATERIALES[b.tipo]?.nombre||(b.tipo==='cofre'?'Cofre':b.tipo);
+      ctx.lineWidth=3*dpr;ctx.strokeStyle='#141413';ctx.fillStyle=RAREZAS[b.rareza]?.color||'#fff';
+      const etiqueta=nombre+(ARMAS[b.tipo]?' · '+RAREZAS[b.rareza]?.nombre:'');
+      ctx.strokeText(etiqueta,x,y);ctx.fillText(etiqueta,x,y);
+      if(yo?.vivo&&Math.hypot(b.x-yo.x,b.y-yo.y)<22&&!CAJAS[b.tipo]&&!MATERIALES[b.tipo]){ctx.fillStyle='#fff';ctx.strokeText('E para agarrar',x,y+11*dpr);ctx.fillText('E para agarrar',x,y+11*dpr);}
+    }
+    if(yo?.vivo&&fase==='partida'){
+      const ancho=overlay.width,alto=overlay.height,radio=7*dpr+(ARMAS[yo.arma.tipo]?.dispersion||0)*65*dpr;
+      ctx.strokeStyle='#fff';ctx.lineWidth=2*dpr;ctx.beginPath();ctx.moveTo(ancho/2-radio-7*dpr,alto/2);ctx.lineTo(ancho/2-radio,alto/2);ctx.moveTo(ancho/2+radio,alto/2);ctx.lineTo(ancho/2+radio+7*dpr,alto/2);ctx.moveTo(ancho/2,alto/2-radio-7*dpr);ctx.lineTo(ancho/2,alto/2-radio);ctx.moveTo(ancho/2,alto/2+radio);ctx.lineTo(ancho/2,alto/2+radio+7*dpr);ctx.stroke();
+      if(apuntando){ctx.beginPath();ctx.arc(ancho/2,alto/2,Math.min(ancho,alto)*.25,0,Math.PI*2);ctx.stroke();}
+      if(modoConstruccion){const punto=vista.apuntar(mouse.x,mouse.y),p=alinearPieza(punto.x,punto.y),s=vista.proyectar(p.x,p.y,3);ctx.strokeStyle=validarPieza(mundo,mundo.construcciones||[],{...p,tipo:tipoPieza,material:materialPieza,rotacion:rotacionPieza},yo.materiales||{})?'#c5f04a':'#ff6b5b';ctx.strokeRect(s.x*ancho-16*dpr,s.y*alto-16*dpr,32*dpr,32*dpr);}
+    }
     if(z){const afuera=yo?.vivo&&Math.hypot(yo.x-z.x,yo.y-z.y)>z.r;$('[data-zona]').textContent=(afuera?'¡Volvé a la zona! · ':'')+(z.cerrando?'La zona se está cerrando':z.falta>0?'La zona se cierra en '+Math.ceil(z.falta)+' s':'Zona final');}
+    if (yo?.vivo && !yo.enColectivo && yo.altura === 0 && fase === 'partida') {
+      const lugar = lugarEn(yo.x, yo.y);
+      if (lugar?.id !== ultimoLugar) {
+        ultimoLugar = lugar?.id || null;
+        if (lugar) aviso(`Entraste a: ${lugar.nombre}`);
+      }
+    }
     // HUD (si morí, solo se ve lo de mirar)
     $('[data-abajo]').classList.toggle('hidden', !(yo?.vivo && (fase === 'partida' || fase === 'cuenta')));
     let cercaArma = null;
     if (yo?.vivo && fase === 'partida') for (const b of mundo.botin) if (!tomados.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 18) cercaArma = b;
-    const pista = cercaArma ? `E · recoger ${(OBJETOS[cercaArma.tipo]||ARMAS[cercaArma.tipo]).nombre}` : '';
+    const cercaCofre=mundo.botin.find(b=>b.tipo==='cofre'&&!abiertos.has(b.id)&&yo?.vivo&&Math.hypot(b.x-yo.x,b.y-yo.y)<20);
+    const pista = yo?.enColectivo ? 'Espacio · saltá del colectivo' : modoConstruccion ? `Construí ${tipoPieza} de ${materialPieza} · F pieza · R rotar · 1–3 material` : picoActivo ? 'Pico · hacé clic para juntar materiales' : cercaCofre ? `Mantené E para abrir el cofre${cofreActual?.id===cercaCofre.id?' · '+Math.min(100,Math.round((ms-cofreActual.desde)/10))+'%':''}` : cercaArma ? `E · agarrá ${(OBJETOS[cercaArma.tipo]||ARMAS[cercaArma.tipo]||CAJAS[cercaArma.tipo]||MATERIALES[cercaArma.tipo]||{nombre:'objeto'}).nombre}` : '';
     const pEl = $('[data-pista]');
     if (pEl.textContent !== pista) {
       pEl.textContent = pista;
@@ -740,14 +945,15 @@ function abrirSala(code) {
       $('[data-escudo]').style.width = `${(yo.escudo / ESCUDO_MAX) * 100}%`;
       const slots = yo.slots.map((s,i)=>{
         const d=s&&(OBJETOS[s.tipo]||ARMAS[s.tipo]);
-        return '<button data-slot="'+i+'" class="slot '+(i===yo.actual?'on ':'')+(!s?'vacio':'')+'" style="--item:'+(d?.color||'#59605b')+'"><small>'+(i+1)+'</small><b>'+(d?.nombre||'Libre')+'</b><span>'+(s?(OBJETOS[s.tipo]?'×'+s.cantidad:(yo.recargando>0&&i===yo.actual?'Recargando':s.bala+'/'+d.cargador)):'—')+'</span></button>';
-      }).join('')+'<div class="uso-item">'+(yo.usando?'Usando '+OBJETOS[yo.usando.tipo].nombre+' · '+Math.max(0,yo.usando.restante).toFixed(1)+' s':'1–6 seleccionar · F usar · X soltar')+'</div>';
+        return '<button data-slot="'+i+'" class="slot '+(i===yo.actual?'on ':'')+(!s?'vacio':'')+'" style="--item:'+(RAREZAS[s?.rareza]?.color||d?.color||'#59605b')+'"><small>'+(i+1)+'</small><b>'+(d?.nombre||'Libre')+'</b><span>'+(s?(OBJETOS[s.tipo]?'×'+s.cantidad:(yo.recargando>0&&i===yo.actual?'Recargando':s.bala+'/'+d.cargador+' · '+(yo.municion[d.municion]||0))):'—')+'</span></button>';
+      }).join('')+'<button data-pico class="slot pico-slot '+(picoActivo?'on':'')+'"><small>C</small><b>Pico</b><span>⛏</span></button><div class="uso-item">'+(yo.usando?'Usando '+OBJETOS[yo.usando.tipo].nombre+' · '+Math.max(0,yo.usando.restante).toFixed(1)+' s':'1–5 seleccionar · C pico · F usar')+'</div>';
       const sl = $('[data-slots]');
       if (sl.dataset.f !== slots) {
         sl.dataset.f = slots;
         sl.innerHTML = slots;
       }
     }
+    if(yo){const m=yo.materiales||{};$('[data-materiales]').textContent=`🪵 ${m.madera||0}  🪨 ${m.piedra||0}  ⚙ ${m.metal||0}  ${picoActivo?'⛏ Pico':''}`;}
     if (enJuego) {
       const vivos = `<span class="etq">Quedan</span><b>${est.vivos.length}</b><span class="etq">Elim.</span><b>${est.kills?.[yoId()] || 0}</b>`;
       const v = $('[data-vivos]');
@@ -759,27 +965,8 @@ function abrirSala(code) {
     miniT -= dt;
     if (miniT <= 0 && mini) {
       miniT = 0.2;
-      const mc = $('[data-mini]').getContext('2d');
-      const s = 132 / LADO;
-      mc.imageSmoothingEnabled = false;
-      mc.drawImage(mini, 0, 0, 132, 132);
-      if (fase === 'partida') {
-        const z = zona(est.semilla, Math.max(0, t));
-        mc.strokeStyle = '#fff';
-        mc.beginPath();
-        mc.arc(z.x * s, z.y * s, z.r * s, 0, Math.PI * 2);
-        mc.stroke();
-        mc.setLineDash([2, 2]);
-        mc.beginPath();
-        mc.arc(z.siguiente.x * s, z.siguiente.y * s, z.siguiente.r * s, 0, Math.PI * 2);
-        mc.stroke();
-        mc.setLineDash([]);
-      }
-      if (yo?.vivo || foco) {
-        const f = yo?.vivo ? yo : foco;
-        mc.fillStyle = '#c5f04a';
-        mc.fillRect(f.x * s - 2, f.y * s - 2, 4, 4);
-      }
+      dibujarMapa($('[data-mini]'), yo?.vivo ? yo : foco, fase === 'partida' ? z : null);
+      if (!$('[data-mapa-grande]').classList.contains('hidden')) dibujarMapa($('[data-mapa-grande] canvas'), yo?.vivo ? yo : foco, z, true);
       const c = red.actual?.estadoConexiones();
       if (c) $('[data-red]').innerHTML = c.total ? `<span style="color:${c.directas === c.total ? 'var(--lima)' : '#ffd166'}">●</span> ${c.directas}/${c.total} directas` : '<span style="color:var(--gris)">●</span> solo vos';
     }

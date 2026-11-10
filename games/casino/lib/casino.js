@@ -249,8 +249,8 @@ const VALORES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K
 const ASIENTOS = 7;
 // las mesas viejas tenían 5 lugares: se agrandan al usarlas
 const agrandar = (r) => { while (r.asientos && r.asientos.length < ASIENTOS) r.asientos.push(null); };
-const BJ_APUESTAS_MS = 15_000;
-const TURNO_MS = 20_000;
+const BJ_APUESTAS_MS = 35_000;
+const TURNO_MS = 30_000;
 const BANCA_PASO_MS = 950;
 const BJ_PAGO_MS = 6_000;
 

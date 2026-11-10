@@ -186,6 +186,19 @@ function cartel(texto, color = '#fff', fondo = 'rgba(15,15,15,.82)', escala = 0.
   return s;
 }
 
+function cartelCasino() {
+  const cv = document.createElement('canvas');
+  cv.width = 1024; cv.height = 256;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#231015'; g.fillRect(0, 0, 1024, 256);
+  g.strokeStyle = '#d5a748'; g.lineWidth = 14; g.strokeRect(12, 12, 1000, 232);
+  g.fillStyle = '#f8d777'; g.textAlign = 'center';
+  g.font = '900 88px Barlow Condensed, sans-serif'; g.fillText('EL CASINO DE DOBRO', 512, 116);
+  g.font = '600 36px Barlow, sans-serif'; g.fillText('BLACKJACK  ·  SALÓN PRINCIPAL', 512, 178);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export class MesaBJ {
   constructor(contenedor) {
     this.cont = contenedor;
@@ -197,7 +210,7 @@ export class MesaBJ {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x120d0a);
-    this.scene.fog = new THREE.Fog(0x120d0a, 9, 22);
+    this.scene.fog = new THREE.Fog(0x120d0a, 18, 42);
     this.camara = new THREE.PerspectiveCamera(42, 1, 0.05, 60);
     this.cartas = new Map(); // clave → { grupo, codigo, anim }
     this.fichas = []; // por asiento: { grupo, monto }
@@ -220,11 +233,39 @@ export class MesaBJ {
     this.scene.add(pantalla);
     this.pantalla = pantalla;
 
-    // piso y paredes del salón
+    // salón visible detrás de la mesa: paredes, cartel, máquinas y luces cálidas
     const piso = new THREE.Mesh(new THREE.CircleGeometry(16, 48), new THREE.MeshStandardMaterial({ color: 0x3a1418, roughness: 0.95 }));
     piso.rotation.x = -Math.PI / 2;
     piso.receiveShadow = true;
     this.scene.add(piso);
+    const pared = new THREE.MeshStandardMaterial({ color: 0x321b22, roughness: 0.9 });
+    const dorado = new THREE.MeshStandardMaterial({ color: 0xb88a38, metalness: 0.6, roughness: 0.35 });
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(20, 7, 0.35), pared);
+    panel.position.set(0, 3.5, -9); this.scene.add(panel);
+    for (const x of [-8.8, -4.4, 4.4, 8.8]) {
+      const moldura = new THREE.Mesh(new THREE.BoxGeometry(0.13, 6.5, 0.14), dorado);
+      moldura.position.set(x, 3.3, -8.76); this.scene.add(moldura);
+    }
+    const franja = new THREE.Mesh(new THREE.BoxGeometry(20, 0.12, 0.2), dorado);
+    franja.position.set(0, 1.2, -8.75); this.scene.add(franja);
+    const senal = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.4), new THREE.MeshBasicMaterial({ map: cartelCasino() }));
+    senal.position.set(0, 3.9, -8.78); this.scene.add(senal);
+    const maquina = new THREE.MeshStandardMaterial({ color: 0x4b1227, metalness: 0.32, roughness: 0.4 });
+    const pantallaSlot = new THREE.MeshStandardMaterial({ color: 0xe0ad53, emissive: 0x9a5a13, emissiveIntensity: 0.55 });
+    for (const x of [-7.4, -6.2, 6.2, 7.4]) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.85, 2.15, 0.75), maquina);
+      m.position.set(x, 1.08, -7.6); this.scene.add(m);
+      const pantalla = new THREE.Mesh(new THREE.BoxGeometry(0.67, 0.8, 0.05), pantallaSlot);
+      pantalla.position.set(x, 1.35, -7.19); this.scene.add(pantalla);
+      const luz = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), pantallaSlot);
+      luz.position.set(x, 2.25, -7.6); this.scene.add(luz);
+    }
+    for (const x of [-3.5, 3.5]) {
+      const aplique = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 8), new THREE.MeshStandardMaterial({ color: 0xffdda3, emissive: 0xffbd60, emissiveIntensity: 1.5 }));
+      aplique.position.set(x, 3.45, -8.65); this.scene.add(aplique);
+      const luz = new THREE.PointLight(0xffb65c, 8, 8);
+      luz.position.set(x, 3.45, -8.2); this.scene.add(luz);
+    }
     for (let i = 0; i < 6; i++) {
       // columnas con luz cálida a lo lejos
       const a = (i / 6) * Math.PI * 2;

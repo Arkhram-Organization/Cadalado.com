@@ -31,7 +31,16 @@ export function seguirGrupo() {
       }
       const ir = grupo.ir;
       const visto = Number(sessionStorage.getItem(VISTO)) || 0;
-      if (ir && ir.ts > visto && Date.now() - ir.ts < 120_000 && ir.url !== aca) {
+      if (ir && ir.ts > visto && ir.url !== aca) {
+        const sala = ir.url.match(/^\/([a-z]{3,12})\/(?:sala|mesa|game)\/([A-Za-z0-9-]{3,24})$/);
+        if (sala) {
+          let lista = false;
+          for (let i = 0; i < 5 && !lista; i++) {
+            try { lista = (await fetch(`/api/${sala[1]}/salas/${sala[2]}?pid=${encodeURIComponent(pid)}`, { cache: 'no-store' })).ok; } catch {}
+            if (!lista) await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          if (!lista) return; // se vuelve a intentar en la próxima consulta
+        }
         sessionStorage.setItem(VISTO, String(ir.ts));
         const lider = grupo.miembros.find((m) => m.lider)?.nombre || 'Tu lobby';
         const aviso = document.createElement('div');

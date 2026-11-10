@@ -16,7 +16,7 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 | Ángeles Peña (carrera de obstáculos 3D) | [`games/carrera`](games/carrera) | `cadalado.com/carrera` |
 | El casino de Dobro (ruleta, blackjack, slots) | [`games/casino`](games/casino) | `cadalado.com/casino` |
 | Make it Meme | [`games/memes`](games/memes) | `cadalado.com/memes` |
-| Último en pie (battle royale 3D; se viene Battle Shmitz) | [`games/royale`](games/royale) | `cadalado.com/royale` |
+| Battle Shmitz (battle royale 3D) | [`games/royale`](games/royale) | `cadalado.com/royale` |
 | Haxball (fútbol 2D por equipos) | [`games/haxball`](games/haxball) | `cadalado.com/haxball` |
 | Cuentas, historial, amigos y chats | [`shared`](shared) | `cadalado.com/club` |
 

@@ -8,6 +8,8 @@ import { lookParaDibujo } from '/comun/look.js';
 import { caraRedonda } from '/comun/caras3d.js';
 import { Red } from '/comun/red.js';
 import { ESTADIOS, COLOR, R_JUG, R_PEL, estadio, nuevoMundo, acomodar, paso, pensarBot, codificar, decodificar } from './fisica.js';
+import * as THREE from '/comun/vendor/three.module.min.js';
+import { crearPersona } from '/comun/persona3d.js';
 
 const app = document.querySelector('#app');
 const COLOR_JUEGO = '#4fd1c5';
@@ -186,13 +188,42 @@ function htmlCancha() {
   <div class="hx">
     <div class="hx-barra"><span class="hx-cuad rojo"></span><b data-marca>0 - 0</b><span class="hx-cuad azul"></span><span class="hx-tiempo" data-tiempo>00:00</span>
       <span class="hx-info" data-info></span><button class="hx-menu-btn" data-menu>⚙️ Menú (ESC)</button></div>
-    <div class="hx-lienzo"><canvas data-cancha></canvas></div>
+    <div class="hx-lienzo"><canvas data-cancha></canvas><div class="hx-cuenta hidden" data-cuenta-inicio></div></div>
     <div class="hx-panel hidden" data-panel></div>
     <div class="hx-esc hidden" data-esc></div>
     <div class="hx-pie" data-pie></div>
     <div class="hx-chat hidden" data-chatbox><div class="log" data-log></div><form data-chat><input class="entrada" maxlength="200" placeholder="Chat… (Enter)" autocomplete="off"></form></div>
     <div class="hx-tactil"><div class="hx-joy" data-joy><i></i></div><button class="hx-patear" data-patear>PATEAR</button></div>
   </div>`;
+}
+function festejo(raiz, miembros) {
+  if (!miembros.length) return () => {};
+  const lienzo = raiz.querySelector('canvas');
+  const renderer = new THREE.WebGLRenderer({canvas:lienzo,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight('#fff7df','#4b6555',2));
+  const luz = new THREE.DirectionalLight('#fff1cc',2);luz.position.set(-3,6,5);scene.add(luz);
+  const camera = new THREE.PerspectiveCamera(35,1,.1,60);
+  const escala=Math.min(1,7/miembros.length);
+  const personajes=miembros.map((m,i)=>{
+    const p=crearPersona(THREE,m.look,{sombras:false});
+    p.grupo.scale.setScalar(escala);
+    p.grupo.position.x=(i-(miembros.length-1)/2)*1.2*escala;
+    scene.add(p.grupo);
+    return p;
+  });
+  let raf,antes=performance.now();
+  const cuadro=(ms)=>{
+    raf=requestAnimationFrame(cuadro);
+    const dt=Math.min(.05,(ms-antes)/1000);antes=ms;
+    const w=lienzo.clientWidth,h=lienzo.clientHeight;
+    if(w&&h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.set(0,1.7,Math.max(5,miembros.length*0.75));camera.lookAt(0,.9,0);camera.updateProjectionMatrix();}
+    personajes.forEach((p,i)=>{p.animar({festeja:true},dt);p.grupo.rotation.y=Math.PI+Math.sin(ms/900+i)*.22;});
+    renderer.render(scene,camera);
+  };
+  raf=requestAnimationFrame(cuadro);
+  return ()=>{cancelAnimationFrame(raf);personajes.forEach(p=>p.dispose?.());renderer.dispose();};
 }
 function medidor(lienzo) {
   const medir = () => {
@@ -237,30 +268,35 @@ function abrirLocal(entrenar) {
   const caras = new Map();
   for (const [id, l] of Object.entries(looks)) caraRedonda(l, 96).then((c) => caras.set(id, c)).catch(() => {});
   let conf = { estadio: 'classic', minutos: 0, goles: 0 };
-  let mundo = null, marcador = { rojo: 0, azul: 0 }, cartel = null, inicio = 0, finGol = 0, jugando = false;
+  let mundo = null, marcador = { rojo: 0, azul: 0 }, cartel = null, inicio = 0, finGol = 0, jugando = false, ganadorLocal = null;
+  let limpiarFestejo = () => {};
   const nombre = (id) => (id === 'j1' ? yo : 'Jugador 2');
   function panel() {
+    limpiarFestejo(); limpiarFestejo = () => {};
     $('[data-panel]').classList.remove('hidden');
-    $('[data-panel]').innerHTML = `<h2>${entrenar ? 'Entrenamiento' : 'Partida local'}</h2>
+    $('[data-panel]').innerHTML = `${ganadorLocal ? `<div class="hx-festejo"><b>¡Ganó el equipo ${NOMBRE_EQ[ganadorLocal]}!</b><canvas></canvas><span>${ganadorLocal === 'rojo' ? esc(yo) : 'Jugador 2'} festeja la victoria</span></div>` : ''}<h2>${entrenar ? 'Entrenamiento' : 'Partida local'}</h2>
       <p>${entrenar ? 'Practicá solo: WASD y patada con Espacio, Shift o Ctrl izquierdos.' : 'Partida 1v1 en la misma pantalla. J1: WASD + Espacio, Shift o Ctrl izquierdos · J2: flechitas + Enter, Shift o Ctrl derechos.'}</p>
       ${modificadores(conf, true)}
       <button class="btn btn-lima btn-grande hx-iniciar" data-iniciar>⚽ ¡Iniciar partido!</button>`;
     engancharModificadores($('[data-panel]'), (c) => (conf = { ...conf, ...c }));
     $('[data-iniciar]').onclick = empezar;
+    if(ganadorLocal)limpiarFestejo=festejo($('[data-panel] .hx-festejo'),[{look:looks[ganadorLocal==='rojo'?'j1':'j2']}]);
   }
   function empezar() {
+    limpiarFestejo();ganadorLocal=null;
     mundo = nuevoMundo(conf.estadio);
     mundo.jug.set('j1', { x: 0, y: 0, vx: 0, vy: 0, equipo: 'rojo' });
     if (!entrenar) mundo.jug.set('j2', { x: 0, y: 0, vx: 0, vy: 0, equipo: 'azul' });
     acomodar(mundo, 'rojo');
     if (entrenar) mundo.saque = null;
-    marcador = { rojo: 0, azul: 0 }; inicio = performance.now(); jugando = true;
+    marcador = { rojo: 0, azul: 0 }; inicio = performance.now()+3500; jugando = true;
     $('[data-panel]').classList.add('hidden');
     $('[data-pie]').textContent = entrenar ? '⚪ WASD (mover) · ESPACIO / SHIFT Izq / CTRL Izq (patada) | ESC menú' : '🔴 J1 (Rojo): WASD · ESPACIO / SHIFT Izq / CTRL Izq  |  🔵 J2 (Azul): Flechas · ENTER / SHIFT Der / CTRL Der  |  ESC menú';
   }
   function terminar() {
     jugando = false;
     const gana = marcador.rojo === marcador.azul ? null : marcador.rojo > marcador.azul ? 'rojo' : 'azul';
+    ganadorLocal = gana;
     if (!entrenar) cartel = { texto: gana ? `¡Ganó el ${NOMBRE_EQ[gana]}!` : '¡Empate!', color: gana ? COLOR[gana] : '#fff', desde: performance.now() };
     setTimeout(panel, 2400);
   }
@@ -270,7 +306,10 @@ function abrirLocal(entrenar) {
   function cuadro(ms) {
     raf = requestAnimationFrame(cuadro);
     const dt = Math.min(0.25, (ms - ultimo) / 1000); ultimo = ms;
-    if (mundo && jugando) {
+    const restante=Math.max(0,Math.ceil((inicio-ms)/1000));
+    $('[data-cuenta-inicio]').classList.toggle('hidden',!jugando||restante===0);
+    if(jugando&&restante)$('[data-cuenta-inicio]').textContent=`El partido empieza en ${restante}`;
+    if (mundo && jugando && ms >= inicio) {
       acum += dt;
       while (acum >= 1 / 60) {
         acum -= 1 / 60;
@@ -293,7 +332,7 @@ function abrirLocal(entrenar) {
     dibujarCancha(g, lienzo, mundo || { est: estadio(conf.estadio), jug: new Map(), pelota: { x: 0, y: 0 } }, { yo: 'j1', nombre, cara: (id) => caras.get(id), cartel });
   }
   raf = requestAnimationFrame(cuadro);
-  limpiar.push(() => { cancelAnimationFrame(raf); tec.destruir(); soltar(); });
+  limpiar.push(() => { cancelAnimationFrame(raf); limpiarFestejo(); tec.destruir(); soltar(); });
 }
 
 // panel de modificadores (minutos, goles y estadio), igual para local y online
@@ -309,11 +348,16 @@ function engancharModificadores(raiz, cambio) {
   raiz.querySelectorAll('[data-mod]').forEach((i) => (i.onchange = () => { const v = Math.max(0, Math.min(30, Math.round(+i.value || 0))); cambio({ [i.dataset.mod]: v }); i.nextElementSibling.textContent = i.dataset.mod === 'minutos' ? (v ? `${v} minutos` : 'Tiempo ilimitado') : v ? `A ${v} goles` : 'Goles ilimitados'; }));
   raiz.querySelectorAll('[data-estadio]').forEach((b) => (b.onclick = () => { raiz.querySelectorAll('[data-estadio]').forEach((x) => x.classList.toggle('on', x === b)); cambio({ estadio: b.dataset.estadio }); }));
 }
-function menuEsc($, { terminar, salir = '/haxball/' }) {
+function menuEsc($, { terminar, puedeTerminar = () => true, salir = '/haxball/' }) {
   const el = $('[data-esc]');
-  const mostrar = (v) => el.classList.toggle('hidden', !v);
-  el.innerHTML = `<div><h3>Menú</h3><button class="btn" data-volver>Volver al partido</button>${terminar ? '<button class="btn" data-terminar>Terminar partido</button>' : ''}<a class="btn btn-borde" href="${salir}" data-ir>Salir</a></div>`;
-  el.querySelector('[data-volver]').onclick = () => mostrar(false);
+  const mostrar = (v) => { el.querySelector('[data-terminar]')?.classList.toggle('hidden', !puedeTerminar()); el.classList.toggle('hidden', !v); };
+  el.innerHTML = `<div><header><span>Haxball · pausa</span><button data-volver aria-label="Cerrar">×</button></header><h3>¿Qué querés hacer?</h3><p>El partido sigue para los demás mientras tenés abierto este menú.</p>
+    <div class="hx-esc-opciones"><button data-volver><b>▶ Seguir jugando</b><small>Volvé a la cancha.</small></button><button data-copiar><b>↗ Invitar a alguien</b><small>Copiá el enlace de la sala.</small></button><button data-audio><b>♪ Sonido</b><small>${localStorage.getItem('cadalado.audio')==='silencio'?'Apagado':'Activado'}</small></button><button data-full><b>⛶ Pantalla completa</b><small>Ampliá la cancha.</small></button>${terminar ? '<button data-terminar><b>■ Terminar partido</b><small>Solo el anfitrión puede cerrar esta partida.</small></button>' : ''}<a href="${salir}" data-ir><b>↩ Salir de Haxball</b><small>Volvé al menú del juego.</small></a></div>
+    <div class="hx-esc-ayuda"><b>Controles</b> · WASD o flechas para moverte · Espacio, Shift, Ctrl o X para patear · Enter para chatear.</div></div>`;
+  el.querySelectorAll('[data-volver]').forEach(b=>b.onclick = () => mostrar(false));
+  el.querySelector('[data-copiar]').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);el.querySelector('[data-copiar] small').textContent='¡Enlace copiado!';}catch{el.querySelector('[data-copiar] small').textContent='Copiá la URL del navegador';}};
+  el.querySelector('[data-audio]').onclick=()=>{const silencio=localStorage.getItem('cadalado.audio')==='silencio';localStorage.setItem('cadalado.audio',silencio?'activo':'silencio');el.querySelector('[data-audio] small').textContent=silencio?'Activado':'Apagado';};
+  el.querySelector('[data-full]').onclick=()=>document.fullscreenElement?document.exitFullscreen?.():document.documentElement.requestFullscreen?.().catch(()=>{});
   el.querySelector('[data-terminar]')?.addEventListener('click', () => { mostrar(false); terminar(); });
   $('[data-menu]').onclick = () => mostrar(el.classList.contains('hidden'));
   const tecla = (e) => { if (e.code === 'Escape' && !e.target.closest?.('input')) mostrar(el.classList.contains('hidden')); };
@@ -333,6 +377,7 @@ function abrirSala(code) {
   const tec = teclado(), joy = tactil(app);
 
   let est = null, fase = null, mundo = nuevoMundo('classic'), vista = null, golesLocales = 0, finGol = 0, cartel = null;
+  let limpiarFestejo = () => {};
   const entradas = new Map(), caras = new Map();
   const idAnfitrion = () => {
     if (!est) return null;
@@ -399,7 +444,7 @@ function abrirSala(code) {
   const abrirChat = (e) => { if (e.code === 'Enter' && !e.target.closest?.('input, select, textarea')) { e.preventDefault(); $('[data-chat] input').focus(); } };
   addEventListener('keydown', abrirChat);
   limpiar.push(() => removeEventListener('keydown', abrirChat));
-  menuEsc($, { terminar: () => est?.host === est?.yo && sala.enviar({ t: 'terminar' }) });
+  menuEsc($, { terminar: () => est?.host === est?.yo && sala.enviar({ t: 'terminar' }), puedeTerminar: () => est?.host === est?.yo });
 
   function armarMundo() {
     mundo = nuevoMundo(est.estadio);
@@ -413,6 +458,7 @@ function abrirSala(code) {
     if (nueva === 'cuenta' || (nueva === 'partida' && !mundo.jug.size)) armarMundo();
     if (nueva === 'fin') cartel = { texto: est.ganador === 'empate' ? '¡Empate!' : `¡Ganó el ${NOMBRE_EQ[est.ganador]}!`, color: est.ganador === 'empate' ? '#fff' : COLOR[est.ganador], desde: performance.now() };
     if (nueva === 'lobby') { mundo = nuevoMundo(est.estadio); vista = null; }
+    if (nueva !== 'fin') { limpiarFestejo(); limpiarFestejo = () => {}; }
     $('[data-panel]').classList.toggle('hidden', !(nueva === 'lobby' || nueva === 'fin'));
     $('[data-pie]').textContent = nueva === 'partida' || nueva === 'cuenta' ? 'WASD o flechas (mover) · ESPACIO / SHIFT / CTRL / X (patada) · Enter: chat · ESC menú' : '';
   }
@@ -424,7 +470,8 @@ function abrirSala(code) {
     const de = (e) => est.jugadores.filter((j) => (est.equipos[j.id] || 'afuera') === e && j.online).map((j) => j.id);
     const bots = est.botNpc.map((_, i) => 'bot' + i);
     const n = { rojo: de('rojo').length, azul: de('azul').length };
-    const html = `<div class="hx-cabeza"><h2>${fase === 'fin' ? (est.ganador === 'empate' ? '¡Empate!' : `¡Ganó el ${NOMBRE_EQ[est.ganador]}!`) + ` ${est.marcador.rojo} - ${est.marcador.azul}` : `Sala ${code}`}</h2>
+    const ganadores=est.ganador==='empate'?[]:[...est.participantes.filter(id=>est.equipos[id]===est.ganador),...bots.filter((id,i)=>est.botEquipo[i]===est.ganador)];
+    const html = `${fase==='fin'&&ganadores.length?`<div class="hx-festejo"><b>¡Festeja el equipo ${NOMBRE_EQ[est.ganador]}!</b><canvas></canvas><span>${ganadores.map(id=>esc(nombreDe(id))).join(' · ')}</span></div>`:''}<div class="hx-cabeza"><h2>${fase === 'fin' ? (est.ganador === 'empate' ? '¡Empate!' : `¡Ganó el ${NOMBRE_EQ[est.ganador]}!`) + ` ${est.marcador.rojo} - ${est.marcador.azul}` : `Sala ${code}`}</h2>
         <button class="btn btn-chico" data-copiar>Copiar link de invitación</button><a class="btn btn-chico btn-borde" href="/haxball/" data-ir>Salir</a></div>
       <div class="hx-equipos">
         ${['rojo', 'azul'].map((e) => `<div class="hx-eq ${e}"><h3>${e === 'rojo' ? '🔴' : '🔵'} Equipo ${NOMBRE_EQ[e]} <small>(${n[e]}/10)</small></h3><ul>${de(e).map(fila).join('')}</ul>
@@ -439,7 +486,9 @@ function abrirSala(code) {
     const p = $('[data-panel]');
     if (!forzar && p.dataset.firma === html) return;
     if (p.contains(document.activeElement) && document.activeElement.matches('input')) return; // no pisar lo que estás escribiendo
+    limpiarFestejo(); limpiarFestejo=()=>{};
     p.dataset.firma = html; p.innerHTML = html;
+    if(fase==='fin'&&ganadores.length)limpiarFestejo=festejo(p.querySelector('.hx-festejo'),ganadores.map(id=>({look:lookDe(id)})));
     p.querySelector('[data-copiar]').onclick = () => { navigator.clipboard?.writeText(location.href); toast('Link copiado'); };
     p.querySelectorAll('[data-eq]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'equipo', e: b.dataset.eq })));
     p.querySelector('[data-bots]')?.addEventListener('change', (e) => sala.enviar({ t: 'config', bots: +e.target.value }));
@@ -477,6 +526,9 @@ function abrirSala(code) {
     raf = requestAnimationFrame(cuadro);
     if (!est) return;
     const t = (sala.ahora() - est.inicio) / 1000;
+    const restante=Math.max(0,Math.ceil(-t));
+    $('[data-cuenta-inicio]').classList.toggle('hidden',fase!=='cuenta');
+    if(fase==='cuenta')$('[data-cuenta-inicio]').textContent=`El partido empieza en ${restante}`;
     $('[data-tiempo]').textContent = fase === 'cuenta' ? `00:00` : fase === 'partida' ? mmss(Math.max(0, t)) : '00:00';
     let m = mundo;
     if (!soyAnfitrion()) {
@@ -495,7 +547,7 @@ function abrirSala(code) {
   }
   raf = requestAnimationFrame(cuadro);
   window.__haxball = { get estado() { return est; }, get mundo() { return mundo; }, get vista() { return vista; }, get caras() { return caras; } };
-  limpiar.push(() => { sala.cerrar(); red.actual?.cerrar(); cancelAnimationFrame(raf); clearInterval(sim); tec.destruir(); soltar(); });
+  limpiar.push(() => { sala.cerrar(); red.actual?.cerrar(); cancelAnimationFrame(raf); clearInterval(sim); limpiarFestejo(); tec.destruir(); soltar(); });
 }
 
 ruteo();

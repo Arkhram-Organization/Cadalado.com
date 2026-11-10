@@ -4,6 +4,7 @@ import { royale } from '../lib/royale.js';
 import { generarMapa, zona, moverCirculo, choqueBala, LADO, T, TAM } from '../public/js/mundo.js';
 import { Peleador, CerebroBot, avanzarBala, nuevaBala } from '../public/js/juego.js';
 import { getStore } from '../../../shared/store.js';
+import { alinearPieza, validarPieza } from '../public/js/construccion.js';
 
 async function req(metodo, ruta, body) {
   const res = await royale.handle(new Request('http://x/api/royale' + ruta, { method: metodo, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }));
@@ -107,4 +108,53 @@ test('partida: arranca, botín de a uno, bajas, el bot habla y termina con un ga
   assert.equal(v.estado.kills[idA], 1);
   assert.equal(v.estado.bajas.length, 3);
   assert.equal(JSON.stringify(v.estado).includes('pidRoyale'), false, 'no se filtran identificadores');
+});
+
+test('cofre tarda un segundo y el servidor entrega su contenido una sola vez', async () => {
+  const pid='pidCofreAA1';
+  const {code}=(await req('POST','/crear',{pid,nombre:'Lola',opciones:{bots:2}})).data;
+  await accion(code,pid,{t:'join',nombre:'Lola'});
+  await accion(code,pid,{t:'empezar'});
+  await tocar(code,{inicio:Date.now()-1000});
+  let v=(await ver(code,pid)).estado;
+  const cofre=generarMapa(v.semilla).botin.find(b=>b.tipo==='cofre');
+  const contenido=generarMapa(v.semilla).botin.find(b=>b.cofre===cofre.id);
+  assert.ok((await accion(code,pid,{t:'agarrar',id:contenido.id})).data.error);
+  await accion(code,pid,{t:'iniciarCofre',id:cofre.id});
+  assert.ok((await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
+  const r=JSON.parse(await getStore().get(`sala:royale:${code}`));
+  r.aperturas[v.yo+':'+cofre.id]=Date.now()-1100;
+  await getStore().set(`sala:royale:${code}`,JSON.stringify(r),3600);
+  v=(await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.estado;
+  assert.ok(v.abiertos.includes(cofre.id));
+  assert.ok((await accion(code,pid,{t:'abrirCofre',id:cofre.id})).data.error);
+  await accion(code,pid,{t:'agarrar',id:contenido.id});
+  assert.equal((await ver(code,pid)).estado.propietarios[contenido.id],v.yo);
+});
+
+test('pico junta material, construcción cuesta diez y el servidor impide apilar', async () => {
+  const pid='pidConstruccionAA1';
+  const {code}=(await req('POST','/crear',{pid,nombre:'Nico',opciones:{bots:2}})).data;
+  await accion(code,pid,{t:'join',nombre:'Nico'});
+  await accion(code,pid,{t:'empezar'});
+  await tocar(code,{inicio:Date.now()-1000});
+  let v=(await ver(code,pid)).estado;
+  const m=generarMapa(v.semilla),arbol=m.obstaculos.find(o=>o.tipo==='arbol');
+  await accion(code,pid,{t:'picar',id:arbol.id});
+  const estado=JSON.parse(await getStore().get(`sala:royale:${code}`));estado.golpes={};await getStore().set(`sala:royale:${code}`,JSON.stringify(estado),3600);
+  await accion(code,pid,{t:'picar',id:arbol.id});
+  v=(await ver(code,pid)).estado;
+  assert.ok(v.materiales[v.yo].madera>=10);
+  let pieza;
+  for(let y=20;y<140&&!pieza;y++)for(let x=20;x<140&&!pieza;x++){
+    const p={id:'pieza-'+v.yo+'-1',...alinearPieza(x*16,y*16),tipo:'pared',material:'madera',rotacion:0};
+    if(validarPieza(m,[],p,v.materiales[v.yo]))pieza=p;
+  }
+  assert.ok(pieza);
+  v=(await accion(code,pid,{t:'construir',pieza})).data.estado;
+  assert.equal(v.construcciones.length,1);
+  assert.ok(v.materiales[v.yo].madera<10);
+  assert.ok((await accion(code,pid,{t:'construir',pieza:{...pieza,id:'pieza-'+v.yo+'-2'}})).data.error);
+  await accion(code,pid,{t:'danarPieza',id:pieza.id,dano:200});
+  assert.equal((await ver(code,pid)).estado.construcciones[0].vida,0);
 });

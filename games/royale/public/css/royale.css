@@ -76,3 +76,12 @@ kbd { font: 700 11px var(--mono); padding: 2px 6px; border-radius: 5px; backgrou
 /* Inventario compartido de armas y consumibles */
 .isla canvas[data-lienzo]{image-rendering:auto}.hud-abajo{gap:12px;bottom:26px;align-items:center;flex-direction:column}.barras{width:280px}.slots{position:relative;gap:5px}.slot{min-width:85px;width:92px;min-height:76px;text-align:left;cursor:pointer;border-top:3px solid var(--item,#65705b);border-radius:6px;background:#19221eea;padding:7px 9px}.slot.on{border-color:#c5f04a;background:#35472dec;transform:translateY(-5px);box-shadow:0 4px 18px #0005}.slot b{font-size:15px;line-height:1.1}.slot span{color:var(--item,#fff);margin-top:5px}.uso-item{position:absolute;bottom:-22px;left:0;right:0;text-align:center;color:#fff;text-shadow:0 1px 3px #000;font-size:11px;white-space:nowrap}.chat-mini{bottom:150px;width:235px}.pista{bottom:160px}.panel-isla{background:#e9ecdd}.panel-isla .btn-lima{--f:#c5f04a}.hud-zona{max-width:50%;text-align:center}.gente .av img{width:100%;height:100%}.isla [data-overlay]{z-index:1}.capa{z-index:2}.cuenta{z-index:3}.menu-hero h1 em{color:#d8f67a}.menu-hero{background:#273522;color:#f4f1e6;border-radius:18px;padding:25px}.menu-hero p{color:#bfc9b4}.menu-hero .etq{color:#c5f04a}
 @media(max-width:760px){.slot{width:52px;min-width:0;padding:5px;min-height:62px}.slot b{font-size:10px}.slot span{font-size:9px}.hud-abajo{bottom:16px}.isla:has(.tactil.ver) .hud-abajo{bottom:155px}.isla:has(.tactil.ver) .pista{bottom:270px}.joy{width:96px;height:96px}.hud-zona{top:64px;font-size:11px;max-width:80%}.mini{width:82px;height:82px}.uso-item{font-size:9px}.barras{width:220px}}
+.mini{cursor:pointer}
+.mapa-grande{position:absolute;inset:0;z-index:10;background:#141413d9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;pointer-events:auto}
+.mapa-grande.hidden{display:none}
+.mapa-grande>div{width:min(600px,92vw);display:flex;justify-content:space-between;align-items:center;font:700 14px var(--texto)}
+.mapa-grande b{font:900 24px var(--titulo);text-transform:uppercase;color:#c5f04a}
+.mapa-grande canvas{width:min(600px,92vw,calc(100vh - 170px));height:auto;aspect-ratio:1;border:3px solid #c5f04a;border-radius:10px;box-shadow:0 12px 40px #0009}
+.pico-slot{--item:#c5f04a}
+.btn-t.b3{bottom:160px;background:#c5f04a}.btn-t.b4{bottom:220px;background:#d5b689}
+@media(max-width:760px){.hud-der [data-materiales]{font-size:10px;padding:4px 6px}.pico-slot{width:45px}.btn-t.b3{bottom:160px}.btn-t.b4{bottom:220px}}

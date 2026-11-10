@@ -139,6 +139,11 @@
 .gr-btn:hover{border-color:#c5f04a88}.gr-btn:disabled{opacity:.6;cursor:default}
 .gr-btn.lima{background:var(--lima);color:#1b2213;border-color:var(--lima)}
 .gr-btn svg{width:14px;height:14px;vertical-align:-2px}
+.gr-config{display:grid;gap:9px;margin-top:18px;padding:14px;border:1px solid #c5f04a55;border-radius:12px;background:#c5f04a0b}
+.gr-config h3{margin:0}.gr-config p{margin:0;color:#bac5b4;font-size:13px;line-height:1.4}
+.gr-config label{display:grid;gap:5px;color:#d5ddce;font-size:12px;font-weight:700}
+.gr-select{width:100%;background:#20261d;color:#efede4;border:1px solid #718066;border-radius:8px;padding:9px 10px;font:600 14px Barlow,Arial,sans-serif}
+.gr-select:disabled{opacity:.68}.gr-config [data-gr-jugar]{font-size:14px;margin-top:5px;padding:12px}
 
 /* lugares libres para sumar gente */
 .lb-invitar{position:absolute;inset:0;z-index:1;pointer-events:none}

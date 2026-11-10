@@ -6,7 +6,7 @@ import { crearJuego, idPublico, entero } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { getStore } from '../../../shared/store.js';
 import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
-import { rutaBot, LIMITE_S, COLORES, MAPAS } from '../public/js/pista.js';
+import { rutaBot, rng, ordenLargada, LIMITE_S, COLORES, MAPAS } from '../public/js/pista.js';
 
 const CUENTA_MS = 5000;
 const RONDA_MS = 9000; // pantalla de "clasificados" entre rondas
@@ -22,18 +22,20 @@ const nombreBot = (r, i) => {
   return repetido ? `${base} ${repetido + 1}` : base;
 };
 const finBot = (r, i) => {
-  const t = Math.round(rutaBot(r.mapa, r.semilla, i).fin * 1000);
+  const orden = ordenLargada(r.participantes.map(idPublico), r.botsVivos);
+  const t = Math.round(rutaBot(r.mapa, r.semilla, i, orden.indexOf('bot' + i), orden.length).fin * 1000);
   return t <= LIMITE_S * 1000 ? t : null;
 };
 
 // Qué mapas se juegan y con cuántos clasificados, según cuántos largan.
 function planRondas(total, semilla) {
-  const r = semilla % 2;
-  const previas = r ? [2, 1] : [1, 2];
-  if (total <= 1) return [1, 2, 3]; // solo: los tres mapas, hay que terminar cada uno
-  if (total <= 2) return [3];
-  if (total <= 5) return [previas[0], 3];
-  return [...previas, 3];
+  const azar = rng(semilla);
+  const previas = [1, 2, 4, 5];
+  for (let i = previas.length - 1; i > 0; i--) { const j = Math.floor(azar() * (i + 1)); [previas[i], previas[j]] = [previas[j], previas[i]]; }
+  const final = azar() < 0.5 ? 3 : previas.pop();
+  if (total <= 2 && total > 1) return [final];
+  if (total <= 5 && total > 1) return [previas[0], final];
+  return [previas[0], previas[1], final];
 }
 function cupoDe(r) {
   const n = r.vivos.length + r.botsVivos.length;
