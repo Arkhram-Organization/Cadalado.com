@@ -11,7 +11,7 @@ const cache = new Map();
 let qMuslo = null, qRodilla = null; // giros para sentarse (sobre la pose de los huesos)
 
 // Biblioteca común: las animaciones de cada modelo de Meshy sirven para todos (mismo esqueleto Mixamo).
-const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra'];
+const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra', 'anim-franba'];
 let biblioteca = null;
 function cargarBiblioteca() {
   biblioteca ??= Promise.all(BIBLIOTECA.map((n) => cargar(new URL(`./modelos/${n}.glb`, import.meta.url).href).catch(() => ({ animations: [] }))))
@@ -28,12 +28,12 @@ const CLIPS = {
   voltereta: ['Run_and_Jump', 'Run_and_Leap', 'Hop_with_Arms_Raised'],
   camina: ['Walking'],
   corre: ['RunFast', 'Running'], // la corrida de Julo
-  corre2: ['run_fast_2', 'Run_03'],
+  corre2: ['run_fast_2', 'Run_03', 'Run_02'],
   trota: ['Running'],
   atras: ['Walk_Backward', 'Walk_Backward_inplace'],
   salto: ['Jump_Over_Obstacle_2', 'Jump_Over_Obstacle', 'Run_and_Jump', 'Run_and_Leap'],
   festeja: ['Hop_with_Arms_Raised', 'All_Night_Dance', 'Clapping_Run'],
-  baila: ['Hip_Hop_Dance_4', 'Hip_Hop_Dance_1', 'All_Night_Dance', 'Cardio_Dance', 'FunnyDancing_02', 'ymca_dance', 'Shake_It_Off_Dance', 'Denim_Pop_Dance'],
+  baila: ['Hip_Hop_Dance_4', 'Hip_Hop_Dance_1', 'Breakdance_1990', 'All_Night_Dance', 'Cardio_Dance', 'FunnyDancing_02', 'ymca_dance', 'Shake_It_Off_Dance', 'Denim_Pop_Dance'],
   musculos: ['Show_Both_Arm_Muscles'],
   pavoneo: ['Proud_Strut'],
   flexiones: ['push_up', 'situps'],
@@ -43,8 +43,8 @@ const CLIPS = {
   mortal: ['Backflip_and_Hooks', 'Handstand_Flip', 'Run_Jump_and_Roll'],
   muerto: ['Shot_and_Blown_Back', 'dying_backwards', 'Shot_and_Fall_Backward', 'Shot_and_Fall_Forward'],
   golpe: ['Shot_and_Blown_Back'],
-  pina: ['Punch_Combo', 'Punch_Combo_1', 'Left_Hook_from_Guard', 'Jumping_Punch', 'Punch_Combo_5', 'Right_Hand_Sword_Slash', 'Elbow_Strike', 'Counterstrike'],
-  patada: ['Boxing_Guard_Right_Straight_Kick', 'Large_step_then_high_kick', 'Rising_Flying_Kick', 'Spartan_Kick', 'Step_Step_Turn_Kick', 'Sweeping_Kick', 'Step_in_High_Kick'],
+  pina: ['Punch_Combo', 'Punch_Combo_1', 'Left_Hook_from_Guard', 'Jumping_Punch', 'Punch_Combo_5', 'Right_Hand_Sword_Slash', 'Elbow_Strike', 'Counterstrike', 'Punch_Combo_4'],
+  patada: ['Boxing_Guard_Right_Straight_Kick', 'Large_step_then_high_kick', 'Rising_Flying_Kick', 'Spartan_Kick', 'Step_Step_Turn_Kick', 'Sweeping_Kick', 'Step_in_High_Kick', 'Sweep_Kick'],
   duerme: ['Wake_Up_and_Look_Up'], // su primer cuadro es acostado: dormido se queda ahí
   despierta: ['Wake_Up_and_Look_Up'],
   dispara: ['Run_and_Shoot', 'Rifle_Charge_inplace'],

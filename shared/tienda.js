@@ -19,6 +19,7 @@ export const SKINS = [
   { id: 'angie', rareza: 'rara', precio: 3_500 },
   { id: 'olcho', rareza: 'rara', precio: 3_500 },
   { id: 'sandra', rareza: 'rara', precio: 4_000 },
+  { id: 'franba', rareza: 'epica', precio: 7_500 },
   { id: 'julo', rareza: 'epica', precio: 7_500 },
   { id: 'faur', rareza: 'epica', precio: 7_500 },
   { id: 'volcho', rareza: 'epica', precio: 8_000 },

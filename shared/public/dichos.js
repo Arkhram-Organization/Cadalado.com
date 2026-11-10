@@ -45,6 +45,12 @@ const DICHOS = {
     pierde: ['Perder no es nada. Lo del caso Bernstein, eso sí fue perder.', 'Ya me pasó algo peor. El caso Bernstein.', 'El próximo año en Jerusalén… y ganando.'],
     turno: ['Me toca. Como en el caso Bernstein: me tocó.', 'Vamos, que se viene Pésaj.', 'Pensando… como en Iom Kipur, con calma.'],
   },
+  franba: {
+    saludo: ['Llegué. Esto me recuerda al ciber.', 'Buenas. Y no, no me estoy quedando pelado.', '¡Vamos el Rojo!'],
+    gana: ['¡Como en el ciber! Te gané sin mirar.', 'Esto va para Gabito. Te quiero, profe.', 'Ganamos. Ahora que entre el pibe Parmo.'],
+    pierde: ['La culpa es de Montiel, como siempre.', 'Perdí porque me distraje revisándome el pelo. Que está todo bien, eh.', 'En el ciber no me pasaba esto.'],
+    turno: ['Me toca. Que entre el pibe Parmo.', 'Pensando… como en el examen de Gabito.', 'Media hora más y me voy, como en el ciber.'],
+  },
   colon: {
     saludo: ['¡Tierra a la vista!', 'Descubrí esta mesa. Es mía.'],
     gana: ['¡Lo descubrí antes que nadie!', 'Esto no figura en mis mapas, pero gané.'],

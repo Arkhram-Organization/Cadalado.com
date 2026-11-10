@@ -211,6 +211,30 @@ export const NPCS = [
     ],
   },
   {
+    id: 'franba',
+    nombre: 'Franba',
+    // el ciber como lugar sagrado, el pelo (que NO se le está cayendo), Independiente, Montiel, el pibe Parmo y Gabito.
+    // Modelo de Meshy: modelos/franba.glb. Cuando habla se agarra la cabeza (se revisa el pelo).
+    look: { modelo: 'franba', clips: { habla: 'Headache_Relief', baila: 'Breakdance_1990', pina: 'Punch_Combo_4', patada: 'Sweep_Kick' }, travesuras: { quieto: ['habla', 'baila', 'habla', 'festeja', 'saluda'], corre: ['voltereta', 'festeja'] }, estilo: 'meshy', piel: '#e8bf9c', pelo: { estilo: 'rulosCorto', color: '#2a1d14' }, ojos: '#4a3020', cuerpo: 'normal', ropa: { remera: '#bfe3f2', pantalon: '#cfc2a3', zapatillas: '#f4f1ea' }, genero: 'h' },
+    frases: [
+      'Qué épocas las del ciber… el olor a gaseosa caliente y el CS a las 3 de la tarde.',
+      'Yo me crié en el ciber. Media hora, después otra media hora, después le debía plata al del ciber.',
+      'El ciber era nuestro club. Más que Independiente, casi.',
+      'No me estoy quedando pelado. Es la luz.',
+      'Es la frente amplia de la familia. Pelado no.',
+      '¿Pelado? Tengo rulos, hermano. Rulos.',
+      'Vamos el Rojo, carajo. Independiente es un sentimiento.',
+      'Rey de copas. Siete Libertadores. Buscalo.',
+      'Montiel, la concha de tu madre, ¿qué hacés ahí?',
+      'Sacá a Montiel, por favor. Sacalo ya.',
+      '¡Que entre el pibe Parmo! ¡Pónganlo al pibe Parmo!',
+      'El pibe Parmo tiene que jugar de titular. No se discute.',
+      'Gabito, si leés esto: te quiero mucho. El mejor profe de química.',
+      'Gabito me enseñó la tabla periódica y la vida. Te quiero, Gabito.',
+      'Como decía Gabito: todo es química. Hasta esto.',
+    ],
+  },
+  {
     id: 'mati',
     nombre: 'Mati Nadeo',
     raro: true, // easter egg: aparece poco y con brillo dorado
