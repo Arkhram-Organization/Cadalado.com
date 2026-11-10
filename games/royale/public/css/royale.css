@@ -209,7 +209,7 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 @keyframes aparece { from { opacity: 0; } }
 .bs-fin-caja { width: min(520px, 100%); max-height: 100%; overflow: auto; text-align: center; color: #fff; background: var(--vidrio2); border: 1px solid var(--borde-v); border-radius: 22px; padding: 26px; box-shadow: 0 30px 90px rgba(0, 0, 0, .55); }
 .bs-fin-caja.gano { border-color: rgba(255, 200, 74, .7); box-shadow: 0 0 80px rgba(255, 200, 74, .25), 0 30px 90px rgba(0, 0, 0, .55); }
-.bs-fin-caja small { font: 800 13px var(--mono, monospace); letter-spacing: 3px; text-transform: uppercase; color: var(--lima); }
+.bs-fin-caja > small { font: 800 13px var(--mono, monospace); letter-spacing: 3px; text-transform: uppercase; color: var(--lima); }
 .bs-fin-caja h2 { margin: 6px 0; font: 900 clamp(46px, 8vw, 78px)/.9 'Barlow Condensed', Impact, sans-serif; text-transform: uppercase; }
 .bs-fin-caja.gano h2 { background: linear-gradient(180deg, #fff3c4, #ffc84a 60%, #ff9a3b); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 0 rgba(0, 0, 0, .4)); }
 .bs-fin-caja h2 span { font-size: .45em; color: #b9c2b4; }

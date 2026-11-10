@@ -12,7 +12,7 @@ export const ICONOS = {
   mini: svg('0 0 64 32', '<circle cx="32" cy="20" r="10"/><rect x="28" y="3" width="8" height="9" rx="1"/><rect x="26" y="1" width="12" height="4" rx="1"/>'),
   escudo: svg('0 0 64 32', '<rect x="21" y="8" width="22" height="22" rx="6"/><rect x="26" y="2" width="12" height="7" rx="2"/><rect x="30" y="13" width="4" height="12" fill="#fff6"/>'),
   granada: svg('0 0 64 32', '<circle cx="30" cy="19" r="11"/><rect x="26" y="4" width="9" height="6" rx="1"/><circle cx="41" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/>'),
-  pico: svg('0 0 64 32', '<path d="M8 10C22 0 42 0 58 9l-3 4C40 6 24 6 11 14z"/><path d="M31 6l5 1-5 24-5-1z"/>'),
+  pico: svg('0 0 64 32', '<path d="M10 15C20 4 42 2 56 8l1 4C44 8 26 9 13 18z"/><path d="M33 6l5 0 6 24-5 1z"/><circle cx="35" cy="8" r="3.4"/>'),
   madera: svg('0 0 32 32', '<rect x="3" y="7" width="26" height="8" rx="4"/><rect x="3" y="17" width="26" height="8" rx="4"/><circle cx="7" cy="11" r="2.4" fill="#0003"/><circle cx="7" cy="21" r="2.4" fill="#0003"/>'),
   piedra: svg('0 0 32 32', '<path d="M5 22l4-11 9-5 9 6 2 10-6 5H11z"/>'),
   metal: svg('0 0 32 32', '<path d="M3 12l13-6 13 6-13 6z"/><path d="M3 17l13 6 13-6v4l-13 6-13-6z"/>'),
