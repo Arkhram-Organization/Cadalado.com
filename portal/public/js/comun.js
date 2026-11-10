@@ -73,7 +73,11 @@ export function personas(lista) {
 // ---------- cuenta ----------
 let yoPromesa = null;
 export function yo() {
-  yoPromesa ??= api('/api/club/yo').then((d) => d.usuario).catch(() => null);
+  yoPromesa ??= api('/api/club/yo').then((d) => {
+    // el look de la cuenta (con su skin y su rueda de gestos) también queda acá para los juegos
+    if (d.usuario?.look) try { localStorage.setItem('cadalado.look', JSON.stringify(d.usuario.look)); } catch {}
+    return d.usuario;
+  }).catch(() => null);
   return yoPromesa;
 }
 
@@ -100,7 +104,7 @@ function cabecera() {
     <div class="contenedor">
       <a class="logo" href="/" data-logo aria-label="cadalado, inicio"><img src="/marca.svg" alt=""><span>cadalado</span></a>
       <nav class="nav" id="nav" aria-label="Principal">
-        ${link('/#muro', 'Muro')}${link('/#juegos', 'Juegos')}${link('/personaje', 'Tu personaje')}${link('/tienda', 'Tienda')}${link('/equipo', 'Equipo')}${link('/club', 'Club')}
+        ${link('/#muro', 'Muro')}${link('/#juegos', 'Juegos')}${link('/personaje', 'Casillero')}${link('/tienda', 'Tienda')}${link('/equipo', 'Equipo')}${link('/club', 'Club')}
       </nav>
       <div class="cabecera-der">
         <span data-cuenta></span>
@@ -127,7 +131,7 @@ function pie() {
       </div>
       <div>
         <h4>Club</h4>
-        <ul><li><a href="/club">Tu cuenta</a></li><li><a href="/personaje">Tu personaje</a></li><li><a href="/club#amigos">Amigos</a></li><li><a href="/club#chats">Chats</a></li><li><a href="/equipo">Equipo</a></li><li><a href="/#sugerencias">Sugerencias</a></li></ul>
+        <ul><li><a href="/club">Tu cuenta</a></li><li><a href="/personaje">Casillero</a></li><li><a href="/club#amigos">Amigos</a></li><li><a href="/club#chats">Chats</a></li><li><a href="/equipo">Equipo</a></li><li><a href="/#sugerencias">Sugerencias</a></li></ul>
       </div>
       <div>
         <h4>Créditos</h4>

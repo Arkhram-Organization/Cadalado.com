@@ -12,25 +12,25 @@ export const RAREZAS = {
   legendaria: { nombre: 'Legendaria', color: '#ffb020' },
   mitica: { nombre: 'Mítica', color: '#ff3b8a' },
 };
-// Cuanto más exclusiva, más cara: míticas 12.500, legendarias 7.500, épicas 5.500.
+// Por ahora todas salen 500 fichas (la rareza queda para el color y lo exclusivo).
 // Cada una con su frase célebre, que sale en la portada.
 export const SKINS = [
-  { id: 'capitan', rareza: 'comun', precio: 800, frase: '¡Ningún pibe se queda sin mate!' },
-  { id: 'chapa', rareza: 'comun', precio: 800, frase: 'Mi batería está al 3%. Igual corro.' },
-  { id: 'colon', rareza: 'comun', precio: 1_200, frase: '¡Tierra a la vista!' },
-  { id: 'claude', rareza: 'comun', precio: 1_200, frase: 'Si encuentran un bug, era una función.' },
-  { id: 'angie', rareza: 'rara', precio: 3_000, frase: '¿Vieron a Nacho? Qué lindo que es Nacho.' },
-  { id: 'olcho', rareza: 'rara', precio: 3_000, frase: 'Hola, soy la rata. Jaja.' },
-  { id: 'sandra', rareza: 'rara', precio: 3_500, frase: 'Desde el caso Bernstein no volví a ser la misma.' },
-  { id: 'franba', rareza: 'legendaria', precio: 7_500, frase: 'No me estoy quedando pelado. Es la luz.' },
-  { id: 'elidiprimio', rareza: 'epica', precio: 5_500, frase: '¿Hacen manga de wops?', nuevo: true },
-  { id: 'julo', rareza: 'epica', precio: 5_500, frase: 'Hice un deploy en la heladera. Anda.' },
-  { id: 'faur', rareza: 'epica', precio: 5_500, frase: 'Uno más y me voy. Mentira, me quedo.' },
-  { id: 'volcho', rareza: 'epica', precio: 5_500, frase: '¿Quién? El volcho.' },
-  { id: 'glinsky', rareza: 'epica', precio: 5_500, frase: 'Esto es una tecnología exponencial, ¿se dan cuenta?' },
-  { id: 'angeles', rareza: 'legendaria', precio: 7_500, frase: 'Mi stack: HTML, CSS y danza contemporánea.' },
-  { id: 'dobro', rareza: 'mitica', precio: 12_500, frase: 'La casa siempre gana. La casa soy yo.' },
-  { id: 'mati', rareza: 'mitica', precio: 12_500, frase: 'Queque.' },
+  { id: 'capitan', rareza: 'comun', precio: 500, frase: '¡Ningún pibe se queda sin mate!' },
+  { id: 'chapa', rareza: 'comun', precio: 500, frase: 'Mi batería está al 3%. Igual corro.' },
+  { id: 'colon', rareza: 'comun', precio: 500, frase: '¡Tierra a la vista!' },
+  { id: 'claude', rareza: 'comun', precio: 500, frase: 'Si encuentran un bug, era una función.' },
+  { id: 'angie', rareza: 'rara', precio: 500, frase: '¿Vieron a Nacho? Qué lindo que es Nacho.' },
+  { id: 'olcho', rareza: 'rara', precio: 500, frase: 'Hola, soy la rata. Jaja.' },
+  { id: 'sandra', rareza: 'rara', precio: 500, frase: 'Desde el caso Bernstein no volví a ser la misma.' },
+  { id: 'franba', rareza: 'legendaria', precio: 500, frase: 'No me estoy quedando pelado. Es la luz.' },
+  { id: 'elidiprimio', rareza: 'epica', precio: 500, frase: '¿Hacen manga de wops?', nuevo: true },
+  { id: 'julo', rareza: 'epica', precio: 500, frase: 'Hice un deploy en la heladera. Anda.' },
+  { id: 'faur', rareza: 'epica', precio: 500, frase: 'Uno más y me voy. Mentira, me quedo.' },
+  { id: 'volcho', rareza: 'epica', precio: 500, frase: '¿Quién? El volcho.' },
+  { id: 'glinsky', rareza: 'epica', precio: 500, frase: 'Esto es una tecnología exponencial, ¿se dan cuenta?' },
+  { id: 'angeles', rareza: 'legendaria', precio: 500, frase: 'Mi stack: HTML, CSS y danza contemporánea.' },
+  { id: 'dobro', rareza: 'mitica', precio: 500, frase: 'La casa siempre gana. La casa soy yo.' },
+  { id: 'mati', rareza: 'mitica', precio: 500, frase: 'Queque.' },
 ];
 
 // La tienda rota todos los días a la medianoche de Argentina: no está todo en venta, solo un par.

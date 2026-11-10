@@ -2,6 +2,11 @@ import { TableScene, preloadCards } from './scene.js';
 import { SENAS, drawCharacter, lookFor } from './characters.js';
 import { cardName, team, ENVIDO_NAMES } from './engine.js';
 import { PollingSocket } from './polling-socket.js';
+// /truco/?sala=CODIGO (como manda la lobby) es lo mismo que /truco/sala/CODIGO
+try {
+  const q = new URLSearchParams(location.search).get('sala');
+  if (q && /^\/truco\/?$/.test(location.pathname) && /^[A-Za-z0-9-]{3,24}$/.test(q)) history.replaceState(history.state, '', `/truco/sala/${q}`);
+} catch {}
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

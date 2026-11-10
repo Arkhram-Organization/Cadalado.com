@@ -1,6 +1,6 @@
 // Rueda de gestos como en Fortnite: mantenés la B, movés el mouse hacia un gesto y al soltar la B lo hace.
 // También anda con los números (1-6) mientras la rueda está abierta, o con un click en el gesto.
-import { GESTOS } from './gestos.js';
+import { miRueda } from './gestos.js';
 
 let estilos = false;
 function ponerEstilos() {
@@ -26,6 +26,7 @@ function ponerEstilos() {
 // alElegir(id): hacer el gesto. puede(): si se puede abrir ahora (por ejemplo, no estás muerto).
 export function ruedaGestos({ alElegir, puede = () => true } = {}) {
   ponerEstilos();
+  const GESTOS = miRueda(); // los 8 que eligió en el casillero
   const n = GESTOS.length, R = 200, r0 = 62, paso = (Math.PI * 2) / n;
   const p = (rad, a) => `${(R + Math.cos(a) * rad).toFixed(1)},${(R + Math.sin(a) * rad).toFixed(1)}`;
   const el = document.createElement('div');

@@ -7,7 +7,7 @@ import { limpiarLook } from './public/look.js';
 
 const TTL = 3 * 3600;
 const VIVO_MS = 40_000; // si no aparece en 40 s, se fue
-const MAX = 8;
+const MAX = 16; // hasta 16 por lobby (en la lobby se ven de a 4)
 const CONFIG_INICIAL = { royale:{bots:7}, carrera:{bots:5}, memes:{bots:2}, haxball:{bots:1,minutos:3,goles:3,estadio:'classic'}, casino:{tipo:'blackjack'} };
 const err = (m, s = 400) => new ErrorCuenta(m, s);
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };
@@ -20,6 +20,19 @@ export function quien(u, body) {
   const p = String(body.pid || '');
   if (!/^[A-Za-z0-9_-]{8,64}$/.test(p)) throw err('Falta tu identificador.');
   return { k: 'p:' + p, nombre: limpiarNombre(body.nombre), look: body.look ? limpiarLook(body.look) : null };
+}
+
+// Candado por lobby: varios miembros escriben a la vez (cada uno marca que sigue cada 1,5 s);
+// sin esto una escritura pisaba a otra y alguien "desaparecía" de la lobby.
+async function conCandado(id, fn) {
+  const s = getStore(), k = `candado:grupo:${id}`;
+  for (let i = 0; i < 60; i++) {
+    if (await s.setNX(k, '1', 3000)) {
+      try { return await fn(); } finally { await s.del(k); }
+    }
+    await new Promise((r) => setTimeout(r, 40 + Math.random() * 40));
+  }
+  return fn(); // no debería pasar: el candado vence solo a los 3 s
 }
 
 async function leer(id) { return id ? parse(await getStore().get(`grupo:${id}`)) : null; }
@@ -42,14 +55,18 @@ const vista = (g, yo) => g && {
 };
 
 async function entrar(yo, id) {
+  // salir de la anterior (fuera del candado de esta)
+  const s = getStore();
+  const antes = await s.get(`grupo-de:${yo.k}`);
+  if (antes && antes !== id) await salir(yo);
+  return conCandado(id, () => entrarYa(yo, id));
+}
+async function entrarYa(yo, id) {
   const s = getStore();
   const g = await leer(id);
   if (!g) throw err('Esa lobby ya no existe.', 404);
   const ya = g.miembros.find((m) => m.k === yo.k);
   if (!ya && g.miembros.filter((m) => Date.now() - m.visto < VIVO_MS).length >= MAX) throw err('Esa lobby está llena.');
-  // salir de la anterior
-  const antes = await s.get(`grupo-de:${yo.k}`);
-  if (antes && antes !== id) await salir(yo);
   if (ya) Object.assign(ya, { ...yo, visto: Date.now() });
   else g.miembros.push({ ...yo, visto: Date.now() });
   await s.set(`grupo-de:${yo.k}`, id, TTL);
@@ -60,10 +77,13 @@ async function salir(yo) {
   const s = getStore();
   const id = await s.get(`grupo-de:${yo.k}`);
   await s.del(`grupo-de:${yo.k}`);
-  const g = await leer(id);
-  if (!g) return;
-  g.miembros = g.miembros.filter((m) => m.k !== yo.k);
-  await guardar(g);
+  if (!id) return;
+  await conCandado(id, async () => {
+    const g = await leer(id);
+    if (!g) return;
+    g.miembros = g.miembros.filter((m) => m.k !== yo.k);
+    await guardar(g);
+  });
 }
 
 // Mi grupo (y de paso marca que sigo acá). Si no tengo, me arma uno solo para mí.
@@ -75,9 +95,16 @@ export async function miGrupo(yo) {
     await s.set(`grupo:${g.id}`, JSON.stringify(g), TTL);
     return vista(await entrar(yo, g.id), yo);
   }
-  const m = g.miembros.find((x) => x.k === yo.k);
-  Object.assign(m, { nombre: yo.nombre, look: yo.look, visto: Date.now() });
-  return vista(await guardar(g), yo);
+  const r = await conCandado(g.id, async () => {
+    const g2 = await leer(g.id);
+    const m = g2?.miembros.find((x) => x.k === yo.k);
+    if (!m) return null; // justo lo sacaron
+    Object.assign(m, { nombre: yo.nombre, look: yo.look, visto: Date.now() });
+    return vista(await guardar(g2), yo);
+  });
+  if (r) return r;
+  await s.del(`grupo-de:${yo.k}`);
+  return miGrupo(yo); // arma una nueva para vos
 }
 
 export async function accionGrupo(yo, body) {
@@ -98,6 +125,12 @@ export async function accionGrupo(yo, body) {
     }
     default: break;
   }
+  if (!id) throw err('No estás en ninguna lobby.');
+  return conCandado(id, () => accionEnGrupo(yo, body, id));
+}
+
+async function accionEnGrupo(yo, body, id) {
+  const s = getStore();
   const g = await leer(id);
   if (!g) throw err('No estás en ninguna lobby.');
   const lider = g.lider === yo.k;

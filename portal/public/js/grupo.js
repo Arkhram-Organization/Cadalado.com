@@ -21,6 +21,8 @@ const flecha = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h12M12
 const cara = (m) => `<span class="gr-cara">${avatarSvg(m.look ? lookParaDibujo(m.look) : lookDeNombre(m.nombre))}</span>`;
 
 // Juegos donde el líder puede armar la sala para todos (los demás se suman con el link).
+// /royale/sala/ABC → /royale/?sala=ABC: esa dirección siempre la sirve el hosting (el juego acomoda la URL solo)
+const aIndice = (url) => String(url).replace(/^\/([a-z]{3,12})\/(sala|mesa)\/([A-Za-z0-9-]{3,24})\/?$/, '/$1/?$2=$3');
 const SALAS = {
   royale: (o) => ({ api: '/api/royale/crear', url: '/royale/sala/', opciones: { bots: 7, publica: false, ...o } }),
   carrera: (o) => ({ api: '/api/carrera/crear', url: '/carrera/sala/', opciones: { bots: 5, publica: false, ...o } }),
@@ -70,7 +72,7 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
       if (grupo?.ir && grupo.ir.ts !== irVisto && !grupo.soyLider && location.pathname !== grupo.ir.url) {
         irVisto = grupo.ir.ts;
         toast('¡Arranca el juego! Te llevamos con tu lobby…');
-        setTimeout(() => (location.href = grupo.ir.url), 900);
+        setTimeout(() => (location.href = aIndice(grupo.ir.url)), 900);
       }
       if (JSON.stringify(antes) !== JSON.stringify(grupo)) { pintar(); alCambiar?.(grupo); }
     } catch {}
@@ -148,7 +150,7 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
         url = s.url + code;
       } catch (e) { return toast(e.message, true); }
     }
-    if (await accion({ accion: 'jugar', url })) irA(url);
+    if (await accion({ accion: 'jugar', url })) irA(aIndice(url));
   }
 
   // entrar con un link de invitación (?lobby=CODIGO)

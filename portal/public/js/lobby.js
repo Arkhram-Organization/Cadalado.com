@@ -5,6 +5,7 @@ import { crearPersona } from '/comun/persona3d.js';
 import { NPCS } from '/comun/npcs.js';
 import { lookParaDibujo, LOOK_BASE } from '/comun/look.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
+import { GESTOS } from '/comun/gestos.js';
 import { frase } from '/comun/npcs.js';
 import { JUEGOS } from './datos.js';
 import { yo, esc, api, toast } from './comun.js';
@@ -149,12 +150,18 @@ export async function montarLobby(raiz) {
     const p = personas.find((x) => { let o = toc.object; while (o) { if (o === x.grupo) return true; o = o.parent; } return false; });
     if (p) { p.decir(frase(p.npc.id, Math.random, miNombre), 4); p.gesto?.(['saluda', 'festeja', 'baila'][Math.floor(Math.random() * 3)]); }
   });
-  const QUE_HACE = { baila: '¡Bailando!', festeja: '¡Festejando!', saluda: '¡Hola!', voltereta: '¡Voltereta!', habla: 'Charlando…', flexiones: 'Haciendo flexiones', duerme: 'Zzz…', musculos: '¡Mirá estos músculos!' };
+  const QUE_HACE = Object.fromEntries(GESTOS.map((g) => [g.id, g.que]));
   ruedaGestos({ alElegir: (id) => { yoP.gesto?.(id); yoP.decir?.(QUE_HACE[id] || '', 2.5); grupoApi?.gesto?.(id); } });
 
   // ---------------- lobby compartida: los del grupo aparecen al lado tuyo
   const compas = new Map(); // nombre → persona
-  const LUGARES = [[1.25, -.55], [-1.25, -.55], [2.3, -.1], [-2.3, -.1], [3.2, .4], [-3.2, .4], [3.9, 1]];
+  // Hasta 16 por lobby, en filas de a 4: adelante vos y 3 más; atrás, filas de 4.
+  const LUGARES = [
+    [1.3, -.45], [-1.3, -.45], [2.6, .05],
+    [-1.95, 1.5], [-.65, 1.5], [.65, 1.5], [1.95, 1.5],
+    [-2.55, 2.9], [-.85, 2.9], [.85, 2.9], [2.55, 2.9],
+    [-3.15, 4.3], [-1.05, 4.3], [1.05, 4.3], [3.15, 4.3],
+  ];
   function ponerCompas(g) {
     const otros = (g?.miembros || []).filter((m) => !m.yo);
     const nombres = new Set(otros.map((m) => m.nombre));
@@ -172,14 +179,16 @@ export async function montarLobby(raiz) {
       p.grupo.position.set(x, 0, z); p.grupo.rotation.y = -x * .12;
     });
     // el elenco se corre para atrás cuando hay gente
-    personas.forEach((p) => (p.grupo.visible = otros.length < 3 || p.grupo.position.z > 2.2));
+    personas.forEach((p) => (p.grupo.visible = otros.length < 3));
   }
   // lugares libres al lado tuyo con la flechita para sumar gente (abre las lobbys para invitar)
   const lugaresEl = $('[data-invitar-lugares]', raiz);
   let libres = [];
   function pintarLibres(g) {
-    const ocupados = (g?.miembros || []).filter((m) => !m.yo).length;
-    libres = [0, 1].map((k) => LUGARES[ocupados + k]).filter(Boolean);
+    // los lugares para invitar completan la fila de 4 (y si está llena, aparece la siguiente)
+    const ocupados = (g?.miembros || []).filter((m) => !m.yo).length, total = ocupados + 1;
+    const faltan = total >= 16 ? 0 : total % 4 === 0 ? 4 : 4 - (total % 4);
+    libres = LUGARES.slice(ocupados, ocupados + faltan);
     lugaresEl.innerHTML = libres.map((_, k) => `<button class="lb-mas" data-mas="${k}" title="Sumar a alguien a tu lobby"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg></span><small>Invitar</small></button>`).join('');
     lugaresEl.querySelectorAll('[data-mas]').forEach((b) => (b.onclick = () => grupoApi.mostrar(true)));
   }

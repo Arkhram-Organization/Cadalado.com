@@ -1,5 +1,17 @@
 // Cliente de salas de cadalado (memes, casino, carrera). Se sirve en /comun/sala.js.
 // Vercel no tiene WebSockets: la sala se consulta cada ~1 s y las acciones van por POST.
+// Entrar por /<juego>/?sala=CODIGO (o ?mesa=CODIGO) es lo mismo que /<juego>/sala/CODIGO.
+// La lobby manda a todos así porque esa dirección siempre la sirve el hosting; acá se acomoda la URL
+// antes de que el juego la lea.
+(() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    const tipo = q.has('mesa') ? 'mesa' : q.has('sala') ? 'sala' : null;
+    const code = tipo && q.get(tipo);
+    const m = location.pathname.match(/^\/([a-z]{3,12})\/?$/);
+    if (m && code && /^[A-Za-z0-9-]{3,24}$/.test(code)) history.replaceState(history.state, '', `/${m[1]}/${tipo}/${code}${location.hash}`);
+  } catch {}
+})();
 
 const guardar = (k, v) => {
   try {
@@ -109,7 +121,11 @@ export class Sala {
       this.estado = data.estado;
       this.o.onEstado?.(data.estado, this);
     }
-    for (const e of data.eventos || []) this.o.onEvento?.(e, this);
+    for (const e of data.eventos || []) {
+      // una consulta y una acción a la vez traen los mismos eventos: cada uno se procesa una sola vez
+      if (e.id != null) { if (e.id <= (this.ultimoEv || 0)) continue; this.ultimoEv = e.id; }
+      this.o.onEvento?.(e, this);
+    }
     if (data.error) this.o.onError?.(data.error);
     this.o.onExtra?.(data, this);
   }

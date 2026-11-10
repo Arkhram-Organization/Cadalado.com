@@ -246,16 +246,23 @@ function abrirSala(code) {
   const tiroFuente = new Map();
   let espectando = 0;
   let muertePor = null;
+  const reenvio = {}; // último reenvío de una muerte que el servidor no registró
   let reportado = false;
   const guardadoClave = 'cadalado-royale-' + code;
   const yoId = () => est?.yo;
   const nombreDe = (id) => (String(id).startsWith('bot') ? est?.botNombres?.[Number(String(id).slice(3))] : est?.jugadores.find((j) => j.id === id)?.nombre) || '—';
   const lookDe = (id) => (String(id).startsWith('bot') ? { ...POR_ID[est.botNpc[Number(String(id).slice(3))]]?.look } : lookDeJugador(est.jugadores.find((j) => j.id === id), id, colorDe(id)));
   // quién simula los bots: el que armó la sala si está; si no, el primero conectado
+  // Si el que simula deja de mandar los bots (pestaña en segundo plano, se le cortó), toma la posta el siguiente.
+  let ultimosBots = performance.now();
   const idAnfitrion = () => {
     if (!est) return null;
-    const online = est.jugadores.filter((j) => j.online && est.participantes.includes(j.id)).map((j) => j.id);
-    return online.includes(est.host) ? est.host : online.sort()[0];
+    const online = est.jugadores.filter((j) => j.online && est.participantes.includes(j.id)).map((j) => j.id).sort();
+    const host = online.includes(est.host) ? est.host : online[0];
+    const hayBots = (est.vivos || []).some((x) => String(x).startsWith('bot'));
+    const trabado = est.fase === 'partida' && hayBots && host !== est.yo && performance.now() - ultimosBots > 6000;
+    if (!trabado) return host;
+    return online.filter((x) => x !== host)[0] || host;
   };
   const soyAnfitrion = () => !!est && idAnfitrion() === est.yo;
   const mapa = new MapaGrande($('[data-mapa-grande]'), { alMarcar: (p) => { marca = p; if (p) aviso('Marcaste ' + (lugarEn(p.x, p.y)?.nombre || cuadricula(p.x, p.y))); } });
@@ -311,7 +318,7 @@ function abrirSala(code) {
       log.classList.add('activo'); clearTimeout(log._t); log._t = setTimeout(() => log.classList.remove('activo'), 6000);
     },
     // los pedidos automáticos (botín al pasar, bots, pico) fallan seguido sin que importe: esos no se avisan
-    onError: (m) => { if (!/disponible|picar|ya se rompió|ya no está|construir ahí|no es tuyo|soltar eso/.test(m)) toast(m, true); },
+    onError: (m) => { if (!/disponible|Mantené E|picar|ya se rompió|ya no está|construir ahí|no es tuyo|soltar eso/.test(m)) toast(m, true); },
     onNoExiste: () => {
       toast('Esa partida no existe.', true);
       ir('/royale/');
@@ -339,6 +346,7 @@ function abrirSala(code) {
       r.meta = m;
       r.visto = performance.now();
     }
+    if (botsTxt) ultimosBots = performance.now();
     if (botsTxt && !soyAnfitrion()) for (const b of botsTxt.split(';')) {
       const i = b.indexOf(':');
       const bid = b.slice(0, i);
@@ -522,6 +530,7 @@ function abrirSala(code) {
       if (validarPieza(mundo, mundo.construcciones || [], pieza, b.p.materiales)) sala.enviar({ t: 'construir', bot: b.p.id, pieza });
     }
     if (murio) {
+      b.muertoPor = por;
       sala.enviar({ t: 'muerte', victima: b.p.id, por });
       if (Math.random() < 0.35) sala.enviar({ t: 'botdice', bot: b.p.id, situacion: 'pierde' });
       if (String(por).startsWith('bot') && Math.random() < 0.45) setTimeout(() => sala.enviar({ t: 'botdice', bot: por, situacion: 'gana' }), 700);
@@ -609,7 +618,7 @@ function abrirSala(code) {
   // clic derecho: en tercera persona mueve la cámara; desde arriba, apunta con la mira
   let giro = null;
   lienzo.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button === 0) mouse.abajo = true;
+    if (e.pointerType === 'mouse' && e.button === 0) { mouse.abajo = true; mouse.clic = performance.now(); }
     if (e.button === 0 && modoConstruccion) pedirColocar = true;
     if (e.button === 2) { if (vista.modoCamara === 'tercera') giro = { x: e.clientX, y: e.clientY }; else mira = true; }
   });
@@ -883,7 +892,9 @@ function abrirSala(code) {
           if (Math.hypot(joys.tiro.x, joys.tiro.y) > 0.2) yo.ang = Math.atan2(joys.tiro.y, joys.tiro.x);
           else { const a = vista.apuntar(mouse.x, mouse.y); yo.ang = Math.atan2(a.y - yo.y, a.x - yo.x); }
         }
-        const disparo = mouse.abajo || Math.hypot(joys.tiro.x, joys.tiro.y) > 0.65;
+        // un clic rápido (apretar y soltar entre dos cuadros, o mientras el arma se enfría) igual dispara
+        const clicPendiente = mouse.clic && performance.now() - mouse.clic < 450;
+        const disparo = mouse.abajo || clicPendiente || Math.hypot(joys.tiro.x, joys.tiro.y) > 0.65;
         if (pedirColocar && modoConstruccion) colocarPieza();
         pedirColocar = false;
         if (disparo && picoActivo) golpearFuente(ms);
@@ -893,6 +904,7 @@ function abrirSala(code) {
         if (disparo && !modoConstruccion && !picoActivo) {
           const nuevas = yo.disparar();
           if (nuevas.length) {
+            mouse.clic = 0; // ese clic ya disparó
             balas.push(...nuevas);
             red.actual?.todos({ k: 'tiro', de: yoId(), x: Math.round(nuevas[0].x), y: Math.round(nuevas[0].y), a: +yo.ang.toFixed(3), arma: yo.arma.tipo, rareza: yo.arma.rareza, s: Math.random() });
           }
@@ -911,7 +923,16 @@ function abrirSala(code) {
         const cercaCofre = mundo.botin.find((b) => b.tipo === 'cofre' && !abiertos.has(b.id) && Math.hypot(b.x - yo.x, b.y - yo.y) < 22);
         if (cercaCofre && (teclas.has('KeyE') || tactilE)) {
           if (cofreActual?.id !== cercaCofre.id) { cofreActual = { id: cercaCofre.id, desde: ms, abriendo: false }; sala.enviar({ t: 'iniciarCofre', id: cercaCofre.id }); }
-          if (ms - cofreActual.desde >= 1000 && !cofreActual.abriendo) { cofreActual.abriendo = true; sala.enviar({ t: 'abrirCofre', id: cercaCofre.id }).then((r) => { if (!r?.error) { abiertos.add(cercaCofre.id); aviso('¡Abriste un cofre!'); } }); }
+          if (ms - cofreActual.desde >= 1000 && !cofreActual.abriendo) {
+            const cofre = cercaCofre, actual = cofreActual;
+            actual.abriendo = true;
+            // al completar la barra se abre solo; si el servidor todavía no estaba listo, reintenta enseguida
+            sala.enviar({ t: 'abrirCofre', id: cofre.id }).then((r) => {
+              if (!r?.error) { abiertos.add(cofre.id); aviso('¡Abriste un cofre!'); return; }
+              if (/no está disponible/.test(r.error)) { abiertos.add(cofre.id); return; }
+              if (cofreActual === actual) { actual.abriendo = false; actual.desde = performance.now() - 850; }
+            }).catch(() => { if (cofreActual === actual) actual.abriendo = false; });
+          }
         } else cofreActual = null;
         // Los objetos de inventario se agarran con E (el más cercano). Si estás lleno, cambia el de la mano.
         if ((pedirAgarrar || ((teclas.has('KeyE') || tactilE) && ms - ultimoAgarre > 200)) && !cercaCofre) {
@@ -927,6 +948,8 @@ function abrirSala(code) {
       pedirAgarrar = false;
       pedirSalto = false;
       if (yo.vivo === false && !reportado && fase === 'partida') morir(muertePor || 'zona');
+      // si el aviso de mi muerte se perdió, se manda de nuevo (si no, la partida no termina nunca)
+      if (yo.vivo === false && reportado && fase === 'partida' && vivosIds.has(yoId()) && ms - (reenvio.yo || 0) > 2500) { reenvio.yo = ms; sala.enviar({ t: 'muerte', victima: yoId(), por: muertePor || 'zona' }); }
     }
 
     // bots: el anfitrión los mueve; el resto los ve por la red
@@ -994,6 +1017,11 @@ function abrirSala(code) {
       zonaBots += dt;
       if (zonaBots >= 1) for (const b of botsSim.values()) { if (!b.p.vivo) continue; const d = danoZona(est.semilla, t, b.p.x, b.p.y); if (d) danarBot(b, d, 'zona'); }
       if (zonaBots >= 1) zonaBots = 0;
+      // bots que murieron acá pero el servidor los sigue contando vivos (se perdió el aviso): se avisa de nuevo
+      for (const [id, b] of botsSim) {
+        if (b.p.vivo || !vivosIds.has(id) || ms - (reenvio[id] || 0) < 2500) continue;
+        reenvio[id] = ms; sala.enviar({ t: 'muerte', victima: id, por: b.muertoPor || 'zona' });
+      }
       for (const b of botsSim.values()) if (b.p.vivo) listaBots.push(b.p);
     } else {
       for (const [id, r] of botsVistos) {

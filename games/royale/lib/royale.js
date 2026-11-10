@@ -34,12 +34,15 @@ function baja(r, id, por, ctx) {
   if (por && por !== 'zona' && por !== id) r.kills[por] = (r.kills[por] || 0) + 1;
   const texto = por === 'zona' ? `${nombreDe(r, id)} se quedó en la zona` : por === 'afuera' ? `${nombreDe(r, id)} se desconectó` : `${nombreDe(r, por)} eliminó a ${nombreDe(r, id)}`;
   ctx.sistema(`${texto} · quedan ${r.vivos.length}`);
-  if (r.vivos.length <= 1) terminar(r, ctx);
+  // si ya no queda ninguna persona viva, no tiene sentido seguir (los bots solos no terminan nunca)
+  if (r.vivos.length <= 1 || !r.vivos.some((x) => !String(x).startsWith('bot'))) terminar(r, ctx);
 }
 
 function terminar(r, ctx) {
   r.fase = 'fin';
-  r.ganador = r.vivos[0] || null;
+  // si se terminó el tiempo y queda una sola persona (con bots trabados), gana la persona
+  const personas = r.vivos.filter((x) => !String(x).startsWith('bot'));
+  r.ganador = r.vivos.length === 1 ? r.vivos[0] : personas.length === 1 ? personas[0] : r.vivos[0] || null;
   r.fin = ctx.now + FIN_MS;
   if (r.ganador) ctx.sistema(`¡${nombreDe(r, r.ganador)} es el ganador de Battle Shmitz!`);
 }
@@ -157,7 +160,10 @@ export const royale = crearJuego({
       case 'abrirCofre': {
         const id = Number(msg.id);
         const b = generarMapa(r.semilla).botin[id];
-        if (r.fase !== 'partida' || !r.vivos.includes(yo) || b?.tipo !== 'cofre' || r.abiertos.includes(id) || ctx.now - (r.aperturas[yo + ':' + id] || 0) < 950) return {error:'Mantené E durante un segundo'};
+        if (r.fase !== 'partida' || !r.vivos.includes(yo) || b?.tipo !== 'cofre' || r.abiertos.includes(id)) return {error:'Ese cofre no está disponible'};
+        // el aviso de que empezaste a abrir puede llegar tarde (o después): no se le exige el segundo exacto
+        const desde = r.aperturas[yo + ':' + id];
+        if (desde && ctx.now - desde < 400) return {error:'Mantené E durante un segundo'};
         r.abiertos.push(id);
         r.tomados.push(id);
         delete r.aperturas[yo + ':' + id];

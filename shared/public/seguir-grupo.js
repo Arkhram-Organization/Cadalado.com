@@ -1,5 +1,7 @@
 // Seguir a tu lobby desde cualquier página: si el líder entra a una sala (aunque la arme desde
 // adentro del juego), los demás de su lobby van solos a la misma sala. Lo carga cada juego y el portal.
+// /royale/sala/ABC → /royale/?sala=ABC: esa dirección siempre la sirve el hosting (el juego acomoda la URL solo)
+const aIndice = (url) => String(url).replace(/^\/([a-z]{3,12})\/(sala|mesa)\/([A-Za-z0-9-]{3,24})\/?$/, '/$1/?$2=$3');
 const PID = 'cadalado.pid';
 const VISTO = 'cadalado.grupo.ir';
 const enSala = () => /^\/[a-z]{3,12}\/(sala|mesa|game)\/[A-Za-z0-9-]{3,24}\/?$/.test(location.pathname) ? location.pathname.replace(/\/$/, '') : null;
@@ -47,7 +49,7 @@ export function seguirGrupo() {
         aviso.textContent = `${lider} armó una partida: te llevamos…`;
         aviso.style.cssText = 'position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:9999;background:#1d211b;color:#efede4;border:1px solid #c5f04a;border-radius:10px;padding:12px 16px;font:600 14px Barlow,Arial,sans-serif;box-shadow:0 12px 30px #000a';
         document.body.append(aviso);
-        setTimeout(() => (location.href = ir.url), 900);
+        setTimeout(() => (location.href = aIndice(ir.url)), 900);
       } else if (ir) sessionStorage.setItem(VISTO, String(Math.max(visto, ir.ts)));
     } catch {}
   }

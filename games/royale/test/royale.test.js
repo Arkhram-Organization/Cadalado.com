@@ -158,3 +158,20 @@ test('pico junta material, construcción cuesta diez y el servidor impide apilar
   await accion(code,pid,{t:'danarPieza',id:pieza.id,dano:200});
   assert.equal((await ver(code,pid)).estado.construcciones[0].vida,0);
 });
+
+test('si muere la única persona, la partida termina aunque queden bots (no se traba)', async () => {
+  const pid = 'pidSoloBots1';
+  const { code } = (await req('POST', '/crear', { pid, nombre: 'Marti', opciones: { bots: 3 } })).data;
+  await accion(code, pid, { t: 'join', nombre: 'Marti' });
+  await accion(code, pid, { t: 'empezar' });
+  await tocar(code, { inicio: Date.now() - 1000 });
+  let v = (await ver(code, pid)).estado;
+  // mata un bot, y el aviso repetido no cuenta dos veces
+  await accion(code, pid, { t: 'muerte', victima: 'bot0', por: v.yo });
+  await accion(code, pid, { t: 'muerte', victima: 'bot0', por: v.yo });
+  v = (await ver(code, pid)).estado;
+  assert.equal(v.vivos.length, 3);
+  await accion(code, pid, { t: 'muerte', victima: v.yo, por: 'zona' });
+  v = (await ver(code, pid)).estado;
+  assert.equal(v.fase, 'fin', 'sin personas vivas se termina');
+});

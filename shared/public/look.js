@@ -4,6 +4,7 @@
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
 import { POR_ID } from './npcs.js';
+import { limpiarRueda } from './gestos.js';
 
 export const ESTILOS_PELO = [
   ['calvo', 'Pelado'], ['rapado', 'Rapado'], ['poco', 'Solo costados'], ['entradas', 'Corto con entradas'],
@@ -88,6 +89,8 @@ export function limpiarLook(x) {
     mochila: color(l.mochila), guantes: color(l.guantes), camara: !!l.camara,
     // casillero: jugar con un personaje del elenco (solo ids que existen)
     npc: typeof l.npc === 'string' && POR_ID[l.npc] ? l.npc : '',
+    // los 8 gestos de la rueda de la B (casillero)
+    gestos: limpiarRueda(l.gestos),
   };
 }
 

@@ -40,39 +40,39 @@
     },
     {
       "source": "/ajedrez/game/:id",
-      "destination": "/ajedrez/index.html"
+      "destination": "/ajedrez/index"
     },
     {
       "source": "/ajedrez/local",
-      "destination": "/ajedrez/index.html"
+      "destination": "/ajedrez/index"
     },
     {
       "source": "/truco/sala/:code",
-      "destination": "/truco/index.html"
+      "destination": "/truco/index"
     },
     {
       "source": "/haxball/sala/:code",
-      "destination": "/haxball/index.html"
+      "destination": "/haxball/index"
     },
     {
       "source": "/memes/sala/:code",
-      "destination": "/memes/index.html"
+      "destination": "/memes/index"
     },
     {
       "source": "/casino/sala/:code",
-      "destination": "/casino/index.html"
+      "destination": "/casino/index"
     },
     {
       "source": "/carrera/sala/:code",
-      "destination": "/carrera/index.html"
+      "destination": "/carrera/index"
     },
     {
       "source": "/royale/sala/:code",
-      "destination": "/royale/index.html"
+      "destination": "/royale/index"
     },
     {
       "source": "/casino/mesa/:code",
-      "destination": "/casino/index.html"
+      "destination": "/casino/index"
     }
   ],
   "redirects": [

@@ -3,41 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tu personaje · cadalado</title>
-  <meta name="description" content="Armá tu personaje de cadalado: cuerpo, pelo, cara, ropa y accesorios. Así te ven en todos los juegos.">
+  <title>Casillero · cadalado</title>
+  <meta name="description" content="Tu casillero de cadalado: elegí tu personaje y los gestos de la rueda de la B.">
   <meta name="theme-color" content="#141413">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/personaje.css">
+  <link rel="stylesheet" href="/css/personaje.css?v=2">
 </head>
-<body>
+<body class="pagina-casillero">
   <div id="cabecera"></div>
-  <main class="personaje">
-    <div class="contenedor">
-      <div class="pj-titulo">
-        <span class="kicker">Tu personaje</span>
-        <h1>Armalo <em>a tu gusto.</em></h1>
-        <p>Elegí una vestimenta de base y cambiá lo que quieras: cuerpo, pelo, cara, ropa y accesorios. Así te van a ver en la carrera, el casino, el royale y Make it Meme.</p>
-      </div>
-      <div class="pj-grilla">
-        <section class="pj-vista">
-          <div class="pj-lienzo" data-lienzo><canvas></canvas><span class="pj-ayuda">Arrastrá para girarlo</span></div>
-          <div class="pj-anims" data-anims></div>
-          <div class="pj-acciones">
-            <button class="btn btn-lima btn-grande" data-guardar>Guardar personaje</button>
-            <button class="btn" data-azar>Sorprendeme</button>
-            <button class="btn" data-deshacer>Deshacer cambios</button>
-          </div>
-          <p class="pj-nota" data-nota></p>
-        </section>
-        <section class="pj-editor" data-editor></section>
-      </div>
+  <main class="casillero">
+    <div class="contenedor cs-marco">
+      <section class="cs-izq" data-panel></section>
+      <section class="cs-der">
+        <div class="cs-escena" data-lienzo>
+          <canvas></canvas>
+          <div class="cs-cartel" data-cartel></div>
+          <span class="cs-ayuda">Arrastrá para girarlo</span>
+          <div class="cs-anims" data-anims></div>
+        </div>
+      </section>
     </div>
   </main>
-  <div id="pie"></div>
   <script type="module" src="/js/personaje.js"></script>
 </body>
 </html>

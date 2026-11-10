@@ -66,7 +66,7 @@ test('tienda: se compra una skin en venta con las fichas del casino y no se pued
   const pid = 'pidtienda' + rnd();
   let r = await a('GET', `/tienda?pid=${pid}`);
   assert.equal(r.data.saldo, 8_000);
-  assert.ok(r.data.skins.find((s) => s.id === 'mati').precio > r.data.skins.find((s) => s.id === 'capitan').precio, 'la mítica es la más cara');
+  assert.ok(r.data.skins.every((s) => s.precio === 500), 'todas a 500');
   assert.equal(r.data.destacadas.length, 3);
   assert.equal(r.data.diarias.length, 4);
   assert.ok(r.data.skins.every((s) => s.frase), 'todas tienen su frase');

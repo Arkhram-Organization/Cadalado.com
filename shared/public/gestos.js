@@ -2,16 +2,38 @@
 // del elenco hacen solos de vez en cuando (estar parado y ponerse a bailar, dar una voltereta corriendo…).
 // Es solo de dibujo: cada navegador decide sus travesuras; los gestos pedidos viajan como estado 'g-<id>'.
 
+// Catálogo de gestos (el orden no se cambia: los juegos los mandan por número). Los nuevos van al final.
 export const GESTOS = [
-  { id: 'baila', nombre: 'Bailar', tecla: '1', dur: 4.5 },
-  { id: 'festeja', nombre: 'Festejar', tecla: '2', dur: 2.4 },
-  { id: 'saluda', nombre: 'Saludar', tecla: '3', dur: 2.4 },
-  { id: 'voltereta', nombre: 'Voltereta', tecla: '4', dur: 1.1 },
-  { id: 'habla', nombre: 'Charlar', tecla: '5', dur: 3.2 },
-  { id: 'flexiones', nombre: 'Flexiones', tecla: '6', dur: 3 },
-  { id: 'duerme', nombre: 'Dormir', tecla: '7', dur: 9.5 },
-  { id: 'musculos', nombre: 'Músculos', tecla: '8', dur: 3 },
+  { id: 'baila', nombre: 'Bailar', tecla: '1', dur: 4.5, que: '¡Bailando!' },
+  { id: 'festeja', nombre: 'Festejar', tecla: '2', dur: 2.4, que: '¡Festejando!' },
+  { id: 'saluda', nombre: 'Saludar', tecla: '3', dur: 2.4, que: '¡Hola!' },
+  { id: 'voltereta', nombre: 'Voltereta', tecla: '4', dur: 1.1, que: '¡Voltereta!' },
+  { id: 'habla', nombre: 'Charlar', tecla: '5', dur: 3.2, que: 'Charlando…' },
+  { id: 'flexiones', nombre: 'Flexiones', tecla: '6', dur: 3, que: 'Haciendo flexiones' },
+  { id: 'duerme', nombre: 'Dormir', tecla: '7', dur: 9.5, que: 'Zzz…' },
+  { id: 'musculos', nombre: 'Músculos', tecla: '8', dur: 3, que: '¡Mirá estos músculos!' },
+  { id: 'abdominales', nombre: 'Abdominales', dur: 3.2, que: 'Haciendo abdominales' },
+  { id: 'vertical', nombre: 'Vertical', dur: 3, que: '¡Vertical!' },
+  { id: 'mortal', nombre: 'Mortal', dur: 1.6, que: '¡Mortal!' },
+  { id: 'pavoneo', nombre: 'Pavoneo', dur: 3, que: 'Pavoneándose' },
+  { id: 'parkour', nombre: 'Parkour', dur: 1.8, que: '¡Parkour!' },
+  { id: 'pina', nombre: 'Piña al aire', dur: 1.6, que: '¡Piña!' },
+  { id: 'patada', nombre: 'Patada', dur: 1.6, que: '¡Patada!' },
+  { id: 'salto', nombre: 'Saltito', dur: 1.3, que: '¡Salto!' },
 ];
+// La rueda de la B tiene 8 lugares; cada uno elige qué gesto va en cada lugar (en el casillero).
+export const RUEDA_BASE = ['baila', 'festeja', 'saluda', 'voltereta', 'habla', 'flexiones', 'duerme', 'musculos'];
+export const POR_GESTO = Object.fromEntries(GESTOS.map((g) => [g.id, g]));
+export function limpiarRueda(x) {
+  const r = Array.isArray(x) ? x.slice(0, 8).map((id) => (POR_GESTO[id] ? id : null)) : [];
+  return RUEDA_BASE.map((base, i) => r[i] || base);
+}
+// La rueda de este jugador (guardada con su look); cada lugar con su tecla 1-8.
+export function miRueda() {
+  let l = null;
+  try { l = JSON.parse(localStorage.getItem('cadalado.look') || 'null'); } catch {}
+  return limpiarRueda(l?.gestos).map((id, i) => ({ ...POR_GESTO[id], tecla: String(i + 1) }));
+}
 export const DURACION = Object.fromEntries(GESTOS.map((g) => [g.id, g.dur]));
 
 // look.travesuras = { quieto: [gestos que hace parado], corre: gesto que hace corriendo }
