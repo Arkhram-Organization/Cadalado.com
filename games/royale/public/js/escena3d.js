@@ -463,7 +463,11 @@ export class Isla3D {
     this.zoom += (zoomObj - this.zoom) * Math.min(1, dt * 2.5);
     if (this.campeon) {
       this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
-      this.camera.position.set(foco.x + Math.sin(ms / 1300) * 5, 27, foco.y + 62);
+      // victoria: la cámara llega desde lejos y le da la vuelta completa al campeón
+      this.campeonT = (this.campeonT || 0) + dt;
+      const kc = Math.min(1, this.campeonT / 1.6), suave = 1 - Math.pow(1 - kc, 3);
+      const radio = 150 - 92 * suave, angc = 0.6 + this.campeonT * 0.42;
+      this.camera.position.set(foco.x + Math.sin(angc) * radio, 60 - 36 * suave + Math.sin(this.campeonT * 0.7) * 3, foco.y + Math.cos(angc) * radio);
       this.camera.lookAt(foco.x, 13, foco.y);
     } else if (this.modoCamara === 'tercera') {
       this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
@@ -573,7 +577,7 @@ export class Isla3D {
         if (tipoArma) { const m = modeloArma(tipoArma, RAREZAS[p.rareza]?.color || '#b9b9b9'); m.scale.setScalar(0.055); m.position.set(0, 0, -0.05); a.mano.add(m); a.flash.position.z = -0.75; }
       }
       const enEscalera = (mundo.construcciones || []).some((c) => c.vida > 0 && c.tipo === 'escalera' && Math.abs(c.x - p.x) < 16 && Math.abs(c.y - p.y) < 16);
-      const alto = p.altura || (p.nivel || enEscalera ? 7 : 0);
+      const alto = (p.altura || (p.nivel || enEscalera ? 7 : 0)) + (p.brinco || 0);
       a.raiz.position.set(p.x, alto, p.y);
       a.raiz.rotation.y = -p.ang - Math.PI / 2;
       // caída libre (de panza) y planeador
@@ -604,7 +608,7 @@ export class Isla3D {
         a.death = 0;
         const fire = balas.some((b) => b.de === p.id && Math.hypot(b.x - p.x, b.y - p.y) < 30);
         const conModelo = !!p.look?.modelo;
-        const estado = p.gesto ? 'g-' + p.gesto : p.altura > 0 ? 'quieto' : p.agachado && conModelo && !p.usando ? 'agachadoLado' : { mueve: p.mueve, corre: p.mueve && !p.agachado, velocidad: p.mueve ? (p.agachado ? 0.5 : 1) : 0, apunta: !!tipoArma, dispara: fire, recargando: p.recargando > 0, curando: !!p.usando, golpe: p.vida < a.health };
+        const estado = p.gesto ? 'g-' + p.gesto : p.altura > 0 ? 'quieto' : p.brinco > 0.5 ? 'salto' : p.agachado && conModelo && !p.usando ? 'agachadoLado' : { mueve: p.mueve, corre: p.mueve && !p.agachado, velocidad: p.mueve ? (p.agachado ? 0.5 : 1) : 0, apunta: !!tipoArma, dispara: fire, recargando: p.recargando > 0, curando: !!p.usando, golpe: p.vida < a.health };
         a.persona.animar(estado, dt);
         // agachado: los muñecos sin animación propia se achican un poco y se inclinan
         const agacha = p.agachado && !conModelo && !(p.altura > 0) ? 1 : 0;

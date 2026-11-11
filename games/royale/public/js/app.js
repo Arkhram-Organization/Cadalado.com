@@ -97,7 +97,7 @@ function menu() {
       </section>
       <section class="bs-panel" data-panel="como" hidden>
         <div class="bs-teclas">
-          ${[['Espacio', 'Saltá del colectivo · abrí el planeador'], ['W A S D', 'Movete y dirigí la caída'], ['Mouse', 'Apuntá y dispará · clic derecho: mira'], ['E', 'Agarrá (si estás lleno, cambia) · abrí cofres con un toque'], ['1 – 5', 'Elegí casillero · rueda para pasar'], ['C', 'Sacá el pico y juntá materiales'], ['Q', 'Modo construcción · F pieza · R rotar'], ['F', 'Usá vendas, botiquín o escudos'], ['M', 'Mapa: marcá a dónde ir'], ['Tab', 'Inventario completo'], ['B', 'Gestos'], ['T', 'Chat'], ['Esc', 'Pausa']].map(([k, d]) => `<kbd>${k}</kbd><span>${d}</span>`).join('')}
+          ${[['Espacio', 'Saltá del colectivo · abrí el planeador'], ['W A S D', 'Movete y dirigí la caída'], ['Mouse', 'Clic: capturar el mouse y disparar · clic derecho: mira · Esc lo libera'], ['E', 'Agarrá (si estás lleno, cambia) · abrí cofres con un toque'], ['1 – 5', 'Elegí casillero · rueda para pasar'], ['C', 'Sacá el pico y juntá materiales'], ['Q', 'Modo construcción · F pieza · R rotar'], ['F', 'Usá vendas, botiquín o escudos'], ['M', 'Mapa: marcá a dónde ir'], ['Tab', 'Inventario completo'], ['B', 'Gestos'], ['T', 'Chat'], ['Esc', 'Pausa']].map(([k, d]) => `<kbd>${k}</kbd><span>${d}</span>`).join('')}
         </div>
       </section>
     </div>
@@ -252,6 +252,7 @@ function abrirSala(code) {
   const tiroFuente = new Map();
   let espectando = 0;
   let muertePor = null;
+  let lentoHasta = 0, finDesde = 0; // cámara lenta y reloj de la victoria
   const reenvio = {}; // último reenvío de una muerte que el servidor no registró
   let reportado = false;
   const guardadoClave = 'cadalado-royale-' + code;
@@ -346,10 +347,10 @@ function abrirSala(code) {
   });
 
   // Estado compacto: yo (y, si soy anfitrión, los bots después de '#')
-  const codificarP = (p) => `${p.x | 0},${p.y | 0},${p.ang.toFixed(2)},${p.vida | 0},${p.escudo | 0},${CODIGO_ARMA[p.arma.tipo] || 'x'},${p.mueve ? 1 : 0},${p.vivo ? 1 : 0},${p.gesto ? GESTOS.findIndex((g) => g.id === p.gesto) + 1 : 0},${p.altura | 0},${p.enColectivo ? 1 : 0},${p.paracaidas ? 1 : 0},${p.usando?.tipo || ''},${p.usando ? (1 - p.usando.restante / p.usando.total).toFixed(2) : 0},${Math.max(0, RAREZA_N.indexOf(p.arma.rareza))},${p.agachado ? 1 : 0}`;
+  const codificarP = (p) => `${p.x | 0},${p.y | 0},${p.ang.toFixed(2)},${p.vida | 0},${p.escudo | 0},${CODIGO_ARMA[p.arma.tipo] || 'x'},${p.mueve ? 1 : 0},${p.vivo ? 1 : 0},${p.gesto ? GESTOS.findIndex((g) => g.id === p.gesto) + 1 : 0},${p.altura | 0},${p.enColectivo ? 1 : 0},${p.paracaidas ? 1 : 0},${p.usando?.tipo || ''},${p.usando ? (1 - p.usando.restante / p.usando.total).toFixed(2) : 0},${Math.max(0, RAREZA_N.indexOf(p.arma.rareza))},${p.agachado ? 1 : 0},${Math.round(p.brinco || 0)}`;
   const decodificarP = (s) => {
-    const [x, y, ang, vida, escudo, arma, mueve, vivo, gesto, altura, enColectivo, paracaidas, uso, progreso, rareza, agachado] = s.split(',');
-    return { x: +x, y: +y, ang: +ang, vida: +vida, escudo: +escudo, arma: ARMA_DE_CODIGO[arma] || 'vacio', rareza: RAREZA_N[+rareza || 0], mueve: mueve === '1', vivo: vivo === '1', gesto: GESTOS[(+gesto || 0) - 1]?.id || null, altura: +altura || 0, enColectivo: enColectivo === '1', paracaidas: paracaidas === '1', usando: OBJETOS[uso] ? { tipo: uso, progreso: +progreso || 0 } : null, agachado: agachado === '1' };
+    const [x, y, ang, vida, escudo, arma, mueve, vivo, gesto, altura, enColectivo, paracaidas, uso, progreso, rareza, agachado, brinco] = s.split(',');
+    return { x: +x, y: +y, ang: +ang, vida: +vida, escudo: +escudo, arma: ARMA_DE_CODIGO[arma] || 'vacio', rareza: RAREZA_N[+rareza || 0], mueve: mueve === '1', vivo: vivo === '1', gesto: GESTOS[(+gesto || 0) - 1]?.id || null, altura: +altura || 0, enColectivo: enColectivo === '1', paracaidas: paracaidas === '1', usando: OBJETOS[uso] ? { tipo: uso, progreso: +progreso || 0 } : null, agachado: agachado === '1', brinco: +brinco || 0 };
   };
   function recibir(id, s) {
     const [mio, botsTxt] = String(s).split('#');
@@ -410,7 +411,9 @@ function abrirSala(code) {
     imagen = imagenMapa(mundo);
   }
   function cambioDeFase(nueva) {
+    if (nueva === 'fin' && fase === 'partida') { lentoHasta = performance.now() + 1700; finDesde = performance.now(); if (vista) vista.campeonT = 0; } // la última baja, en cámara lenta
     fase = nueva;
+    if (nueva !== 'partida' && nueva !== 'cuenta' && document.pointerLockElement) document.exitPointerLock?.();
     if (nueva === 'cuenta' || (nueva === 'partida' && !yo)) empezarPartida();
     if (nueva === 'lobby') {
       prepararMundo(est.semillaSala || 1);
@@ -491,7 +494,14 @@ function abrirSala(code) {
       const total = orden.length;
       fin.classList.toggle('gano', gane);
       fin.classList.toggle('con-campeon', !!e.ganador);
-      fin.innerHTML = `${e.ganador ? `<div class="bs-victoria"><i></i><small>Battle Shmitz · campeón</small><b>#1</b><strong>${esc(e.ganadorNombre || 'Ganador')}</strong></div>` : ''}<div class="bs-fin-caja ${gane ? 'gano' : ''}">
+      const confeti = Array.from({ length: 80 }, (_, i) => `<i style="--x:${(Math.random() * 100).toFixed(1)}%;--d:${(Math.random() * 3).toFixed(2)}s;--t:${(2.6 + Math.random() * 2.4).toFixed(2)}s;--c:${['#ffd23f', '#ff5fa8', '#4fd1ff', '#c5f04a', '#ffffff', '#ff9a3b'][i % 6]};--g:${Math.round(Math.random() * 900 - 450)}deg"></i>`).join('');
+      fin.innerHTML = `${e.ganador ? `<div class="bs-flash"></div><div class="bs-confeti">${confeti}</div>
+        <div class="bs-victoria ${gane ? 'mia' : ''}"><i class="rayos"></i><i class="onda"></i><i class="onda dos"></i>
+          <div class="bs-v-num">#1</div>
+          <div class="bs-v-cinta"><span>Victoria magistral</span></div>
+          <strong>${esc(e.ganadorNombre || 'Ganador')}</strong>
+          <small>${e.kills?.[e.ganador] || 0} eliminaciones · Battle Shmitz</small>
+        </div>` : ''}<div class="bs-fin-caja ${gane ? 'gano' : ''}">
         ${gane ? `<div class="bs-corona">${ICONOS.corona}</div><small>#1 de ${total}</small><h2>¡Último en pie!</h2><p>Ganaste Battle Shmitz con ${e.kills[e.yo] || 0} eliminaciones.</p>`
           : mio >= 0 ? `<small>Quedaste</small><h2>#${mio + 1} <span>de ${total}</span></h2><p>${e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}.` : 'Terminó la partida.'} Hiciste ${e.kills[e.yo] || 0} eliminaciones.</p>`
           : `<small>Terminó</small><h2>${e.ganadorNombre ? `Ganó ${esc(e.ganadorNombre)}` : 'Fin de la partida'}</h2>`}
@@ -546,6 +556,7 @@ function abrirSala(code) {
     red.actual?.todos({ k: 'bajaConfirmada', id: yoId(), por });
     sala.enviar({ t: 'muerte', victima: yoId(), por });
     aviso(por === 'zona' ? 'Te agarró la tormenta' : `Te eliminó ${nombreDe(por)}`, true);
+    if (document.pointerLockElement) document.exitPointerLock?.(); // para poder elegir a quién mirar
   }
   function danarBot(b, d, por) {
     if (!b.p.vivo) return;
@@ -625,17 +636,18 @@ function abrirSala(code) {
   let mira = false;
   let recogiendo = false;
   let inventarioAbierto = false;
+  let invElegido = -1; // casillero elegido en la mochila para cambiarlo de lugar
   const abajo = (e) => {
     if (e.target.closest('input, select, textarea')) return;
     if (e.code === 'KeyT' || e.code === 'Enter') {
-      teclas.clear(); mouse.abajo = false; $('[data-chat]').classList.add('escribiendo'); $('[data-chat] input').focus();
+      liberar(); teclas.clear(); mouse.abajo = false; $('[data-chat]').classList.add('escribiendo'); $('[data-chat] input').focus();
       return e.preventDefault();
     }
-    if (e.code === 'Tab') { inventarioAbierto = !inventarioAbierto; teclas.clear(); return e.preventDefault(); }
+    if (e.code === 'Tab') { inventarioAbierto = !inventarioAbierto; invElegido = -1; teclas.clear(); if (inventarioAbierto) liberar(); else capturar(); return e.preventDefault(); }
     if (e.code === 'Escape' && mapa.abierto) { mapa.cerrar(); e.stopImmediatePropagation(); return; }
     if (!teclas.has(e.code)) {
       if (e.code === 'KeyR') { if (modoConstruccion) rotacionPieza = (rotacionPieza + 1) % 4; else yo?.recargar(); }
-      if (e.code === 'KeyM' && (fase === 'partida' || fase === 'cuenta')) mapa.alternar(yo);
+      if (e.code === 'KeyM' && (fase === 'partida' || fase === 'cuenta')) { mapa.alternar(yo); if (mapa.abierto) liberar(); else capturar(); }
       if (e.code === 'Space') pedirSalto = true;
       if (e.code === 'KeyE' && !e.repeat) pedirAgarrar = true; // la autorepetición del teclado no cuenta como otro toque
       if (e.code === 'KeyQ') { modoConstruccion = !modoConstruccion; picoActivo = false; }
@@ -665,7 +677,37 @@ function abrirSala(code) {
   addEventListener('keydown', abajo, true);
   addEventListener('keyup', arriba);
   $('[data-mini]').addEventListener('click', () => mapa.alternar(yo));
+  // ---- Mouse capturado (pointer lock): al hacer clic en el juego el cursor se esconde y queda adentro.
+  // No se escapa a otro monitor ni toca el minimapa; solo mueve la cámara (tercera persona) o la mira (desde arriba).
+  // Se libera solo al abrir el mapa (M), la mochila (Tab) o el chat (T), y con Esc.
+  const SENS = 0.0032;
+  const esTactil = () => !matchMedia('(any-pointer: fine)').matches; // solo pantalla táctil, sin mouse
+  const capturado = () => document.pointerLockElement === lienzo;
+  const puedeCapturar = () => !esTactil() && (fase === 'partida' || fase === 'cuenta') && !!yo?.vivo && !mapa.abierto && !inventarioAbierto && !document.querySelector('.cl-esc') && !$('[data-chat]').classList.contains('escribiendo');
+  const capturar = () => { if (!capturado() && puedeCapturar()) { try { const p = lienzo.requestPointerLock?.(); p?.catch?.(() => {}); } catch {} } };
+  const liberar = () => { if (capturado()) document.exitPointerLock?.(); };
+  const alMoverCapturado = (e) => {
+    if (!capturado()) return;
+    if (vista.modoCamara === 'tercera') {
+      vista.yaw = (vista.yaw || 0) - e.movementX * SENS;
+      vista.inclina = Math.max(0.35, Math.min(1.6, (vista.inclina ?? 1) + e.movementY * SENS * 0.6));
+      mouse.x = 0.5; mouse.y = 0.47;
+    } else {
+      const r = lienzo.getBoundingClientRect();
+      mouse.x = Math.max(0.02, Math.min(0.98, mouse.x + e.movementX / r.width));
+      mouse.y = Math.max(0.03, Math.min(0.97, mouse.y + e.movementY / r.height));
+    }
+  };
+  const alCambiarCaptura = () => {
+    $('[data-isla]').classList.toggle('mouse-capturado', capturado());
+    if (!capturado()) { mouse.abajo = false; mira = false; if (puedeCapturar()) aviso('Mouse liberado · hacé clic para seguir jugando'); }
+    else if (vista.modoCamara === 'tercera') { mouse.x = 0.5; mouse.y = 0.47; }
+  };
+  document.addEventListener('mousemove', alMoverCapturado);
+  document.addEventListener('pointerlockchange', alCambiarCaptura);
+  limpiar.push(() => { document.removeEventListener('mousemove', alMoverCapturado); document.removeEventListener('pointerlockchange', alCambiarCaptura); liberar(); });
   lienzo.addEventListener('pointermove', (e) => {
+    if (capturado()) return;
     const r = lienzo.getBoundingClientRect();
     mouse.x = (e.clientX - r.left) / r.width;
     mouse.y = (e.clientY - r.top) / r.height;
@@ -673,9 +715,10 @@ function abrirSala(code) {
   // clic derecho: en tercera persona mueve la cámara; desde arriba, apunta con la mira
   let giro = null;
   lienzo.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') capturar();
     if (e.pointerType === 'mouse' && e.button === 0) { mouse.abajo = true; mouse.clic = performance.now(); }
     if (e.button === 0 && modoConstruccion) pedirColocar = true;
-    if (e.button === 2) { e.preventDefault(); lienzo.setPointerCapture(e.pointerId); if (vista.modoCamara === 'tercera') giro = { x: e.clientX, y: e.clientY }; else mira = true; }
+    if (e.button === 2) { e.preventDefault(); if (capturado() || vista.modoCamara !== 'tercera') mira = true; else { try { lienzo.setPointerCapture(e.pointerId); } catch {} giro = { x: e.clientX, y: e.clientY }; } }
   });
   const moverGiro = (e) => { if (!giro) return; vista.yaw = (vista.yaw || 0) - (e.clientX - giro.x) * 0.008; vista.inclina = Math.max(0.35, Math.min(1.6, (vista.inclina ?? 1) + (e.clientY - giro.y) * 0.004)); giro = { x: e.clientX, y: e.clientY }; };
   addEventListener('pointermove', moverGiro);
@@ -772,7 +815,27 @@ function abrirSala(code) {
     sala.enviar({ t: 'picar', id }).then((r) => { if (!r?.error) red.actual?.todos({ k: 'pico', id, n: Math.random() }); });
   }
   $('[data-slots]').addEventListener('click', (e) => { const pz = e.target.closest('[data-pieza]'); if (pz) { tipoPieza = pz.dataset.pieza; return; } const mt = e.target.closest('[data-material]'); if (mt) { materialPieza = mt.dataset.material; return; } if (e.target.closest('[data-pico]')) { picoActivo = !picoActivo; modoConstruccion = false; return; } const b = e.target.closest('[data-slot]'); if (b) { yo?.cambiar(+b.dataset.slot); picoActivo = false; if (OBJETOS[yo?.arma.tipo]) usarObjeto(); } });
-  $('[data-inventario-panel]').addEventListener('click', (e) => { if (e.target.closest('[data-cerrar-inv]')) { inventarioAbierto = false; return; } const b = e.target.closest('[data-inv-slot]'); if (b) { yo?.cambiar(Number(b.dataset.invSlot)); picoActivo = false; } });
+  // Mochila (Tab): tocás un casillero y después otro (o lo arrastrás) y cambian de lugar; dos toques en el mismo lo equipa.
+  let invArrastre = -1;
+  const moverCasillero = (a, b) => {
+    if (!yo || a === b || a < 0 || b < 0) return;
+    [yo.slots[a], yo.slots[b]] = [yo.slots[b], yo.slots[a]];
+    if (yo.actual === a) yo.actual = b; else if (yo.actual === b) yo.actual = a; // lo que tenías en la mano sigue en la mano
+    if (yo.usando) yo.usando = null;
+    slotNuevo = { i: b, hasta: performance.now() + 500 };
+  };
+  const panelInv = $('[data-inventario-panel]');
+  panelInv.addEventListener('click', (e) => { if (e.target.closest('[data-cerrar-inv]')) { inventarioAbierto = false; invElegido = -1; capturar(); } });
+  panelInv.addEventListener('pointerdown', (e) => { const b = e.target.closest('[data-inv-slot]'); invArrastre = b ? Number(b.dataset.invSlot) : -1; });
+  panelInv.addEventListener('pointerup', (e) => {
+    const b = e.target.closest('[data-inv-slot]'), i = b ? Number(b.dataset.invSlot) : -1, desde = invArrastre;
+    invArrastre = -1;
+    if (i < 0 || !yo) return;
+    if (desde >= 0 && desde !== i) { moverCasillero(desde, i); invElegido = -1; return; } // arrastrado
+    if (invElegido < 0) { invElegido = i; return; }
+    if (invElegido === i) { yo.cambiar(i); picoActivo = false; invElegido = -1; return; } // dos toques: equipar
+    moverCasillero(invElegido, i); invElegido = -1;
+  });
   const mirando = () => (fase === 'partida' || fase === 'fin') && (!yo || !yo.vivo);
 
   // ---------------------------------------------------------------- HUD
@@ -822,7 +885,7 @@ function abrirSala(code) {
     const obra = `<button class="ranura obra ${tipoPieza === 'pared' ? 'on' : ''}" data-pieza="pared"><i>${ICONOS.pared}</i><small>F</small><span>Pared</span></button><button class="ranura obra ${tipoPieza === 'escalera' ? 'on' : ''}" data-pieza="escalera"><i>${ICONOS.escalera}</i><small>F</small><span>Escalera</span></button><span class="ranura-sep"></span>` +
       ['madera', 'piedra', 'metal'].map((k, i) => `<button class="ranura mat m-${k} ${materialPieza === k ? 'on' : ''} ${(mats[k] || 0) < COSTO_PIEZA ? 'falta' : ''}" data-material="${k}"><i>${ICONOS[k]}</i><small>${i + 1}</small><span>${mats[k] || 0}</span></button>`).join('');
     poner('[data-slots]', modoConstruccion ? obra : slots);
-    if (inventarioAbierto) poner('[data-inventario-panel]', `<div class="bs-inv-caja"><header><div><small>Battle Shmitz · mochila</small><h2>Tu inventario</h2></div><button data-cerrar-inv aria-label="Cerrar inventario">×</button></header><div class="bs-inv-grid">${yo.slots.map((s, i) => `<button data-inv-slot="${i}" class="bs-inv-item ${i === yo.actual ? 'activo' : ''}" style="--r:${RAREZAS[s?.rareza || OBJETOS[s?.tipo]?.rareza || 'comun'].color}"><small>CASILLERO ${i + 1}</small><i>${s ? imagenItem(s.tipo) : ''}</i><b>${esc(s ? nombreItem(s.tipo) : 'Libre')}</b><span>${s ? OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala} balas · ${RAREZAS[s.rareza || 'comun'].nombre}` : '—'}</span></button>`).join('')}</div><footer><div><b>Materiales</b>${['madera','piedra','metal'].map(k => `<span>${ICONOS[k]} ${yo.materiales?.[k] || 0}</span>`).join('')}</div><div><b>Munición</b>${Object.entries(yo.municion).map(([k,n]) => `<span>${esc(k)} ${n}</span>`).join('')}</div></footer><p><kbd>1–5</kbd> equipar · <kbd>F</kbd> usar · <kbd>Tab</kbd> cerrar</p></div>`);
+    if (inventarioAbierto) poner('[data-inventario-panel]', `<div class="bs-inv-caja"><header><div><small>Battle Shmitz · mochila</small><h2>Tu inventario</h2></div><button data-cerrar-inv aria-label="Cerrar inventario">×</button></header><div class="bs-inv-grid">${yo.slots.map((s, i) => `<button data-inv-slot="${i}" class="bs-inv-item ${i === yo.actual ? 'activo' : ''} ${i === invElegido ? 'mover' : ''}" style="--r:${RAREZAS[s?.rareza || OBJETOS[s?.tipo]?.rareza || 'comun'].color}"><small>CASILLERO ${i + 1}</small><i>${s ? imagenItem(s.tipo) : ''}</i><b>${esc(s ? nombreItem(s.tipo) : 'Libre')}</b><span>${s ? OBJETOS[s.tipo] ? `×${s.cantidad}` : `${s.bala} balas · ${RAREZAS[s.rareza || 'comun'].nombre}` : '—'}</span></button>`).join('')}</div><footer><div><b>Materiales</b>${['madera','piedra','metal'].map(k => `<span>${ICONOS[k]} ${yo.materiales?.[k] || 0}</span>`).join('')}</div><div><b>Munición</b>${Object.entries(yo.municion).map(([k,n]) => `<span>${esc(k)} ${n}</span>`).join('')}</div></footer><p>${invElegido >= 0 ? '<b>Ahora tocá el casillero donde lo querés poner</b> (o el mismo para equiparlo)' : 'Tocá un casillero y después otro para cambiarlos de lugar, o arrastralo'} · <kbd>1–5</kbd> equipar · <kbd>F</kbd> usar · <kbd>Tab</kbd> cerrar</p></div>`);
     const nombreArma = picoActivo ? 'Pico' : modoConstruccion ? `Construir ${tipoPieza}` : d ? `${d.nombre}` : OBJETOS[yo.arma.tipo]?.nombre || 'Mano vacía';
     poner('[data-arma-n]', `${esc(nombreArma)}${d && !picoActivo && !modoConstruccion ? ` <em style="color:${RAREZAS[yo.arma.rareza || 'comun'].color}">${RAREZAS[yo.arma.rareza || 'comun'].nombre}</em>` : ''}`);
     poner('[data-arma-balas]', d && !picoActivo && !modoConstruccion ? (yo.recargando > 0 ? '<b class="recarga">Recargando…</b>' : `<b>${yo.arma.bala}</b><small>${yo.municion[d.municion] || 0}</small>`) : OBJETOS[yo.arma.tipo] ? `<b>×${yo.arma.cantidad}</b><small>F usar</small>` : '');
@@ -876,13 +939,17 @@ function abrirSala(code) {
   }
 
   // Agarrar con E: entra al inventario al toque (con animación); el servidor confirma atrás y si otro lo agarró antes, se devuelve.
-  function agarrarYa(b) {
+  // Agarrar al instante (optimista). Si el servidor dice que no, se deshace SOLO este objeto:
+  // antes se restauraba una foto vieja de todo el inventario y se perdía lo que hubieras agarrado en el medio.
+  function agarrarYa(b, intento = 0) {
     const item = { ...b.item, id: b.id, rareza: b.rareza };
-    const antes = { slots: yo.slots.map((s) => (s ? { ...s } : null)), actual: yo.actual };
-    const plan = recoger({ slots: antes.slots.map((s) => (s ? { ...s } : null)), actual: yo.actual }, b.tipo, ARMAS, item);
+    const copia = { slots: yo.slots.map((s) => (s ? { ...s } : null)), actual: yo.actual };
+    const plan = recoger({ slots: copia.slots.map((s) => (s ? { ...s } : null)), actual: yo.actual }, b.tipo, ARMAS, item);
     if (!plan) { aviso('Elegí un casillero con algo para cambiarlo', true); return; }
     const cambio = plan.soltado ? { id: 'drop-' + yoId() + '-' + Date.now(), tipo: plan.soltado.tipo, rareza: plan.soltado.rareza || 'comun', item: plan.soltado, x: b.x, y: b.y } : null;
     yo.recoger(b.tipo, item);
+    // qué casilleros cambiaron (para poder deshacer solo eso)
+    const tocados = yo.slots.map((s, i) => ({ i, antes: copia.slots[i], despues: s ? { ...s } : null })).filter((x) => JSON.stringify(x.antes) !== JSON.stringify(x.despues));
     tomados.add(b.id);
     vista.agarrar(b.id, yo);
     const i = yo.slots.findIndex((s) => s?.id === b.id || (s?.tipo === b.tipo && OBJETOS[b.tipo]));
@@ -890,14 +957,23 @@ function abrirSala(code) {
     slotNuevo = { i, hasta: performance.now() + 700 };
     if (cambio) { mundo.botin.push(cambio); vista.agregarBotin(cambio); red.actual?.todos({ k: 'drop', b: cambio, n: Math.random() }); }
     red.actual?.todos({ k: 'agarre', id: b.id, n: Math.random() });
-    sala.enviar({ t: 'agarrar', id: b.id, cambio }).then((r) => {
-      if (!r || (!r.error && r.estado?.propietarios?.[b.id] === yoId())) return;
-      // no se pudo: se deshace
-      yo.slots = antes.slots; yo.actual = antes.actual; tomados.delete(b.id); vista.soltarAgarrado(b.id);
+    const mandar = (n) => sala.enviar({ t: 'agarrar', id: b.id, cambio }).then((r) => {
+      if (r && !r.error) return; // listo
+      if (!r && n < 3) return setTimeout(() => mandar(n + 1), 500); // no llegó la respuesta: se reintenta
+      if (r?.error && est?.propietarios?.[b.id] === yoId()) return; // un reintento que ya había entrado
+      // no se pudo: se deshace solo lo de este objeto
+      for (const t of tocados) {
+        const s = yo.slots[t.i];
+        if (OBJETOS[b.tipo] && s?.tipo === b.tipo && t.antes?.tipo === b.tipo) { s.cantidad -= t.despues.cantidad - t.antes.cantidad; if (s.cantidad <= 0) yo.slots[t.i] = null; } // se había apilado
+        else if (s && (s.id === b.id || JSON.stringify(s) === JSON.stringify(t.despues))) yo.slots[t.i] = t.antes ? { ...t.antes } : null;
+      }
+      tomados.delete(b.id); vista.soltarAgarrado(b.id);
       if (cambio) { mundo.botin = mundo.botin.filter((x) => x.id !== cambio.id); vista.quitarBotin(cambio.id); }
       aviso('Alguien lo agarró antes', true);
     });
+    mandar(0);
   }
+
 
   // ---------------------------------------------------------------- bucle
   window.__royale = { get yo() { return yo; }, get estado() { return est; }, get remotos() { return remotos; }, get bots() { return botsSim; }, get balas() { return balas; }, get mundo() { return mundo; }, get vista() { return vista; } };
@@ -911,7 +987,7 @@ function abrirSala(code) {
   function cuadro(ms) {
     raf = requestAnimationFrame(cuadro);
     const dtReal = Math.min(1, (ms - ultimo) / 1000);
-    const dt = Math.min(0.05, dtReal);
+    const dt = Math.min(0.05, dtReal) * (performance.now() < lentoHasta ? 0.28 : 1);
     ultimo = ms;
     if (!est || !mundo) return;
     const enJuego = fase === 'partida' || fase === 'cuenta' || fase === 'fin';
@@ -945,6 +1021,8 @@ function abrirSala(code) {
           }
         } else if (yo.altura > 0) {
           if (yo.caer(dtReal, ix, iy, pedirSalto)) { const l = lugarEn(yo.x, yo.y); if (l) anunciarLugar(l); ultimoLugar = l?.id || null; }
+        } else if (pedirSalto && yo.brincar()) {
+          // saltito en el lugar (el movimiento de este cuadro se retoma en el próximo)
         } else if (vista.modoCamara === 'tercera') {
           // en tercera persona, adelante es para donde mira la cámara
           const yaw = vista.yaw || 0;
@@ -1040,7 +1118,7 @@ function abrirSala(code) {
       if (!vivosIds.has(id)) continue;
       const k = Math.min(1, dt * 12);
       for (const c of ['x', 'y']) r.obj[c] += (r.meta[c] - r.obj[c]) * (Math.abs(r.meta[c] - r.obj[c]) > 80 ? 1 : k);
-      Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, rareza: r.meta.rareza, mueve: r.meta.mueve, gesto: r.meta.gesto, usando: r.meta.usando, altura: r.meta.altura, enColectivo: r.meta.enColectivo, paracaidas: r.meta.paracaidas, agachado: r.meta.agachado, vivo: r.meta.vivo && vivosIds.has(id), id });
+      Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, rareza: r.meta.rareza, mueve: r.meta.mueve, gesto: r.meta.gesto, usando: r.meta.usando, altura: r.meta.altura, enColectivo: r.meta.enColectivo, paracaidas: r.meta.paracaidas, agachado: r.meta.agachado, brinco: r.meta.brinco || 0, vivo: r.meta.vivo && vivosIds.has(id), id });
       if (r.obj.vivo) blancos.push(r.obj);
     }
     if (anfitrion) {
@@ -1099,7 +1177,7 @@ function abrirSala(code) {
       for (const [id, r] of botsVistos) {
         const k = Math.min(1, dt * 12);
         for (const c of ['x', 'y']) r.obj[c] += (r.meta[c] - r.obj[c]) * (Math.abs(r.meta[c] - r.obj[c]) > 80 ? 1 : k);
-        Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, rareza: r.meta.rareza, mueve: r.meta.mueve, gesto: r.meta.gesto, usando: r.meta.usando, altura: r.meta.altura, enColectivo: r.meta.enColectivo, paracaidas: r.meta.paracaidas, agachado: r.meta.agachado, vivo: r.meta.vivo && vivosIds.has(id), id });
+        Object.assign(r.obj, { ang: r.meta.ang, vida: r.meta.vida, escudo: r.meta.escudo, arma: r.meta.arma, rareza: r.meta.rareza, mueve: r.meta.mueve, gesto: r.meta.gesto, usando: r.meta.usando, altura: r.meta.altura, enColectivo: r.meta.enColectivo, paracaidas: r.meta.paracaidas, agachado: r.meta.agachado, brinco: r.meta.brinco || 0, vivo: r.meta.vivo && vivosIds.has(id), id });
         if (r.obj.vivo) { listaBots.push(r.obj); blancos.push(r.obj); }
       }
       if (!botsVistos.size) for (const b of botsSim.values()) if (vivosIds.has(b.p.id)) listaBots.push(b.p);
@@ -1153,10 +1231,15 @@ function abrirSala(code) {
       const g = est.ganador === yoId() ? yo : [...blancos, ...listaBots].find((x) => x.id === est.ganador);
       if (g) {
         campeon = g;
-        g.gesto = 'festeja'; g.gestoT = 99;
+        const tFin = (performance.now() - finDesde) / 1000;
+        g.gesto = tFin % 9 < 3.6 ? 'festeja' : 'baila'; g.gestoT = 99;
         g.ang = Math.PI / 2;
-        fuegoT -= dt;
-        if (fuegoT <= 0) { fuegoT = 0.35 + Math.random() * 0.3; vista.fuego(g.x + (Math.random() - 0.5) * 120, g.y + (Math.random() - 0.5) * 80); }
+        fuegoT -= dtReal;
+        if (fuegoT <= 0 && tFin > 1.2) { // un anillo de fuegos que gira alrededor del campeón; al principio, una ráfaga
+          fuegoT = tFin < 5 ? 0.14 : 0.3 + Math.random() * 0.3;
+          const a = tFin * 2.1 + Math.random(), rad = 55 + Math.random() * 70;
+          vista.fuego(g.x + Math.cos(a) * rad, g.y + Math.sin(a) * rad * 0.7);
+        }
       }
       vista.acercar = 0.65;
       vista.campeon = !!campeon;
@@ -1193,15 +1276,13 @@ function abrirSala(code) {
     ctx.clearRect(0, 0, overlay.width, overlay.height);
     const ahora = performance.now(), dpr = Math.min(2, devicePixelRatio);
     if (fase !== 'lobby') {
-      // nombres y globos de chat
+      // Sin nametags ni barras de vida ajenas: como en un battle royale de verdad, al otro hay que verlo.
+      // Solo queda el globo de lo que dice alguien que tenés cerca.
       ctx.textAlign = 'center';
       for (const p of gente) {
         if (!p.vivo || p.enColectivo) continue;
-        const pos = vista.proyectar(p.x, p.y, (p.altura || 0) + 27), sx = pos.x * overlay.width, sy = pos.y * overlay.height;
-        ctx.font = '800 ' + 12 * dpr + 'px "Barlow Condensed", sans-serif'; ctx.lineWidth = 3 * dpr; ctx.strokeStyle = 'rgba(15,20,18,.85)'; ctx.fillStyle = p.yo ? '#d7ff70' : '#fff';
-        const nom = p.yo ? '' : nombreDe(p.id).toUpperCase();
-        if (nom) { ctx.strokeText(nom, sx, sy); ctx.fillText(nom, sx, sy); }
-        if (!p.yo && p.vida < VIDA) { const w = 30 * dpr; ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(sx - w / 2, sy + 4 * dpr, w, 3 * dpr); ctx.fillStyle = '#7be36b'; ctx.fillRect(sx - w / 2, sy + 4 * dpr, (w * p.vida) / VIDA, 3 * dpr); }
+        if (foco && Math.hypot(p.x - foco.x, p.y - foco.y) > 230) continue;
+        const pos = vista.proyectar(p.x, p.y, (p.altura || 0) + (p.brinco || 0) + 27), sx = pos.x * overlay.width, sy = pos.y * overlay.height;
         const gl = globos.get(p.id);
         if (gl && gl.hasta > ahora) {
           ctx.font = '600 ' + 12 * dpr + 'px Barlow, sans-serif';

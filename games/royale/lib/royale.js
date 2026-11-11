@@ -124,6 +124,7 @@ export const royale = crearJuego({
         const id = typeof msg.id === 'string' && msg.id.startsWith('drop-') ? msg.id : Number(msg.id);
         const original = Number.isInteger(id) ? generarMapa(r.semilla).botin[id] : r.sueltos?.find(b => b.id === id);
         const dueno = msg.bot && ctx.esHost && r.vivos.includes(msg.bot) ? msg.bot : yo;
+        if (r.propietarios?.[id] === dueno) return {}; // el mismo pedido repetido (reintento): ya es suyo
         if (r.fase !== 'partida' || !r.vivos.includes(dueno) || !original || original.tipo === 'cofre' || (original.cofre !== undefined && !r.abiertos.includes(original.cofre)) || r.tomados.includes(id)) return {error:'Ese objeto ya no está disponible'};
         if (MATERIALES[original.tipo]) {
           r.materiales[dueno] ??= {madera:0,piedra:0,metal:0};

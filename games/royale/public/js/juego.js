@@ -1,6 +1,7 @@
 // Lógica de la partida en el navegador: mi personaje, las balas y la IA de los bots (los simula el anfitrión).
 import { ARMAS, VIDA, ESCUDO_MAX, LADO, danoRareza, RAREZAS, moverCirculo, choqueBala, seVen, zona, tipoEn, T } from './mundo.js';
 import { CASILLEROS, OBJETOS, recoger, comenzarUso, avanzarUso } from './inventario.js';
+export const DUR_BRINCO = 0.55, ALTO_BRINCO = 13;
 
 export const RADIO = 5;
 export const ALTURA_SALTO = 150;
@@ -132,7 +133,14 @@ export class Peleador {
     if (a.bala === 0) this.recargar();
     return balas;
   }
+  // Saltito: dura medio segundo y no cambia por dónde podés pasar; se puede disparar en el aire.
+  brincar() {
+    if (!this.vivo || this.enColectivo || this.altura > 0 || this.brincoT > 0) return false;
+    this.brincoT = DUR_BRINCO; this.agachado = false;
+    return true;
+  }
   tiempo(dt) {
+    if (this.brincoT > 0) { this.brincoT = Math.max(0, this.brincoT - dt); this.brinco = Math.sin((1 - this.brincoT / DUR_BRINCO) * Math.PI) * ALTO_BRINCO; } else this.brinco = 0;
     avanzarUso(this,dt);
     this.enfriar = Math.max(0, this.enfriar - dt);
     if (this.recargando > 0) {
@@ -223,7 +231,7 @@ export class CerebroBot {
     p.tiempo(dt);
     if (p.usando) {
       const zu = zona(semilla, t);
-      const afuera = Math.hypot(p.x - zu.x, p.y - zu.y) > zu.r - 20;
+      const afuera = Math.hypot(p.x - zu.x, p.y - zu.y) > zu.r - 20 || Math.hypot(p.x - zu.siguiente.x, p.y - zu.siguiente.y) > zu.siguiente.r - 30;
       const objetivo = afuera ? zu.siguiente : this.destino || zu.siguiente;
       p.mover(mundo, objetivo.x - p.x, objetivo.y - p.y, dt, 0.65);
       return salida;
@@ -231,7 +239,13 @@ export class CerebroBot {
     if (!ARMAS[p.arma.tipo]) { const arma = p.slots.findIndex(s => ARMAS[s?.tipo]); if (arma >= 0) p.cambiar(arma); }
     this.pensar -= dt;
     const z = zona(semilla, t);
-    const enZona = Math.hypot(p.x - z.x, p.y - z.y) < z.r - 20;
+    // La tormenta: no alcanza con estar adentro ahora; hay que llegar al próximo círculo antes de que cierre.
+    const sig = z.siguiente;
+    const faltaSig = Math.hypot(p.x - sig.x, p.y - sig.y) - (sig.r - 30); // cuánto me falta para estar adentro del próximo
+    const tLlegar = faltaSig > 0 ? faltaSig / 50 + 6 : 0;
+    const adentroAhora = Math.hypot(p.x - z.x, p.y - z.y) < z.r - 20;
+    const enZona = adentroAhora && !(faltaSig > 0 && (z.cerrando || z.falta < tLlegar + 12)); // "tranquilo": no hace falta moverse todavía
+    const apuro = !adentroAhora || (faltaSig > 0 && z.cerrando && z.falta < tLlegar + 4); // ni la pelea lo frena
     if (this.pensar <= 0) {
       this.pensar = 0.3 + r() * 0.2;
       // ¿veo a alguien cerca?
@@ -251,15 +265,16 @@ export class CerebroBot {
         const cura = p.slots.findIndex(s => s && ((s.tipo === 'botiquin' && p.vida < 55) || (s.tipo === 'venda' && p.vida < 65) || (s.tipo === 'mini' && p.escudo < 25) || (s.tipo === 'escudo' && p.escudo < 50)));
         if (cura >= 0) { p.cambiar(cura); p.usar(); p.mueve = false; return salida; }
         // sin pelea: a la zona si estoy afuera, si no al botín más cercano o a pasear
-        if (!enZona) this.destino = { x: z.siguiente.x + (r() - 0.5) * z.siguiente.r * 0.6, y: z.siguiente.y + (r() - 0.5) * z.siguiente.r * 0.6 };
+        if (this.destino?.desvio && t < (this.desvioHasta || 0) && Math.hypot(this.destino.x - p.x, this.destino.y - p.y) > 10) { /* sigue bordeando */ }
+        else if (!enZona) { if (!this.destino?.zona || Math.hypot(this.destino.x - sig.x, this.destino.y - sig.y) > sig.r - 20) this.destino = { x: sig.x + (r() - 0.5) * sig.r * 0.6, y: sig.y + (r() - 0.5) * sig.r * 0.6, zona: true }; }
         else if (!this.destino || Math.hypot(this.destino.x - p.x, this.destino.y - p.y) < 10) {
           const valor = { comun: 0, poco_comun: 35, rara: 70, epica: 110, legendaria: 160 };
-          const quiero = botin.filter(b => ARMAS[b.tipo] || b.tipo === 'botiquin' && p.vida < 80 || b.tipo === 'escudo' && p.escudo < ESCUDO_MAX || b.tipo === 'mini' && p.escudo < 50 || b.tipo === 'venda' && p.vida < 75).sort((a, b) => (Math.hypot(a.x-p.x,a.y-p.y) - (valor[a.rareza]||0)) - (Math.hypot(b.x-p.x,b.y-p.y) - (valor[b.rareza]||0)))[0];
+          const quiero = botin.filter(b => Math.hypot(b.x - sig.x, b.y - sig.y) < sig.r - 10).filter(b => ARMAS[b.tipo] || b.tipo === 'botiquin' && p.vida < 80 || b.tipo === 'escudo' && p.escudo < ESCUDO_MAX || b.tipo === 'mini' && p.escudo < 50 || b.tipo === 'venda' && p.vida < 75).sort((a, b) => (Math.hypot(a.x-p.x,a.y-p.y) - (valor[a.rareza]||0)) - (Math.hypot(b.x-p.x,b.y-p.y) - (valor[b.rareza]||0)))[0];
           if (quiero && Math.hypot(quiero.x - p.x, quiero.y - p.y) < 320) this.destino = { x: quiero.x, y: quiero.y, botin: quiero.id };
           else {
             const a = r() * Math.PI * 2;
-            const d = r() * z.r * 0.7;
-            this.destino = { x: z.x + Math.cos(a) * d, y: z.y + Math.sin(a) * d };
+            const d = r() * sig.r * 0.7; // pasea por adentro del próximo círculo
+            this.destino = { x: sig.x + Math.cos(a) * d, y: sig.y + Math.sin(a) * d };
           }
         }
       }
@@ -267,13 +282,16 @@ export class CerebroBot {
       if (Math.hypot(p.x - this.ultimo.x, p.y - this.ultimo.y) < 3 && p.mueve) this.atascado += 1;
       else this.atascado = 0;
       this.ultimo = { x: p.x, y: p.y };
-      if (this.atascado > 3) {
-        // trabado: rodea el obstáculo para un costado, pero siempre acercándose a la zona si está afuera
-        const hacia = enZona ? { x: p.x, y: p.y } : { x: p.x + (z.siguiente.x - p.x) * 0.3, y: p.y + (z.siguiente.y - p.y) * 0.3 };
-        this.destino = { x: hacia.x + (r() - 0.5) * 160, y: hacia.y + (r() - 0.5) * 160 };
-        this.lado *= -1;
+      if (this.atascado > 1) {
+        // trabado contra algo: bordea para un costado (cada vez un poco más lejos) y mantiene ese rumbo un rato
+        const ax = (this.destino?.x ?? sig.x) - p.x, ay = (this.destino?.y ?? sig.y) - p.y, an = Math.max(1, Math.hypot(ax, ay));
+        this.trabas = (this.trabas || 0) + 1;
+        const largo = 70 + Math.min(4, this.trabas) * 45;
+        this.destino = { x: p.x + (-ay / an) * this.lado * largo + (ax / an) * 30, y: p.y + (ax / an) * this.lado * largo + (ay / an) * 30, desvio: true };
+        this.desvioHasta = t + 1.4 + Math.min(4, this.trabas) * 0.5;
+        if (this.trabas % 2 === 0) this.lado *= -1;
         this.atascado = 0;
-      }
+      } else if (!p.mueve || Math.hypot(p.x - this.ultimo.x, p.y - this.ultimo.y) > 12) this.trabas = Math.max(0, (this.trabas || 0) - 0.25);
     }
     if (this.objetivo && this.objetivo.vivo) {
       const e = this.objetivo;
@@ -296,9 +314,10 @@ export class CerebroBot {
       let mx = ux * adelante - uy * this.lado * 0.8;
       let my = uy * adelante + ux * this.lado * 0.8;
       // la tormenta manda: si estoy afuera, corro hacia la zona (y disparo mientras tanto)
-      if (!enZona) { const zx = z.siguiente.x - p.x, zy = z.siguiente.y - p.y, zd = Math.max(1, Math.hypot(zx, zy)); mx = zx / zd + mx * 0.2; my = zy / zd + my * 0.2; }
-      p.mover(mundo, mx, my, dt, !enZona ? 1 : 0.85);
+      if (apuro) { const zx = sig.x - p.x, zy = sig.y - p.y, zd = Math.max(1, Math.hypot(zx, zy)); mx = zx / zd + mx * 0.2; my = zy / zd + my * 0.2; }
+      p.mover(mundo, mx, my, dt, apuro ? 1 : 0.85);
       if (r() < dt * 0.4) this.lado *= -1;
+      if (r() < dt * 0.22) p.brincar(); // cada tanto pega un salto en la pelea
       p.ang = Math.atan2(dy, dx) + (r() - 0.5) * this.errorPunteria * 2;
       this.reaccion -= dt;
       if (this.reaccion <= 0 && d < ARMAS[p.arma.tipo].alcance * 0.95) salida.balas = p.disparar(r);
@@ -308,7 +327,7 @@ export class CerebroBot {
         const dx = this.destino.x - p.x;
         const dy = this.destino.y - p.y;
         if (Math.hypot(dx, dy) > 6) {
-          p.mover(mundo, dx, dy, dt, 0.9);
+          p.mover(mundo, dx, dy, dt, apuro ? 1 : 0.9);
           p.ang = Math.atan2(dy, dx);
         } else p.mueve = false;
       }

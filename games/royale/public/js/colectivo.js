@@ -1,4 +1,4 @@
-import { LADO, LUGARES, TAM, T, rng } from './mundo.js';
+import { zona, LADO, LUGARES, TAM, T, rng } from './mundo.js';
 
 export const DURACION_COLECTIVO = 34;
 
@@ -32,8 +32,12 @@ export function tiempoParaLugar(semilla, lugar) {
 export function puntosAterrizaje(mundo, semilla, cantidad) {
   const azar = rng(semilla ^ 0xa9e17a);
   const puntos = [];
+  // Los bots eligen lugares que quedan dentro del primer círculo de la zona (si no, caían en la tormenta).
+  const c1 = zona(semilla, 0).siguiente;
+  const dentro = LUGARES.filter((l) => Math.hypot((l.x + l.w / 2) * 16 - c1.x, (l.y + l.h / 2) * 16 - c1.y) < c1.r - 90);
+  const elegibles = dentro.length >= 2 ? dentro : LUGARES;
   for (let i = 0; i < cantidad; i++) {
-    const lugar = LUGARES[i % LUGARES.length];
+    const lugar = elegibles[i % elegibles.length];
     let mejor = null, espacio = -1;
     for (let intento = 0; intento < 240; intento++) {
       const tx = lugar.x + 2 + Math.floor(azar() * (lugar.w - 4));
