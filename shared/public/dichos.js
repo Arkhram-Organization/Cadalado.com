@@ -93,6 +93,24 @@ const DICHOS = {
     pierde: ['Tranqui, wop. Vamos que se van los micros.', 'Perdimos, wops. Igual MXD.', 'WOOOP… bueno, no tanto.'],
     turno: ['Dale wop, que se van los micros.', '¡Bajen a desayunar!', 'Dale MXD dale dale MXD.'],
   },
+  marti: {
+    saludo: ['Buenas. Siéntense y saquen una hoja.', 'Llegó la profe. Nul, callate.'],
+    gana: ['Como le enseñé a Asman: acá mando yo.', 'Diez. Felicitada. Las demás, a recuperatorio.'],
+    pierde: ['Esto es suspenso, un recurso literario. Ya vuelvo.', 'Perdí por culpa de Nul, que grita.'],
+    turno: ['Me toca. Prolepsis: ya sé cómo termina esto.', 'Silencio, que pienso. Nul, a vos te hablo.'],
+  },
+  maica: {
+    saludo: ['¡Holaaa! ¿Alguien tiene el resumen?', 'Llegué. Mica, ¿dónde estás?'],
+    gana: ['¡Gané! Se lo dedico a Mica.', 'Gané sin resumen. Increíble.'],
+    pierde: ['Perdí porque no tenía el resumen.', 'Bueno, Mica también hubiese perdido.'],
+    turno: ['Me toca… ¿cuál era el resumen de esto?', 'Pará que le pregunto a Mica.'],
+  },
+  teo: {
+    saludo: ['T-t-todo bien, gente?', '¡Shalom! Llegó Teo.', '¡Tuuuuu! (shofar de entrada)'],
+    gana: ['¡Am Israel Jai! Esta va para Dani Aieka.', '¡Tuuuuuuu! Shofar de la victoria.'],
+    pierde: ['Pe-pe-perdí. Me voy a comer a Aieka.', 'Mañana me pongo los tefilín y vuelvo más fuerte.'],
+    turno: ['A ver… t-t-tiro yo.', 'Me toca. ¿Después vamos a Menorá?'],
+  },
   mati: {
     saludo: ['Queque.'],
     gana: ['¡Queque!', 'Queque, queque.'],

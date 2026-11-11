@@ -11,7 +11,7 @@ const cache = new Map();
 let qMuslo = null, qRodilla = null; // giros para sentarse (sobre la pose de los huesos)
 
 // Biblioteca común: las animaciones de cada modelo de Meshy sirven para todos (mismo esqueleto Mixamo).
-const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra', 'anim-franba', 'anim-elidiprimio'];
+const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra', 'anim-franba', 'anim-elidiprimio', 'anim-marti', 'anim-teo', 'anim-maica'];
 let biblioteca = null;
 function cargarBiblioteca() {
   biblioteca ??= Promise.all(BIBLIOTECA.map((n) => cargar(new URL(`./modelos/${n}.glb`, import.meta.url).href).catch(() => ({ animations: [] }))))
@@ -23,7 +23,7 @@ function cargarBiblioteca() {
 // Cada personaje puede elegir las suyas con look.clips = { estado: 'Nombre' }.
 const CLIPS = {
   quieto: ['Short_Breathe_and_Look_Around', 'Long_Breathe_and_Look_Around', 'Idle'],
-  habla: ['Talk_with_Hands_Open', 'Talk_with_Left_Hand_Raised', 'Stand_Talking_Angry'],
+  habla: ['Talk_with_Hands_Open', 'Talk_with_Left_Hand_Raised', 'Stand_Talking_Angry', 'Talk_Passionately'],
   saluda: ['Waving', 'Wave', 'Talk_with_Left_Hand_Raised', 'Talk_with_Hands_Open'],
   voltereta: ['Run_and_Jump', 'Run_and_Leap', 'Hop_with_Arms_Raised'],
   camina: ['Walking'],
@@ -32,8 +32,8 @@ const CLIPS = {
   trota: ['Running'],
   atras: ['Walk_Backward', 'Walk_Backward_inplace'],
   salto: ['Jump_Over_Obstacle_2', 'Jump_Over_Obstacle', 'Run_and_Jump', 'Run_and_Leap'],
-  festeja: ['Hop_with_Arms_Raised', 'All_Night_Dance', 'Clapping_Run'],
-  baila: ['Hip_Hop_Dance_4', 'Hip_Hop_Dance_1', 'Breakdance_1990', 'All_Night_Dance', 'Cardio_Dance', 'FunnyDancing_02', 'ymca_dance', 'Shake_It_Off_Dance', 'Denim_Pop_Dance'],
+  festeja: ['Hop_with_Arms_Raised', 'All_Night_Dance', 'Clapping_Run', 'Cheer_with_Both_Hands'],
+  baila: ['Hip_Hop_Dance_4', 'Hip_Hop_Dance_1', 'Breakdance_1990', 'All_Night_Dance', 'Cardio_Dance', 'FunnyDancing_02', 'ymca_dance', 'Shake_It_Off_Dance', 'Denim_Pop_Dance', 'Step_Hip_Hop_Dance', 'FunnyDancing_03'],
   musculos: ['Show_Both_Arm_Muscles'],
   pavoneo: ['Proud_Strut'],
   flexiones: ['push_up', 'situps'],
@@ -44,7 +44,7 @@ const CLIPS = {
   muerto: ['Shot_and_Blown_Back', 'dying_backwards', 'Shot_and_Fall_Backward', 'Shot_and_Fall_Forward'],
   golpe: ['Shot_and_Blown_Back'],
   pina: ['Punch_Combo', 'Punch_Combo_1', 'Left_Hook_from_Guard', 'Jumping_Punch', 'Punch_Combo_5', 'Right_Hand_Sword_Slash', 'Elbow_Strike', 'Counterstrike', 'Punch_Combo_4'],
-  patada: ['Boxing_Guard_Right_Straight_Kick', 'Large_step_then_high_kick', 'Rising_Flying_Kick', 'Spartan_Kick', 'Step_Step_Turn_Kick', 'Sweeping_Kick', 'Step_in_High_Kick', 'Sweep_Kick'],
+  patada: ['Boxing_Guard_Right_Straight_Kick', 'Large_step_then_high_kick', 'Rising_Flying_Kick', 'Spartan_Kick', 'Step_Step_Turn_Kick', 'Sweeping_Kick', 'Step_in_High_Kick', 'Sweep_Kick', 'Roundhouse_Kick'],
   duerme: ['Wake_Up_and_Look_Up'], // su primer cuadro es acostado: dormido se queda ahí
   despierta: ['Wake_Up_and_Look_Up'],
   dispara: ['Run_and_Shoot', 'Rifle_Charge_inplace'],

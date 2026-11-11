@@ -15,8 +15,11 @@ export const RAREZAS = {
 // Por ahora todas salen 500 fichas (la rareza queda para el color y lo exclusivo).
 // Cada una con su frase célebre, que sale en la portada.
 export const SKINS = [
-  { id: 'trosman', rareza: 'epica', precio: 500, frase: 'YA ESTÁ, Shmitz y Jávila.', nuevo: true },
-  { id: 'batata', rareza: 'mitica', precio: 500, frase: '¡Fe, gloria y aguante el Gasolero!', nuevo: true },
+  { id: 'teo', rareza: 'mitica', precio: 500, frase: 'T-t-todo bien, Ma-Maica?', nuevo: true },
+  { id: 'marti', rareza: 'legendaria', precio: 500, frase: 'Una vez Asman entró a mi clase. Le enseñé quién manda.', nuevo: true },
+  { id: 'maica', rareza: 'epica', precio: 500, frase: '¿Alguien tiene el resumen de química?', nuevo: true },
+  { id: 'trosman', rareza: 'epica', precio: 500, frase: 'YA ESTÁ, Shmitz y Jávila.' },
+  { id: 'batata', rareza: 'mitica', precio: 500, frase: '¡Fe, gloria y aguante el Gasolero!' },
   { id: 'capitan', rareza: 'comun', precio: 500, frase: '¡Ningún pibe se queda sin mate!' },
   { id: 'chapa', rareza: 'comun', precio: 500, frase: 'Mi batería está al 3%. Igual corro.' },
   { id: 'colon', rareza: 'comun', precio: 500, frase: '¡Tierra a la vista!' },
@@ -25,7 +28,7 @@ export const SKINS = [
   { id: 'olcho', rareza: 'rara', precio: 500, frase: 'Hola, soy la rata. Jaja.' },
   { id: 'sandra', rareza: 'rara', precio: 500, frase: 'Desde el caso Bernstein no volví a ser la misma.' },
   { id: 'franba', rareza: 'legendaria', precio: 500, frase: 'No me estoy quedando pelado. Es la luz.' },
-  { id: 'elidiprimio', rareza: 'epica', precio: 500, frase: '¿Qué hacen, manga de wops?', nuevo: true },
+  { id: 'elidiprimio', rareza: 'epica', precio: 500, frase: '¿Qué hacen, manga de wops?' },
   { id: 'julo', rareza: 'epica', precio: 500, frase: 'Hice un deploy en la heladera. Anda.' },
   { id: 'faur', rareza: 'epica', precio: 500, frase: 'Uno más y me voy. Mentira, me quedo.' },
   { id: 'volcho', rareza: 'epica', precio: 500, frase: '¿Quién? El volcho.' },

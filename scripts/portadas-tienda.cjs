@@ -12,6 +12,9 @@ const P = [
   ['angeles', 'Ángeles', 'PEÑA', 'g-baila', 1.3, 0.3, 'rayos', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['franba', 'El hijo del', 'CIBER', 'g-habla', 0.9, -0.15, 'ciber', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['elidiprimio', 'Elidiprimio', 'WOOOP', 'g-baila', 1.1, 0.25, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
+  ['teo', 'Am Israel Jai', 'TEO', 'g-festeja', 1.1, 0.2, 'israel', ['#0b2e7a', '#3c7be0', '#ffffff']],
+  ['marti', 'La profe', 'MARTI', 'g-habla', 1.2, -0.25, 'estrellas', ['#3a1a02', '#e08a10', '#ffe08a']],
+  ['maica', 'Mejor amiga de Mica', 'MAICA', 'g-baila', 1.4, 0.25, 'corazones', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['julo', 'Julo', 'DEPLOY', 'g-musculos', 1.1, 0.25, 'codigo', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['glinsky', 'Profe', 'GLINSKY', 'g-habla', 1.2, -0.25, 'exponencial', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['faur', 'Una más y me', 'QUEDO', 'g-baila', 1.6, 0.2, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
@@ -69,6 +72,32 @@ const P = [
       if (estilo === 'estrellas') { rayos(12, .09); for (let i = 0; i < 70; i++) { g.fillStyle = 'rgba(234,242,255,' + (.25 + rr() * .6) + ')'; const x = rr() * W, y = rr() * H, s = 1 + rr() * 3; g.beginPath(); g.arc(x, y, s, 0, 7); g.fill(); } }
       if (estilo === 'corazones') { rayos(16, .1); g.fillStyle = 'rgba(255,224,240,.35)'; for (let i = 0; i < 26; i++) { const x = rr() * W, y = rr() * H, s = 8 + rr() * 16; g.beginPath(); g.moveTo(x, y + s * .9); g.bezierCurveTo(x - s * 1.6, y - s * .3, x - s * .6, y - s * 1.3, x, y - s * .3); g.bezierCurveTo(x + s * .6, y - s * 1.3, x + s * 1.6, y - s * .3, x, y + s * .9); g.fill(); } }
       if (estilo === 'mar') { for (let k = 0; k < 9; k++) { g.strokeStyle = 'rgba(255,255,255,' + (.06 + k * .01) + ')'; g.lineWidth = 5; g.beginPath(); for (let x = 0; x <= W; x += 10) { const y = H * .45 + k * 45 + Math.sin(x / 40 + k) * 10; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); } }
+      if (estilo === 'israel') {
+        rayos(16, .1, '#ffffff');
+        const estrella = (x, y, rad, color, ancho) => { g.save(); g.strokeStyle = color; g.lineWidth = ancho; for (const off of [0, Math.PI]) { g.beginPath(); for (let k = 0; k < 3; k++) { const a = off - Math.PI / 2 + k * Math.PI * 2 / 3; k ? g.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad) : g.moveTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); } g.closePath(); g.stroke(); } g.restore(); };
+        // banderas de Israel flameando
+        const bandera = (x, y, w, rot) => { const h = w * .72; g.save(); g.translate(x, y); g.rotate(rot); g.globalAlpha = .9;
+          g.fillStyle = '#5a4630'; g.fillRect(-6, -10, 5, h * 2.2);
+          g.beginPath(); for (let i = 0; i <= 20; i++) { const xx = i / 20 * w; g.lineTo(xx, Math.sin(i / 3) * 6); } for (let i = 20; i >= 0; i--) { const xx = i / 20 * w; g.lineTo(xx, h + Math.sin(i / 3) * 6); } g.closePath(); g.fillStyle = '#ffffff'; g.fill();
+          g.fillStyle = '#0038b8'; for (const yy of [h * .1, h * .78]) { g.beginPath(); for (let i = 0; i <= 20; i++) g.lineTo(i / 20 * w, yy + Math.sin(i / 3) * 6); for (let i = 20; i >= 0; i--) g.lineTo(i / 20 * w, yy + h * .12 + Math.sin(i / 3) * 6); g.closePath(); g.fill(); }
+          estrella(w / 2, h / 2 + Math.sin(10 / 3) * 6, h * .2, '#0038b8', w * .03); g.restore(); };
+        bandera(22, 40, 150, -.12); bandera(W - 170, 70, 140, .1); bandera(30, H * .62, 120, -.05);
+        // shofares
+        const shofar = (x, y, esc, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.scale(esc, esc);
+          const gr2 = g.createLinearGradient(0, 0, 160, 0); gr2.addColorStop(0, '#f3e2b8'); gr2.addColorStop(.6, '#c79a5b'); gr2.addColorStop(1, '#6e4a26');
+          g.fillStyle = gr2; g.beginPath(); g.moveTo(0, -4); g.bezierCurveTo(60, -10, 110, -40, 150, -95); g.lineTo(172, -80); g.bezierCurveTo(130, -20, 70, 14, 0, 6); g.closePath(); g.fill();
+          g.strokeStyle = 'rgba(80,50,20,.35)'; g.lineWidth = 2; for (let k = 1; k < 7; k++) { const t = k / 7; g.beginPath(); g.moveTo(t * 150 - 2, -t * t * 95 - 6); g.lineTo(t * 150 + 8, -t * t * 95 + 12); g.stroke(); }
+          g.fillStyle = '#4a2f16'; g.beginPath(); g.ellipse(161, -88, 13, 9, -.6, 0, 7); g.fill(); g.restore(); };
+        shofar(W - 210, H * .7, 1.1, -.15); shofar(70, H * .38, .8, .35); shofar(W - 120, H * .33, .7, -.6);
+        // la Torá abierta
+        g.save(); g.translate(W * .5, H * .86); g.globalAlpha = .95;
+        g.fillStyle = '#f4e7c4'; g.fillRect(-120, -60, 240, 110);
+        g.fillStyle = 'rgba(60,40,20,.55)'; for (let fila = 0; fila < 7; fila++) for (let col = 0; col < 2; col++) { const x0 = col ? 10 : -110; g.fillRect(x0, -48 + fila * 14, 90 - (fila * 7) % 25, 3); }
+        for (const xx of [-128, 128]) { g.fillStyle = '#7a4a22'; g.fillRect(xx - 9, -78, 18, 146); g.fillStyle = '#ffd36a'; g.beginPath(); g.arc(xx, -82, 11, 0, 7); g.fill(); g.beginPath(); g.arc(xx, 72, 11, 0, 7); g.fill(); }
+        g.restore();
+        // estrellas de David chiquitas
+        for (let i = 0; i < 16; i++) estrella(rr() * W, rr() * H * .8, 6 + rr() * 10, 'rgba(255,255,255,' + (.25 + rr() * .4) + ')', 2);
+      }
       // viñeta
       const v = g.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = v; g.fillRect(0, 0, W, H);
     }
