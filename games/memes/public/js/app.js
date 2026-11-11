@@ -21,6 +21,17 @@ const cuenta = await marco({ juego: 'Make it Meme', color: COLOR, volver: '/meme
 let sala = null;
 let limpiar = [];
 
+// Fondo del menú: un mural de plantillas que se desliza despacio en filas inclinadas (no depende de ningún personaje).
+function muralDeMemes(fondo) {
+  if (!fondo) return;
+  const filas = [0, 1, 2, 3].map((f) => {
+    const lista = PLANTILLAS.filter((_, i) => i % 4 === f).slice(0, 9);
+    const fotos = [...lista, ...lista].map((p) => `<img src="${p.url}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`).join('');
+    return `<div class="mm-fila ${f % 2 ? 'al-reves' : ''}" style="--seg:${70 + f * 14}s">${fotos}</div>`;
+  }).join('');
+  fondo.insertAdjacentHTML('afterbegin', `<div class="mm-mural">${filas}</div>`);
+}
+
 function ir(ruta) {
   history.pushState(null, '', ruta);
   ruteo();
@@ -110,7 +121,8 @@ function menu() {
         : '<div class="vacio">No hay salas abiertas. ¡Armá la primera!</div>';
     } catch {}
   };
-  limpiar.push(fondoMenu(app.querySelector('.menu'), { imagen: '/img/memes-poster.webp' }));
+  limpiar.push(fondoMenu(app.querySelector('.menu'), { etiqueta: 'Make it Meme' }));
+  muralDeMemes(app.querySelector('.menu-fondo'));
   cargar();
   const t = setInterval(cargar, 5000);
   limpiar.push(() => clearInterval(t));
