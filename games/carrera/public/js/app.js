@@ -6,6 +6,7 @@ import { avatarSvg } from '/comun/avatar.js';
 import { GESTOS } from '/comun/gestos.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { Escena } from './escena.js';
+import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
 import { Show } from './show.js';
 import { fondoMenu } from '/comun/fondo-menu.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
@@ -338,7 +339,7 @@ function abrirSala(code) {
     if (e.fase === 'lobby') {
       const online = e.jugadores.filter((j) => j.online);
       const mio = e.skins[e.yo] ?? 0;
-      const firma = JSON.stringify([online, e.skins, e.bots, e.botNpc, e.host]);
+      const firma = JSON.stringify([online, e.skins, e.bots, e.botNpc, e.host, e.npcElegidos]);
       if (lob.dataset.firma === firma) return;
       lob.dataset.firma = firma;
       lob.innerHTML = `<span class="etq">Sala de espera · ${online.length + e.botNpc.length} participantes</span><h2>En la largada</h2>
@@ -348,11 +349,13 @@ function abrirSala(code) {
         <span class="etq">Tu personaje · elegí un color</span>
         <div class="colores">${COLORES.map((c, i) => `<button style="background:${c}" class="${i === mio ? 'on' : ''}" data-color="${i}" aria-label="Color ${i + 1}"></button>`).join('')}</div>
         ${esHost ? `<div style="display:flex;gap:8px;align-items:center"><select class="entrada" data-bots style="width:auto">${[0, 3, 5, 7, 9, 11].map((n) => `<option ${n === e.bots ? 'selected' : ''} value="${n}">${n} bots</option>`).join('')}</select>
-          <button class="btn btn-lima btn-grande" data-largar style="flex:1">¡Largar!</button></div>` : ''}
+          <button class="btn btn-lima btn-grande" data-largar style="flex:1">¡Largar!</button></div>
+          <button class="btn btn-chico btn-borde" data-npcs style="width:100%;margin-top:8px">${textoNpcs(e.npcElegidos)}</button>` : ''}
         <div class="teclas"><span><kbd>WASD</kbd> mover</span><span><kbd>Espacio</kbd> saltar x2</span><span><kbd>Shift</kbd> tirarse</span><span><kbd>E</kbd> golpear</span></div>`;
       lob.querySelectorAll('[data-color]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'skin', color: Number(b.dataset.color) })));
       lob.querySelector('[data-bots]')?.addEventListener('change', (ev) => sala.enviar({ t: 'bots', n: Number(ev.target.value) }));
       lob.querySelector('[data-largar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
+      lob.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: 11, alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
     } else if (e.fase === 'ronda') {
       // entre rondas: quiénes clasificaron
       const firma = `ronda-${e.carreras}-${e.ronda}`;

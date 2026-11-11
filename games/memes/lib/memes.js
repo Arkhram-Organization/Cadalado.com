@@ -5,6 +5,7 @@ import { crearJuego, idPublico, mezclar, entero } from '../../../shared/salas.js
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { textosBot, nombresBots, votoBot, reaccionBot, MAX_BOTS } from './bots.js';
+import { POR_ID as NPC_POR_ID, limpiarElegidos } from '../../../shared/public/npcs.js';
 
 const POR_ID = new Map(PLANTILLAS.map((p) => [p.id, p]));
 const VOTO_MS = 10_000; // cada meme se vota durante este tiempo
@@ -40,7 +41,10 @@ const tieneTexto = (m) => m?.textos?.some((t) => t.t.trim());
 const esBot = (pid) => typeof pid === 'string' && pid.startsWith('bot-');
 const nombreDe = (r, pid) => (esBot(pid) ? (r.botsSala || []).find((b) => b.pid === pid)?.nombre : r.jugadores[pid]?.nombre) || '—';
 function armarBots(r, n) {
-  const nombres = nombresBots(n);
+  // primero los personajes del club que eligió el anfitrión; el resto se sortea
+  const fijos = limpiarElegidos(r.npcElegidos, MAX_BOTS).map((id) => NPC_POR_ID[id].nombre);
+  const resto = nombresBots(99).filter((x) => !fijos.some((f) => f.toLowerCase() === x.toLowerCase()));
+  const nombres = [...fijos, ...resto].slice(0, n);
   r.botsSala = nombres.map((nombre, i) => ({ pid: `bot-${i}-${nombre.toLowerCase().replace(/[^a-z]/g, '')}`, nombre }));
 }
 
@@ -150,7 +154,8 @@ export const memes = crearJuego({
       resultados: [],
       mejor: null,
     };
-    armarBots(r, Number.isInteger(nb) && nb >= 0 && nb <= MAX_BOTS ? nb : 0);
+    r.npcElegidos = limpiarElegidos(opts.npcs, MAX_BOTS);
+    armarBots(r, Math.max(Number.isInteger(nb) && nb >= 0 && nb <= MAX_BOTS ? nb : 0, r.npcElegidos.length));
     return r;
   },
   unirse(r, j, ctx) {
@@ -210,6 +215,12 @@ export const memes = crearJuego({
         if (ctx.esHost && ['lobby', 'final'].includes(r.fase) && Number.isInteger(n) && n >= 0 && n <= MAX_BOTS) armarBots(r, n);
         return {};
       }
+      case 'npcs': {
+        if (!ctx.esHost || !['lobby', 'final'].includes(r.fase)) return {};
+        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
+        armarBots(r, Math.max((r.botsSala || []).length, r.npcElegidos.length));
+        return {};
+      }
       case 'siguiente':
         if (ctx.esHost && r.fase === 'resultados') r.fin = ctx.now;
         return {};
@@ -237,6 +248,8 @@ export const memes = crearJuego({
       participantes: r.participantes.map(id),
       listos: Object.keys(r.memes).filter((p) => !esBot(p) || (r.listoBot?.[p] || 0) <= ctx.now).map(id),
       bots: (r.botsSala || []).map((b) => ({ id: id(b.pid), nombre: b.nombre })),
+      npcElegidos: r.npcElegidos || [],
+      maxBots: MAX_BOTS,
     };
     if (r.fase === 'creando' && r.participantes.includes(pid)) {
       v.miPlantilla = r.asignadas[pid];

@@ -6,7 +6,7 @@ import { crearJuego, idPublico, entero } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
-import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
+import { elegirNpcs, limpiarElegidos, POR_ID } from '../../../shared/public/npcs.js';
 import { rutaBot, rng, ordenLargada, LIMITE_S, COLORES, MAPAS } from '../public/js/pista.js';
 
 const CUENTA_MS = 5000;
@@ -114,6 +114,7 @@ export const carrera = crearJuego({
       bots: Number.isInteger(bots) && bots >= 0 && bots <= MAX_BOTS ? bots : 7,
       semillaSala: crypto.getRandomValues(new Uint32Array(1))[0],
       botNpc: [],
+      npcElegidos: limpiarElegidos(opts.npcs, MAX_BOTS),
       botsVivos: [],
       mapa: 1,
       rondas: [],
@@ -132,7 +133,8 @@ export const carrera = crearJuego({
       golpes: {},
       carreras: 0,
     };
-    r.botNpc = elegirNpcs(r.bots, r.semillaSala);
+    if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+    r.botNpc = elegirNpcs(r.bots, r.semillaSala, r.npcElegidos);
     return r;
   },
   unirse(r, j) {
@@ -152,18 +154,26 @@ export const carrera = crearJuego({
         const n = Number(msg.n);
         if (ctx.esHost && r.fase === 'lobby' && Number.isInteger(n) && n >= 0 && n <= MAX_BOTS) {
           r.bots = n;
-          r.botNpc = elegirNpcs(n, r.semillaSala + r.carreras);
+          r.botNpc = elegirNpcs(n, r.semillaSala + r.carreras, r.npcElegidos);
         }
         return {};
       }
       case 'reiniciar':
+      case 'npcs': {
+        // el anfitrión elige a mano qué personajes del club entran; los lugares que sobran se sortean
+        if (!ctx.esHost || r.fase !== 'lobby') return {};
+        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
+        if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+        r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras, r.npcElegidos);
+        return {};
+      }
       case 'empezar': {
         if (!ctx.esHost) return { error: 'Larga la carrera quien armó la sala' };
         if (msg.t === 'empezar' && r.fase !== 'lobby' && r.fase !== 'podio') return {};
         if (msg.t === 'reiniciar') ctx.sistema('La partida se reinició.');
         r.participantes = Object.keys(r.jugadores).filter((p) => ctx.online.has(p) || p === pid).slice(0, 16);
         const nBots = Math.min(r.bots, Math.max(0, 16 - r.participantes.length));
-        if (r.botNpc.length !== r.bots) r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras);
+        if (r.botNpc.length !== r.bots) r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras, r.npcElegidos);
         r.botsVivos = Array.from({ length: nBots }, (_, i) => i);
         r.vivos = [...r.participantes];
         r.rondas = planRondas(r.vivos.length + nBots, crypto.getRandomValues(new Uint32Array(1))[0]);
@@ -232,7 +242,7 @@ export const carrera = crearJuego({
       r.fase = 'lobby';
       r.golpes = {};
       // otra tanda de NPC para la próxima
-      r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras);
+      r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras, r.npcElegidos);
     }
   },
   vista(r) {
@@ -249,6 +259,7 @@ export const carrera = crearJuego({
       fin: r.fin,
       bots: r.bots,
       botNpc: r.botNpc,
+      npcElegidos: r.npcElegidos || [],
       botsVivos: r.botsVivos,
       participantes: r.participantes.map(id),
       vivos: r.vivos.map(id),

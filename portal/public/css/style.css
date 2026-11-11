@@ -360,7 +360,7 @@ a.novedad:hover { transform: translateY(-4px); }
   .pie .contenedor { grid-template-columns: 1fr 1fr; }
   .acceso { grid-template-columns: 1fr; }
   .acceso-arte { min-height: 280px; border-right: 0; border-bottom: 1px solid var(--borde); padding: 32px 24px; }
-  .acceso-arte .grande { width: 220px; right: -40px; top: 10px; }
+  .acceso-arte .grande { width: 190px; right: -46px; top: 6px; opacity: .22; }
   .dos-col { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {

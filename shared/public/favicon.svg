@@ -1,7 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#141413"/>
-  <g transform="translate(8 8) scale(.75)">
-    <path fill="#f4f1ea" d="M14 4H50A10 10 0 0 1 60 14V16H36A16 16 0 0 0 36 48H60V50A10 10 0 0 1 50 60H14A10 10 0 0 1 4 50V14A10 10 0 0 1 14 4Z"/>
-    <path fill="#c5f04a" d="M60 21H36A11 11 0 0 0 36 43H60Z"/>
+  <g transform="translate(8 8.6) scale(.75)">
+  <defs>
+    <linearGradient id="cl-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ece7db"/></linearGradient>
+    <linearGradient id="cl-l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcfc74"/><stop offset="1" stop-color="#b6e53a"/></linearGradient>
+  </defs>
+  <!-- Dos piezas enfrentadas, con volumen: el espacio entre ellas forma la C de cadalado -->
+  <path fill="#b3ad9f" transform="translate(0 5)" d="M14 3H50A10 10 0 0 1 60 13V14H36A15 15 0 0 0 36 44H60V45A10 10 0 0 1 50 55H14A10 10 0 0 1 4 45V13A10 10 0 0 1 14 3Z"/>
+  <path fill="url(#cl-b)" d="M14 3H50A10 10 0 0 1 60 13V14H36A15 15 0 0 0 36 44H60V45A10 10 0 0 1 50 55H14A10 10 0 0 1 4 45V13A10 10 0 0 1 14 3Z"/>
+  <g class="cl-ficha">
+    <path fill="#86ac22" transform="translate(0 3.5)" d="M60 18.5H36A10.5 10.5 0 0 0 36 39.5H60Z"/>
+    <path fill="url(#cl-l)" d="M60 18.5H36A10.5 10.5 0 0 0 36 39.5H60Z"/>
+    <path class="cl-brillo" fill="#fff" opacity=".5" d="M35.5 22.5H52a2 2 0 0 1 0 4H35.5a2 2 0 0 1 0-4Z"/>
+  </g>
   </g>
 </svg>

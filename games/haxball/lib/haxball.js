@@ -4,13 +4,13 @@ import { crearJuego, idPublico } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
-import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
+import { elegirNpcs, limpiarElegidos, POR_ID } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
 
 const CUENTA_MS = 3500;
 const FIN_MS = 15_000;
 const MAX_POR_EQUIPO = 10;
-const MAX_BOTS = 8;
+const MAX_BOTS = 19; // con una persona, llena los dos equipos (10 y 10)
 const ESTADIOS = ['classic', 'easy', 'small', 'big', 'rounded', 'bigEasy', 'bigRounded', 'huge'];
 const entero = (v, max) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= max ? n : null; };
 
@@ -45,6 +45,7 @@ export const haxball = crearJuego({
       estadio: ESTADIOS.includes(opts.estadio) ? opts.estadio : 'classic',
       semillaSala: crypto.getRandomValues(new Uint32Array(1))[0],
       botNpc: [],
+      npcElegidos: limpiarElegidos(opts.npcs, MAX_BOTS),
       equipos: {}, // pid → 'rojo' | 'azul' | 'afuera'
       botEquipo: [],
       participantes: [],
@@ -56,7 +57,8 @@ export const haxball = crearJuego({
       habla: {},
       partidas: 0,
     };
-    r.botNpc = elegirNpcs(r.bots, r.semillaSala);
+    if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+    r.botNpc = elegirNpcs(r.bots, r.semillaSala, r.npcElegidos);
     return r;
   },
   // al entrar, va al equipo con menos gente
@@ -80,17 +82,27 @@ export const haxball = crearJuego({
       case 'config': {
         if (!ctx.esHost || r.fase === 'partida' || r.fase === 'cuenta') return {};
         const n = Number(msg.bots);
-        if (Number.isInteger(n) && n >= 0 && n <= MAX_BOTS) { r.bots = n; r.botNpc = elegirNpcs(n, r.semillaSala + r.partidas); }
+        if (Number.isInteger(n) && n >= 0 && n <= MAX_BOTS) { r.bots = n; r.botNpc = elegirNpcs(n, r.semillaSala + r.partidas, r.npcElegidos); }
         if (entero(msg.minutos, 30) !== null) r.minutos = entero(msg.minutos, 30);
         if (entero(msg.goles, 30) !== null) r.golesMax = entero(msg.goles, 30);
         if (ESTADIOS.includes(msg.estadio)) r.estadio = msg.estadio;
+        return {};
+      }
+      case 'npcs': {
+        // el anfitrión elige a mano qué personajes del club entran; los lugares que sobran se sortean
+        if (!ctx.esHost || r.fase === 'partida' || r.fase === 'cuenta') return {};
+        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
+        if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+        r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
         return {};
       }
       case 'empezar': {
         if (!ctx.esHost) return { error: 'Arranca quien armó la sala' };
         if (r.fase !== 'lobby' && r.fase !== 'fin') return {};
         r.participantes = Object.keys(r.jugadores).filter((p) => (ctx.online.has(p) || p === pid) && r.equipos[p] !== 'afuera');
-        if (r.botNpc.length < r.bots) r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas);
+        // entre personas y bots no pueden ser más de los que entran en la cancha
+        r.bots = Math.max(0, Math.min(r.bots, MAX_POR_EQUIPO * 2 - r.participantes.length));
+        if (r.botNpc.length < r.bots) r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
         // los bots completan el equipo que tiene menos gente
         const cuenta = { rojo: r.participantes.filter((p) => r.equipos[p] === 'rojo').length, azul: r.participantes.filter((p) => r.equipos[p] === 'azul').length };
         r.botEquipo = r.botNpc.slice(0, r.bots).map(() => { const e = cuenta.rojo <= cuenta.azul ? 'rojo' : 'azul'; cuenta[e]++; return e; });
@@ -146,7 +158,7 @@ export const haxball = crearJuego({
   tick(r, ctx) {
     if (r.fase === 'cuenta' && ctx.now >= r.inicio) r.fase = 'partida';
     else if (r.fase === 'partida' && r.minutos && ctx.now >= r.inicio + r.minutos * 60_000) terminar(r, ctx);
-    else if (r.fase === 'fin' && ctx.now >= r.fin) { r.fase = 'lobby'; r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas); }
+    else if (r.fase === 'fin' && ctx.now >= r.fin) { r.fase = 'lobby'; r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos); }
   },
   vista(r) {
     return {
@@ -158,6 +170,8 @@ export const haxball = crearJuego({
       estadio: r.estadio || 'classic',
       bots: r.bots,
       botNpc: r.botNpc.slice(0, r.bots),
+      npcElegidos: r.npcElegidos || [],
+      maxBots: MAX_BOTS,
       botNombres: r.botNpc.slice(0, r.bots).map((_, i) => nombreBot(r, i)),
       botEquipo: r.botEquipo,
       equipos: Object.fromEntries(Object.entries(r.equipos).map(([p, e]) => [idPublico(p), e])),

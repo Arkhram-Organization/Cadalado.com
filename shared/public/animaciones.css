@@ -1,0 +1,83 @@
+/* Animaciones comunes de cadalado: se cargan en todas las páginas, después de las hojas de cada una.
+   Todo lo de acá es decorativo: con "reducir movimiento" activado no corre nada. */
+
+/* ---------- pasar de una página a otra: se funden en vez de parpadear ---------- */
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: cl-vt-sale .2s ease-in both; }
+::view-transition-new(root) { animation: cl-vt-entra .36s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes cl-vt-sale { to { opacity: 0; transform: scale(.985); } }
+@keyframes cl-vt-entra { from { opacity: 0; transform: translateY(12px) scale(1.012); } }
+
+@keyframes cl-sube { from { opacity: 0; transform: translateY(26px); } }
+@keyframes cl-golpe { from { opacity: 0; transform: scale(1.3) rotate(-2.5deg); filter: blur(10px); } }
+@keyframes cl-derecha { from { opacity: 0; transform: translateX(34px); } }
+@keyframes cl-izquierda { from { opacity: 0; transform: translateX(-34px); } }
+@keyframes cl-pop { from { opacity: 0; transform: scale(.82); } 60% { transform: scale(1.04); } }
+@keyframes cl-destello { to { background-position: -70% 0; } }
+@keyframes cl-respira { 50% { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--juego, #c5f04a) 60%, transparent)); } }
+@keyframes cl-anillo { 0% { box-shadow: 0 0 0 0 rgba(197, 240, 74, .5); } 70%, 100% { box-shadow: 0 0 0 16px rgba(197, 240, 74, 0); } }
+@keyframes cl-aparece { from { opacity: 0; } }
+@keyframes cl-raya { from { transform: scaleX(0); } }
+
+/* ---------- menús de los juegos: el título cae con un golpe y los paneles suben de a uno ---------- */
+.menu > :not(.menu-fondo):not(.menu-pausa) { animation: cl-sube .6s cubic-bezier(.2, .8, .3, 1) backwards; }
+.menu > :nth-child(2) { animation-delay: .07s; }
+.menu > :nth-child(3) { animation-delay: .14s; }
+.menu > :nth-child(4) { animation-delay: .21s; }
+.menu > :nth-child(5) { animation-delay: .28s; }
+.menu > :nth-child(n + 6) { animation-delay: .35s; }
+.menu-hero h1 { animation: cl-golpe .75s cubic-bezier(.2, 1.3, .35, 1) .05s backwards; transform-origin: 0 70%; }
+.menu-hero .etq { animation: cl-izquierda .5s cubic-bezier(.2, .8, .3, 1) backwards; }
+.menu .panel { transition: border-color .25s, box-shadow .25s; }
+.menu .panel:focus-within { border-color: color-mix(in srgb, var(--juego, #c5f04a) 55%, transparent); }
+
+/* ---------- botones: se levantan al pasar, y los principales tienen un destello ---------- */
+.btn:hover:not(:active):not(:disabled) { transform: translateY(-2px); }
+.btn-lima { background-image: linear-gradient(110deg, transparent 36%, rgba(255, 255, 255, .55) 50%, transparent 64%); background-size: 260% 100%; background-position: 135% 0; background-repeat: no-repeat; }
+.btn-lima:hover:not(:disabled) { animation: cl-destello .75s ease-out; }
+.menu .btn-grande.btn-lima:not(:hover):not(:disabled) { animation: cl-respira 2.8s ease-in-out infinite; }
+
+/* ---------- avisos ---------- */
+@keyframes cl-toast { from { opacity: 0; transform: translate(-50%, 34px) scale(.9); } 60% { transform: translate(-50%, -4px) scale(1.03); } }
+.cl-toast.ver { animation: cl-toast .45s cubic-bezier(.2, .8, .3, 1); }
+
+/* ---------- portada (lobby) ---------- */
+.lb-entrada { animation: cl-derecha .55s cubic-bezier(.2, .8, .3, 1) backwards; }
+.lb-entrada:nth-child(2) { animation-delay: .06s; }
+.lb-entrada:nth-child(3) { animation-delay: .12s; }
+.lb-entrada:nth-child(4) { animation-delay: .18s; }
+.lb-entrada:nth-child(5) { animation-delay: .24s; }
+.lb-entrada:nth-child(6) { animation-delay: .3s; }
+.lb-entrada:nth-child(n + 7) { animation-delay: .36s; }
+.lb-muro-c { animation: cl-izquierda .6s cubic-bezier(.2, .8, .3, 1) .1s backwards; }
+.lb-col h2::after { transform-origin: 0 50%; animation: cl-raya .9s cubic-bezier(.2, .8, .3, 1) .2s backwards; }
+.lb-yo { animation: cl-pop .6s cubic-bezier(.2, .8, .3, 1) .5s backwards; }
+.lb-mas span { animation: cl-anillo 2.4s ease-out infinite; }
+.lb-mas:nth-child(2) span { animation-delay: .5s; }
+.lb-mas:nth-child(3) span { animation-delay: 1s; }
+.lb-nav a { position: relative; }
+.lb-nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: -6px; height: 2px; background: #c5f04a; transform: scaleX(0); transform-origin: 0 50%; transition: transform .25s cubic-bezier(.2, .8, .3, 1); }
+.lb-nav a:hover::after, .lb-nav a.on::after { transform: scaleX(1); }
+.gr-panel:not([hidden]) { animation: cl-derecha .35s cubic-bezier(.2, .8, .3, 1); }
+.gr-fondo:not([hidden]) { animation: cl-aparece .3s; }
+
+/* ---------- club, perfil, entrar ---------- */
+.stat { animation: cl-pop .55s cubic-bezier(.2, .8, .3, 1) backwards; transition: transform .2s, box-shadow .2s; }
+.stat:nth-child(2) { animation-delay: .07s; }
+.stat:nth-child(3) { animation-delay: .14s; }
+.stat:nth-child(4) { animation-delay: .21s; }
+.stat:hover { transform: translateY(-3px); box-shadow: inset 0 0 0 1px #c5f04a66, 0 12px 30px rgba(0, 0, 0, .35); }
+.tarjeta-form { animation: cl-sube .6s cubic-bezier(.2, .8, .3, 1) .1s backwards; }
+.pestanas button { transition: background .2s, color .2s; }
+.nav a { transition: background .2s, color .2s; }
+
+/* ---------- lo que aparece al hacer scroll (lo marca /comun/animar.js) ---------- */
+.cl-revela { opacity: 0; transform: translateY(34px); transition: opacity .7s cubic-bezier(.2, .8, .3, 1), transform .7s cubic-bezier(.2, .8, .3, 1); transition-delay: var(--cl-d, 0s); }
+.cl-revela.cl-visto { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+  .menu > *, .menu-hero h1, .menu-hero .etq, .btn-lima, .menu .btn-grande.btn-lima, .cl-toast.ver, .lb-entrada, .lb-muro-c, .lb-col h2::after, .lb-yo, .lb-mas span, .gr-panel, .gr-fondo, .stat, .tarjeta-form { animation: none !important; }
+  .btn:hover:not(:active):not(:disabled), .stat:hover { transform: none; }
+  .cl-revela { opacity: 1; transform: none; transition: none; }
+}

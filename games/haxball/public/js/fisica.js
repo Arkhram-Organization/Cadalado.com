@@ -73,11 +73,14 @@ export function nuevoMundo(idEstadio = 'classic') {
 export function acomodar(mundo, saca = 'rojo') {
   const n = { rojo: 0, azul: 0 };
   const ids = [...mundo.jug.keys()].sort();
+  const porColumna = Math.max(1, Math.floor((mundo.est.campoH - R_JUG - 4) / 55)) * 2 + 1;
   for (const id of ids) {
     const j = mundo.jug.get(id);
     const k = n[j.equipo]++;
-    let r = (k + 1) >> 1; if (!(k & 1)) r = -r;
-    j.x = mundo.est.salida * (j.equipo === 'rojo' ? -1 : 1);
+    // con equipos grandes se arman más columnas hacia atrás (antes los de más quedaban afuera de la cancha)
+    const kk = k % porColumna, columna = Math.floor(k / porColumna);
+    let r = (kk + 1) >> 1; if (!(kk & 1)) r = -r;
+    j.x = Math.min(mundo.est.campoW - R_JUG, mundo.est.salida + columna * 46) * (j.equipo === 'rojo' ? -1 : 1);
     j.y = 55 * r;
     j.vx = j.vy = 0;
   }
@@ -203,7 +206,23 @@ export function pensarBot(mundo, id, t = 0) {
     if (detras) { tx = p.x; ty = p.y; } else { tx = bx; ty = by + (j.y < p.y ? -24 : 24); }
     patea = dist(j) < R_JUG + R_PEL + 3 && detras && (al < est.campoW * 0.9 || Math.sin(t * 7 + id.length) > 0.6);
   } else {
-    tx = arcoPropio.x * 0.55 + p.x * 0.45; ty = p.y * 0.6;
+    // Los demás no se amontonan: cada uno cubre su zona (arquero, defensa, medio, ataque) y acompaña la jugada.
+    const resto = compas.map(([cid]) => cid).filter((cid) => cid !== compas[0]?.[0] && cid.startsWith('bot')).sort();
+    const k = Math.max(0, resto.indexOf(id)), m = resto.length;
+    if (m <= 1) { tx = arcoPropio.x * 0.55 + p.x * 0.45; ty = p.y * 0.6; }
+    else if (k === 0) {
+      // arquero: se mueve sobre la línea, siguiendo la pelota
+      tx = -ataque * (est.campoW - 26); ty = Math.max(-est.arco, Math.min(est.arco, p.y * 0.7));
+    } else {
+      const filas = Math.ceil((m - 1) / 3), fila = Math.floor((k - 1) / 3), enFila = Math.min(3, m - 1 - fila * 3), col = (k - 1) % 3;
+      // de la defensa (cerca del arco propio) al ataque (campo rival)
+      const fondo = filas > 1 ? fila / (filas - 1) : 0.4;
+      const baseX = -ataque * est.campoW * (0.62 - fondo * 0.95);
+      const baseY = enFila === 1 ? 0 : (col / (enFila - 1) - 0.5) * est.campoH * 1.25;
+      tx = baseX + (p.x - baseX) * 0.28; ty = baseY + (p.y - baseY) * 0.32;
+      // el que queda cerca de la pelota en su zona también la va a buscar
+      if (dist(j) < 70 && !mundo.saque) { tx = p.x - ataque * 14; ty = p.y; patea = dist(j) < R_JUG + R_PEL + 3 && (j.x - p.x) * ataque < 0; }
+    }
   }
   const dx = tx - j.x, dy = ty - j.y, d = Math.hypot(dx, dy);
   return d < 3 ? { x: 0, y: 0, patea } : { x: dx / d, y: dy / d, patea };

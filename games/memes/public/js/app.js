@@ -1,4 +1,5 @@
 import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
+import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
 import { avatarSvg, lookDeId, lookDeNombre, lookDeJugador } from '/comun/avatar.js';
 import { PLANTILLAS } from './plantillas.js';
 import { fondoMenu } from '/comun/fondo-menu.js';
@@ -269,7 +270,7 @@ function abrirSala(code) {
         <h2>¿Quiénes juegan?</h2>
         <p>Mandá el link de la sala. Cuando estén todos, ${esHost ? 'tocá empezar' : 'el que armó la sala empieza'}.</p>
         <div class="fila-form" style="max-width:520px;margin:0 auto"><input class="entrada mono" readonly value="${esc(link)}"><button class="btn" data-copiar2>Copiar</button></div>
-        ${esHost ? `<div class="fila-bots"><span class="etq">Bots que memean</span>${[0, 1, 2, 3, 4].map((k) => `<button class="btn btn-chico ${k === (est.bots || []).length ? 'btn-lima' : ''}" data-bots="${k}">${k}</button>`).join('')}</div>` : ''}
+        ${esHost ? `<div class="fila-bots"><span class="etq">Bots que memean</span>${[0, 1, 2, 3, 4].map((k) => `<button class="btn btn-chico ${k === (est.bots || []).length ? 'btn-lima' : ''}" data-bots="${k}">${k}</button>`).join('')}<button class="btn btn-chico" data-npcs>${textoNpcs(est.npcElegidos)}</button></div>` : ''}
         <div style="margin-top:18px">${esHost ? `<button class="btn btn-lima btn-grande" data-empezar ${n < 2 ? 'disabled' : ''}>Empezar (${n} ${n === 1 ? 'jugador' : 'jugadores'})</button>` : `<span class="chip">${n} conectados · esperando que empiece</span>`}</div>
         <div class="reglas">
           <div><b>1 · Plantilla</b>Te toca una al azar. Si no te convence, pedí otra.</div>
@@ -279,6 +280,7 @@ function abrirSala(code) {
       c.querySelector('[data-copiar2]').onclick = () => app.querySelector('[data-copiar]').click();
       c.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
       c.querySelectorAll('[data-bots]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'bots', n: Number(b.dataset.bots) })));
+      c.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: est.maxBots || 4, alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
       return;
     }
 

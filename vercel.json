@@ -7,10 +7,6 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/casino/mesa/:code",
-      "destination": "/casino/index.html"
-    },
-    {
       "source": "/ajedrez/api/:ruta*",
       "destination": "/api/juegos/ajedrez?ruta=:ruta*"
     },

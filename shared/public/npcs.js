@@ -365,17 +365,27 @@ export function rngNpc(semilla) {
   };
 }
 
-// Qué personajes son los bots de una partida. Mati Nadeo aparece solo de vez en cuando.
-export function elegirNpcs(n, semilla) {
+// Los que el anfitrión eligió a mano para la partida: ids válidos y sin repetir.
+export function limpiarElegidos(ids, max = 24) {
+  const lista = [];
+  for (const id of Array.isArray(ids) ? ids : []) if (typeof id === 'string' && POR_ID[id] && !lista.includes(id) && lista.length < max) lista.push(id);
+  return lista;
+}
+
+// Qué personajes son los bots de una partida: primero los elegidos a mano y el resto se sortea.
+// Mati Nadeo aparece solo de vez en cuando (o si lo eligen).
+export function elegirNpcs(n, semilla, elegidos = []) {
   const r = rngNpc(semilla ^ 0xa11ce);
-  const comunes = NPCS.filter((x) => !x.raro).map((x) => x.id);
+  const fijos = limpiarElegidos(elegidos, n);
+  const comunes = NPCS.filter((x) => !x.raro && !fijos.includes(x.id)).map((x) => x.id);
   for (let i = comunes.length - 1; i > 0; i--) {
     const j = Math.floor(r() * (i + 1));
     [comunes[i], comunes[j]] = [comunes[j], comunes[i]];
   }
-  const lista = [];
-  for (let i = 0; i < n; i++) lista.push(comunes[i % comunes.length]);
-  if (n > 0 && r() < 0.18) lista[Math.floor(r() * n)] = 'mati';
+  const lista = [...fijos];
+  for (let i = 0; lista.length < n; i++) lista.push(comunes.length ? comunes[i % comunes.length] : fijos[i % fijos.length]);
+  const libres = n - fijos.length;
+  if (libres > 0 && !fijos.includes('mati') && r() < 0.18) lista[fijos.length + Math.floor(r() * libres)] = 'mati';
   return lista;
 }
 

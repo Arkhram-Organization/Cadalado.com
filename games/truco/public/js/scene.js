@@ -288,7 +288,7 @@ export class TableScene {
       ctx.fillStyle = 'rgba(230,214,170,0.13)';
       ctx.font = 'italic 46px Georgia';
       ctx.textAlign = 'center';
-      ctx.fillText('Cada Lado', w / 2, h / 2 + 14);
+      ctx.fillText('cadalado', w / 2, h / 2 + 14);
     });
     // madera con veta
     const woodTex = canvasTex(512, 128, (ctx, w, h) => {

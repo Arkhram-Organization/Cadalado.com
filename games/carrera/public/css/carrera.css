@@ -195,3 +195,9 @@ body:has(.menu) .menu .sala-fila .q small, body:has(.menu) .menu .vacio { color:
 .juego.con-turbo::after { opacity: .85; animation: fg-turbo .22s linear infinite; }
 @keyframes fg-turbo { from { transform: scale(1); } to { transform: scale(1.12) rotate(2deg); } }
 @media (prefers-reduced-motion: reduce) { .juego.con-turbo::after { animation: none; } }
+
+/* el fondo del menú ahora es de día: el texto necesita sombra y un velo más oscuro para leerse */
+body:has(.menu) .menu-hero h1 { color: #fff; text-shadow: 0 5px 0 rgba(0,0,0,.35), 0 12px 40px rgba(0,0,0,.5); }
+body:has(.menu) .menu-hero p { color: #f1f4ea; text-shadow: 0 2px 10px rgba(0,0,0,.8); }
+body:has(.menu) .menu-fondo::after { background: linear-gradient(90deg, rgba(9,12,10,.9) 0%, rgba(9,12,10,.74) 36%, rgba(9,12,10,.12) 70%, rgba(9,12,10,.28) 100%), linear-gradient(0deg, rgba(9,12,10,.5), transparent 40%); }
+@media (max-width: 820px) { body:has(.menu) .menu-fondo::after { background: rgba(9,12,10,.84); } }

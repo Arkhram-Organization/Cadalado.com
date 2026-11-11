@@ -189,7 +189,7 @@ function showMenu() {
   room = null;
   gameEl.classList.add('hidden');
   menuEl.classList.remove('hidden');
-  document.title = 'Truco · Cada Lado';
+  document.title = 'Truco · cadalado';
   loadPublic();
   clearInterval(lobbyTimer);
   lobbyTimer = setInterval(loadPublic, 7000);

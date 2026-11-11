@@ -303,3 +303,34 @@ test('el salto apretado justo antes de aterrizar sale igual (buffer)', () => {
   assert.ok(apretado, 'apretó en el aire');
   assert.equal(saltos, 1, 'el salto guardado salió al aterrizar');
 });
+
+test('el anfitrión elige qué personajes entran y el resto se sortea', async () => {
+  const { elegirNpcs, limpiarElegidos } = await import('../../../shared/public/npcs.js');
+  // sin elegidos, el sorteo es el de siempre (mismo resultado con la misma semilla)
+  assert.deepEqual(elegirNpcs(6, 1234), elegirNpcs(6, 1234, []));
+  const lista = elegirNpcs(6, 1234, ['teo', 'marti', 'no-existe', 'teo']);
+  assert.deepEqual(lista.slice(0, 2), ['teo', 'marti'], 'los elegidos van primero');
+  assert.equal(lista.length, 6);
+  assert.equal(new Set(lista).size, 6, 'el resto no repite a los elegidos');
+  assert.deepEqual(limpiarElegidos(['teo', 7, 'x', 'teo', 'mati'], 5), ['teo', 'mati']);
+  assert.deepEqual(elegirNpcs(1, 5, ['teo', 'marti']), ['teo'], 'si hay menos lugares, entran los primeros');
+
+  const A = 'npcsAnfitrion12345', B = 'npcsInvitado123456';
+  const { code } = (await req('POST', '/crear', { pid: A, nombre: 'Anfi', opciones: { bots: 3 } })).data;
+  await req('POST', `/salas/${code}/unirse`, { pid: B, nombre: 'Invi' });
+  // un invitado no puede elegir
+  await req('POST', `/salas/${code}`, { pid: B, msg: { t: 'npcs', ids: ['dobro'] } });
+  let v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.deepEqual(v.npcElegidos, []);
+  // el anfitrión elige 4 con 3 bots: la cantidad sube para que entren todos
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'npcs', ids: ['dobro', 'teo', 'marti', 'maica'] } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.deepEqual(v.npcElegidos, ['dobro', 'teo', 'marti', 'maica']);
+  assert.equal(v.bots, 4);
+  assert.deepEqual(v.botNpc, ['dobro', 'teo', 'marti', 'maica']);
+  // con más bots, los elegidos siguen estando
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'bots', n: 7 } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.equal(v.botNpc.length, 7);
+  assert.deepEqual(v.botNpc.slice(0, 4), ['dobro', 'teo', 'marti', 'maica']);
+});

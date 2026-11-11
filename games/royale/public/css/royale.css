@@ -440,3 +440,6 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 @media (max-width: 700px) { .bs-fin.con-campeon .bs-victoria { top: 24%; } @keyframes v-sube { to { top: 9%; transform: translate(-50%, -50%) scale(.42); } } }
 /* en la sala de espera el chat va a la derecha (tapaba el botón de arrancar) */
 .isla:has(.bs-lobby:not(.hidden)) .chat-mini { left: auto; right: 16px; bottom: 74px; }
+
+.bs-npcs { width: 100%; margin: 2px 0 10px; padding: 10px 14px; border-radius: 12px; border: 1px dashed rgba(255,255,255,.35); background: rgba(255,255,255,.06); color: #fff; font: 800 15px var(--titulo); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.bs-npcs:hover { border-color: #ffb347; background: rgba(255,179,71,.14); transform: translateY(-1px); }

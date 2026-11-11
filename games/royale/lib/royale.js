@@ -5,7 +5,7 @@ import { crearJuego, idPublico } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
-import { elegirNpcs, POR_ID } from '../../../shared/public/npcs.js';
+import { elegirNpcs, limpiarElegidos, POR_ID } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
 import { DURACION_MAX, LADO, TAM, T, BALDOSA, CAJAS, MATERIALES, generarMapa } from '../public/js/mundo.js';
 import { COSTO_PIEZA, VIDA_PIEZA, validarPieza } from '../public/js/construccion.js';
@@ -56,6 +56,7 @@ export const royale = crearJuego({
       bots: Number.isInteger(n) && n >= 0 && n <= MAX_BOTS ? n : 9,
       semillaSala: crypto.getRandomValues(new Uint32Array(1))[0],
       botNpc: [],
+      npcElegidos: limpiarElegidos(opts.npcs, MAX_BOTS),
       semilla: 1,
       inicio: 0,
       fin: 0,
@@ -78,7 +79,8 @@ export const royale = crearJuego({
       chequeo: 0,
       partidas: 0,
     };
-    r.botNpc = elegirNpcs(r.bots, r.semillaSala);
+    if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+    r.botNpc = elegirNpcs(r.bots, r.semillaSala, r.npcElegidos);
     return r;
   },
   accion(r, msg, ctx) {
@@ -89,8 +91,16 @@ export const royale = crearJuego({
         const n = Number(msg.n);
         if (ctx.esHost && r.fase === 'lobby' && Number.isInteger(n) && n >= 0 && n <= MAX_BOTS) {
           r.bots = n;
-          r.botNpc = elegirNpcs(n, r.semillaSala + r.partidas);
+          r.botNpc = elegirNpcs(n, r.semillaSala + r.partidas, r.npcElegidos);
         }
+        return {};
+      }
+      case 'npcs': {
+        // el anfitrión elige a mano qué personajes del club entran; los lugares que sobran se sortean
+        if (!ctx.esHost || r.fase !== 'lobby') return {};
+        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
+        if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+        r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
         return {};
       }
       case 'empezar': {
@@ -98,7 +108,7 @@ export const royale = crearJuego({
         if (r.fase !== 'lobby' && r.fase !== 'fin') return {};
         r.participantes = Object.keys(r.jugadores).filter((p) => ctx.online.has(p) || p === pid).slice(0, MAX_JUGADORES);
         const nBots = Math.min(r.bots, MAX_JUGADORES - r.participantes.length);
-        if (r.botNpc.length < nBots) r.botNpc = elegirNpcs(nBots, r.semillaSala + r.partidas);
+        if (r.botNpc.length < nBots) r.botNpc = elegirNpcs(nBots, r.semillaSala + r.partidas, r.npcElegidos);
         r.botNpc = r.botNpc.slice(0, nBots);
         if (r.participantes.length + nBots < 2) return { error: 'Hacen falta al menos 2 (sumá bots)' };
         r.semilla = crypto.getRandomValues(new Uint32Array(1))[0];
@@ -290,7 +300,7 @@ export const royale = crearJuego({
       if (r.fase === 'partida' && ctx.now >= r.inicio + DURACION_MAX * 1000) terminar(r, ctx);
     } else if (r.fase === 'fin' && ctx.now >= r.fin) {
       r.fase = 'lobby';
-      r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas);
+      r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
     }
   },
   vista(r) {
@@ -302,6 +312,7 @@ export const royale = crearJuego({
       fin: r.fin,
       bots: r.bots,
       botNpc: r.botNpc,
+      npcElegidos: r.npcElegidos || [],
       botNombres: r.botNpc.map((_, i) => nombreBot(r, i)),
       participantes: r.participantes.map(id),
       vivos: r.vivos,

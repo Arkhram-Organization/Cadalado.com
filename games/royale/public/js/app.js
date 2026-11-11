@@ -1,5 +1,6 @@
 // Battle Shmitz: menú, sala y partida. El menú y la sala se ven arriba de la isla (el juego queda de fondo).
 import { Isla3D } from './escena3d.js';
+import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
 import { OBJETOS, recoger } from './inventario.js';
 import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { POR_ID } from '/comun/npcs.js';
@@ -63,8 +64,10 @@ function fondoIsla(canvas, { colectivo = false } = {}) {
       foco = { x: c.x, y: c.y, enColectivo: true };
       vista.dibujar({ mundo, gente: [], balas: [], tomados: new Set(), foco, W: 520, H: 293, dt, ms, zona: null, colectivo: c });
     } else {
-      const l = LUGARES[Math.floor(t / 9) % LUGARES.length], k = (t % 9) / 9;
-      foco = { x: (l.x + l.w * (0.2 + k * 0.6)) * 16, y: (l.y + l.h / 2) * 16 + Math.sin(t / 3) * 40, altura: 26 };
+      // cada lugar se recorre 11 s con una vuelta lenta, de cerca y a media altura (como un tráiler)
+      const n = Math.floor(t / 11), l = LUGARES[n % LUGARES.length], k = (t % 11) / 11;
+      const ancho = Math.max(l.w, l.h) * 16;
+      foco = { x: (l.x + l.w / 2) * 16, y: (l.y + l.h / 2) * 16, orbita: { angulo: n * 1.9 + k * 1.1, radio: ancho * 0.55 + 150 - k * 30, alto: 95 + ancho * 0.12 - k * 22, mira: 16 } };
       vista.dibujar({ mundo, gente: [], balas: [], tomados: new Set(), foco, W: 520, H: 293, dt, ms, zona: null });
     }
   };
@@ -466,7 +469,7 @@ function abrirSala(code) {
     lob.classList.toggle('hidden', e.fase !== 'lobby');
     if (e.fase === 'lobby') {
       const online = e.jugadores.filter((j) => j.online);
-      const firma = JSON.stringify([online.map((j) => j.id), e.bots, e.botNpc, e.host]);
+      const firma = JSON.stringify([online.map((j) => j.id), e.bots, e.botNpc, e.host, e.npcElegidos]);
       if (lob.dataset.firma !== firma) {
         lob.dataset.firma = firma;
         const anfitrion = e.jugadores.find((j) => j.id === e.host)?.nombre || '';
@@ -476,11 +479,13 @@ function abrirSala(code) {
           <div class="bs-gente">${online.map((j) => `<div class="${j.id === e.yo ? 'yo' : ''}"><span class="av">${avatarSvg(lookDeJugador(j, j.id, colorDe(j.id)))}</span><b>${esc(j.nombre)}</b><small>${j.id === e.host ? 'Arma la partida' : j.id === e.yo ? 'Vos' : 'Listo'}</small></div>`).join('')}
             ${e.botNpc.map((n, i) => `<div class="bot ${n === 'mati' ? 'dorado' : ''}"><span class="av">${avatarSvg({ ...POR_ID[n]?.look })}</span><b>${esc(e.botNombres[i])}</b><small>Bot</small></div>`).join('')}</div>
           ${esHost ? `<div class="bs-campo"><span>Bots</span><div class="bs-chips" data-bots>${BOTS.map((n) => `<button type="button" data-n="${n}" class="${n === e.bots ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+            <button type="button" class="bs-npcs" data-npcs>${textoNpcs(e.npcElegidos)}</button>
             <button class="bs-jugar" data-largar><b>¡A la isla!</b><small>Arranca la cuenta regresiva</small></button>` : `<div class="bs-espera">Esperando que ${esc(anfitrion)} largue la partida…</div>`}
           <p class="bs-nota">Caés con una pistola y 48 balas. Buscá cofres dorados y armas de mayor rareza.</p>
         </div>`;
         lob.querySelector('[data-bots]')?.addEventListener('click', (ev) => { const b = ev.target.closest('[data-n]'); if (b) sala.enviar({ t: 'bots', n: Number(b.dataset.n) }); });
         lob.querySelector('[data-largar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
+        lob.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: 15, color: '#ffb347', alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
         lob.querySelector('[data-copiar]')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.href); } catch {} toast('Link de la partida copiado'); });
       }
     }

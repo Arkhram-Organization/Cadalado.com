@@ -174,3 +174,15 @@
 .gr-agregar input{flex:1;min-width:0;background:#141713;border:1px solid var(--line);border-radius:6px;color:var(--paper);font:600 14px Barlow,sans-serif;padding:8px 10px}
 .gr-agregar input:focus{outline:none;border-color:#c5f04a99}
 .gr-sub{margin:12px 0 6px;font:700 11px 'JetBrains Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:#a7ad9e}
+
+/* celular: la cabecera entra en un solo renglón (marca, lobbys y cuenta) y el menú va abajo */
+@media (max-width:520px){
+  .lb-top{padding:12px 14px;gap:10px}
+  .lb-top .brand{font-size:21px;gap:8px}
+  .lb-top .brand-logo{width:28px!important;height:28px!important}
+  .lb-estado{display:none}
+  .lb-lobbys{margin-left:auto;padding:8px 10px;letter-spacing:1px}
+  .lb-top [data-cuenta]{max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;padding:9px 12px}
+  .lb-nav{scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent);padding-right:26px}
+  .lb-nav::-webkit-scrollbar{display:none}
+}

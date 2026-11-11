@@ -155,6 +155,10 @@ export async function montarLobby(raiz) {
 
   // ---------------- lobby compartida: los del grupo aparecen al lado tuyo
   const compas = new Map(); // nombre → persona
+  // Los lugares se aprietan lo necesario para entrar en el escenario (entre el muro y los juegos,
+  // o en el ancho del celular): antes el tercero quedaba tapado por el muro o fuera de la pantalla.
+  let aprieta = 1, cuadros = 0;
+  const centroEl = $('.lb-centro', raiz);
   // Hasta 16 por lobby, en filas de a 4: adelante vos y 3 más; atrás, filas de 4.
   const LUGARES = [
     [1.3, -.45], [-1.3, -.45], [2.6, .05],
@@ -179,8 +183,9 @@ export async function montarLobby(raiz) {
       }
       // si hizo un gesto, se ve acá también (y qué está haciendo)
       if (m.gesto) p.gestoPendiente = m.gesto;
-      const [x, z] = LUGARES[i % LUGARES.length];
-      p.grupo.position.set(x, 0, z); p.grupo.rotation.y = -x * .12;
+      p.lugar = i % LUGARES.length;
+      const [x, z] = LUGARES[p.lugar];
+      p.grupo.position.set(x * aprieta, 0, z); p.grupo.rotation.y = -x * .12;
     });
     // el elenco se corre para atrás cuando hay gente
     personas.forEach((p) => (p.grupo.visible = otros.length < 3));
@@ -239,10 +244,24 @@ export async function montarLobby(raiz) {
     for (const p of personas) p.animar('quieto', dt);
     for (const p of compas.values()) p.animar('quieto', dt);
     renderer.render(escena, camara);
+    const usados = compas.size + libres.length;
+    if (usados && centroEl && cuadros++ % 20 === 0) {
+      const maxX = Math.max(...LUGARES.slice(0, usados).map(([x]) => Math.abs(x)));
+      proyectar.set(1, .95, 0).project(camara); const x1 = proyectar.x;
+      proyectar.set(0, .95, 0).project(camara);
+      const px = Math.abs(x1 - proyectar.x) * w / 2;
+      const c0 = canvas.getBoundingClientRect(), r = centroEl.getBoundingClientRect();
+      const lugar = Math.min(w / 2 - (r.left - c0.left), r.right - c0.left - w / 2) - 44;
+      const nuevo = Math.max(.5, Math.min(1, lugar / (px * maxX)));
+      if (Math.abs(nuevo - aprieta) > .01) {
+        aprieta = nuevo;
+        for (const p of compas.values()) if (p.lugar != null) p.grupo.position.x = LUGARES[p.lugar][0] * aprieta;
+      }
+    }
     libres.forEach(([x, z], k) => {
       const b = lugaresEl.children[k];
       if (!b) return;
-      proyectar.set(x, .95, z).project(camara);
+      proyectar.set(x * aprieta, .95, z).project(camara);
       b.style.transform = `translate(${((proyectar.x + 1) / 2) * w}px, ${((1 - proyectar.y) / 2) * h}px) translate(-50%, -50%)`;
     });
   }

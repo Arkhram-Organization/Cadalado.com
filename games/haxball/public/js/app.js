@@ -2,6 +2,7 @@
 // de cada personaje (sacada de su modelo 3D). Modos: entrenamiento, local 1v1 en la misma pantalla y online.
 // Online: el anfitrión simula y manda la cancha por WebRTC; cada uno manda sus teclas; los goles los cuenta el servidor.
 import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre, lookGuardado } from '/comun/sala.js';
+import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
 import { POR_ID } from '/comun/npcs.js';
 import { lookDeJugador } from '/comun/avatar.js';
 import { lookParaDibujo } from '/comun/look.js';
@@ -50,7 +51,7 @@ function menu() {
         <a class="hx-modo" href="/haxball/entrenar" data-ir><b>Entrenamiento</b><span>Practicá solo en la cancha, con todos los estadios.</span><small>WASD y patada con Espacio, Shift izq o Ctrl izq</small></a>
         <a class="hx-modo" href="/haxball/local" data-ir><b>Local 1 contra 1</b><span>Enfrentate 1v1 contra un amigo en la misma compu, sin internet.</span><small>Rojo: WASD + Espacio · Azul: flechitas + Enter, Shift der o Ctrl der</small></a>
         <form class="hx-modo" data-crear><b>Sala online</b><span>Creá una sala y compartí el link. Los bots del club completan los equipos.</span>
-          <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center;font-size:13px">Bots <select class="entrada" name="bots" style="width:auto">${[0, 1, 2, 3, 5, 7].map((n) => `<option ${n === 1 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+          <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center;font-size:13px">Bots <input class="entrada" type="number" name="bots" min="0" max="19" step="1" value="1" inputmode="numeric" style="width:74px"></label>
           <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" name="publica" checked style="accent-color:${COLOR_JUEGO}"> Pública</label>
           <button class="btn btn-lima">Crear sala de Haxball</button></span></form>
       </div>
@@ -70,7 +71,7 @@ function menu() {
     const f = new FormData(e.target);
     if (!cuenta) guardarNombre(nombre());
     try {
-      const { code } = await api('/api/haxball/crear', { pid: pid(), nombre: nombre(), opciones: { bots: +f.get('bots'), publica: f.get('publica') === 'on' } });
+      const { code } = await api('/api/haxball/crear', { pid: pid(), nombre: nombre(), opciones: { bots: Math.max(0, Math.min(19, Math.round(+f.get('bots') || 0))), publica: f.get('publica') === 'on' } });
       ir(`/haxball/sala/${code}`);
     } catch (err) { toast(err.message, true); }
   };
@@ -216,7 +217,7 @@ function htmlCancha() {
   return `
   <div class="hx">
     <div class="hx-barra"><span class="hx-cuad rojo"></span><b data-marca>0 - 0</b><span class="hx-cuad azul"></span><span class="hx-tiempo" data-tiempo>00:00</span>
-      <span class="hx-info" data-info></span><button class="hx-menu-btn" data-menu>⚙️ Menú (ESC)</button></div>
+      <span class="hx-info" data-info></span><button class="hx-menu-btn" data-menu>Menú (ESC)</button></div>
     <div class="hx-lienzo"><canvas data-cancha></canvas><div class="hx-cuenta hidden" data-cuenta-inicio></div></div>
     <div class="hx-panel hidden" data-panel></div>
     <div class="hx-esc hidden" data-esc></div>
@@ -306,7 +307,7 @@ function abrirLocal(entrenar) {
     $('[data-panel]').innerHTML = `${ganadorLocal ? `<div class="hx-festejo"><b>¡Ganó el equipo ${NOMBRE_EQ[ganadorLocal]}!</b><canvas></canvas><span>${ganadorLocal === 'rojo' ? esc(yo) : 'Jugador 2'} festeja la victoria</span></div>` : ''}<h2>${entrenar ? 'Entrenamiento' : 'Partida local'}</h2>
       <p>${entrenar ? 'Practicá solo: WASD y patada con Espacio, Shift o Ctrl izquierdos.' : 'Partida 1v1 en la misma pantalla. J1: WASD + Espacio, Shift o Ctrl izquierdos · J2: flechitas + Enter, Shift o Ctrl derechos.'}</p>
       ${modificadores(conf, true)}
-      <button class="btn btn-lima btn-grande hx-iniciar" data-iniciar>⚽ ¡Iniciar partido!</button>`;
+      <button class="btn btn-lima btn-grande hx-iniciar" data-iniciar>¡Iniciar partido!</button>`;
     engancharModificadores($('[data-panel]'), (c) => (conf = { ...conf, ...c }));
     $('[data-iniciar]').onclick = empezar;
     if(ganadorLocal)limpiarFestejo=festejo($('[data-panel] .hx-festejo'),[{look:looks[ganadorLocal==='rojo'?'j1':'j2']}]);
@@ -320,7 +321,7 @@ function abrirLocal(entrenar) {
     if (entrenar) mundo.saque = null;
     marcador = { rojo: 0, azul: 0 }; inicio = performance.now()+3500; jugando = true;
     $('[data-panel]').classList.add('hidden');
-    $('[data-pie]').textContent = entrenar ? '⚪ WASD (mover) · ESPACIO / SHIFT Izq / CTRL Izq (patada) | ESC menú' : '🔴 J1 (Rojo): WASD · ESPACIO / SHIFT Izq / CTRL Izq  |  🔵 J2 (Azul): Flechas · ENTER / SHIFT Der / CTRL Der  |  ESC menú';
+    $('[data-pie]').innerHTML = entrenar ? 'WASD (mover) · ESPACIO / SHIFT Izq / CTRL Izq (patada) | ESC menú' : '<i class="hx-pt rojo"></i> J1 (Rojo): WASD · ESPACIO / SHIFT Izq / CTRL Izq  |  <i class="hx-pt azul"></i> J2 (Azul): Flechas · ENTER / SHIFT Der / CTRL Der  |  ESC menú';
   }
   function terminar() {
     jugando = false;
@@ -503,15 +504,15 @@ function abrirSala(code) {
     const html = `${fase==='fin'&&ganadores.length?`<div class="hx-festejo"><b>¡Festeja el equipo ${NOMBRE_EQ[est.ganador]}!</b><canvas></canvas><span>${ganadores.map(id=>esc(nombreDe(id))).join(' · ')}</span></div>`:''}<div class="hx-cabeza"><h2>${fase === 'fin' ? (est.ganador === 'empate' ? '¡Empate!' : `¡Ganó el ${NOMBRE_EQ[est.ganador]}!`) + ` ${est.marcador.rojo} - ${est.marcador.azul}` : `Sala ${code}`}</h2>
         <button class="btn btn-chico" data-copiar>Copiar link de invitación</button><a class="btn btn-chico btn-borde" href="/haxball/" data-ir>Salir</a></div>
       <div class="hx-equipos">
-        ${['rojo', 'azul'].map((e) => `<div class="hx-eq ${e}"><h3>${e === 'rojo' ? '🔴' : '🔵'} Equipo ${NOMBRE_EQ[e]} <small>(${n[e]}/10)</small></h3><ul>${de(e).map(fila).join('')}</ul>
-          ${est.equipos[est.yo] === e ? `<span class="hx-aca">✓ En este equipo</span>` : `<button class="btn" data-eq="${e}">Unirme al Equipo ${NOMBRE_EQ[e]}</button>`}</div>`).join('')}
+        ${['rojo', 'azul'].map((e) => `<div class="hx-eq ${e}"><h3><i class="hx-pt ${e}"></i> Equipo ${NOMBRE_EQ[e]} <small>(${n[e]}/10)</small></h3><ul>${de(e).map(fila).join('')}</ul>
+          ${est.equipos[est.yo] === e ? `<span class="hx-aca">En este equipo</span>` : `<button class="btn" data-eq="${e}">Unirme al Equipo ${NOMBRE_EQ[e]}</button>`}</div>`).join('')}
       </div>
       <div class="hx-afuera">Mirando: ${de('afuera').map((id) => esc(nombreDe(id))).join(', ') || 'nadie'} ${est.equipos[est.yo] !== 'afuera' ? '<button class="btn btn-chico btn-borde" data-eq="afuera">Mirar</button>' : ''}</div>
       ${bots.length ? `<p class="hx-bots">Bots del club: ${bots.map((b) => esc(nombreDe(b))).join(', ')} (completan el equipo con menos gente)</p>` : ''}
       ${modificadores({ minutos: est.minutos, goles: est.golesMax, estadio: est.estadio }, host)}
-      ${host ? `<label class="hx-botsel">Bots <select class="entrada" data-bots>${[0, 1, 2, 3, 5, 7].map((k) => `<option ${k === est.bots ? 'selected' : ''}>${k}</option>`).join('')}</select></label>` : ''}
-      ${host ? `<button class="btn btn-lima btn-grande hx-iniciar" data-empezar>⚽ ${fase === 'fin' ? 'Revancha' : '¡Iniciar partido!'}</button>` : '<p class="hx-espera">Esperando que el anfitrión dé el pitazo inicial…</p>'}
-      <p class="hx-vs">🔴 ${n.rojo + est.botNpc.length * 0} vs 🔵 ${n.azul}</p>`;
+      ${host ? `<div class="hx-botsel"><span>Bots</span><span class="hx-cant"><button type="button" data-bots-d="-1" aria-label="Un bot menos">&minus;</button><b>${est.bots}</b><button type="button" data-bots-d="1" aria-label="Un bot más">+</button></span><button type="button" class="btn btn-chico btn-borde" data-npcs>${textoNpcs(est.npcElegidos)}</button></div>` : ''}
+      ${host ? `<button class="btn btn-lima btn-grande hx-iniciar" data-empezar>${fase === 'fin' ? 'Revancha' : '¡Iniciar partido!'}</button>` : '<p class="hx-espera">Esperando que el anfitrión dé el pitazo inicial…</p>'}
+      <p class="hx-vs"><i class="hx-pt rojo"></i> ${n.rojo} vs <i class="hx-pt azul"></i> ${n.azul}</p>`;
     const p = $('[data-panel]');
     if (!forzar && p.dataset.firma === html) return;
     if (p.contains(document.activeElement) && document.activeElement.matches('input')) return; // no pisar lo que estás escribiendo
@@ -520,7 +521,11 @@ function abrirSala(code) {
     if(fase==='fin'&&ganadores.length)limpiarFestejo=festejo(p.querySelector('.hx-festejo'),ganadores.map(id=>({look:lookDe(id)})));
     p.querySelector('[data-copiar]').onclick = () => { navigator.clipboard?.writeText(location.href); toast('Link copiado'); };
     p.querySelectorAll('[data-eq]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'equipo', e: b.dataset.eq })));
-    p.querySelector('[data-bots]')?.addEventListener('change', (e) => sala.enviar({ t: 'config', bots: +e.target.value }));
+    p.querySelectorAll('[data-bots-d]').forEach((b) => (b.onclick = () => {
+      const n = Math.max(0, Math.min(est.maxBots || 19, est.bots + Number(b.dataset.botsD)));
+      if (n !== est.bots) sala.enviar({ t: 'config', bots: n });
+    }));
+    p.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: est.maxBots || 19, color: COLOR_JUEGO, alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
     if (host) engancharModificadores(p, (c) => sala.enviar({ t: 'config', ...c }));
     p.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
   }

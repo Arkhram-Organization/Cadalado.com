@@ -456,7 +456,7 @@ export class Isla3D {
     const width = this.renderer.domElement.clientWidth, height = this.renderer.domElement.clientHeight;
     if (this.w !== width || this.h !== height) { this.w = width; this.h = height; this.renderer.setSize(width, height, false); }
     this.agua.uniforms.t.value = ms / 1000;
-    this.camera = this.campeon || this.modoCamara === 'tercera' ? this.tercera : this.ortho;
+    this.camera = this.campeon || foco.orbita || this.modoCamara === 'tercera' ? this.tercera : this.ortho;
     const alzada = foco.enColectivo ? 150 : foco.altura || 0;
     // más alto, más lejos: en el colectivo y en la caída se ve más isla
     const zoomObj = (foco.enColectivo ? 2.7 : 1 + Math.min(1.7, alzada / 70)) * (this.acercar || 1);
@@ -469,6 +469,12 @@ export class Isla3D {
       const radio = 150 - 92 * suave, angc = 0.6 + this.campeonT * 0.42;
       this.camera.position.set(foco.x + Math.sin(angc) * radio, 60 - 36 * suave + Math.sin(this.campeonT * 0.7) * 3, foco.y + Math.cos(angc) * radio);
       this.camera.lookAt(foco.x, 13, foco.y);
+    } else if (foco.orbita) {
+      // menú: la cámara le da vueltas despacio a cada lugar de la isla, a media altura
+      this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
+      const o = foco.orbita;
+      this.camera.position.set(foco.x + Math.sin(o.angulo) * o.radio, o.alto, foco.y + Math.cos(o.angulo) * o.radio);
+      this.camera.lookAt(foco.x, o.mira ?? 14, foco.y);
     } else if (this.modoCamara === 'tercera') {
       this.tercera.aspect = width / Math.max(1, height); this.tercera.updateProjectionMatrix();
       const lejos = this.zoom, yaw = this.yaw || 0, inc = this.inclina ?? 1;
