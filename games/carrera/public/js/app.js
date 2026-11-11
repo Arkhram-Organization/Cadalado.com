@@ -65,7 +65,7 @@ function menu() {
   app.innerHTML = `
   <div class="menu">
     <div class="menu-hero"><div><span class="etq">Carrera de obstáculos 3D · rondas con eliminación · hasta 16</span><h1>Full <em>Gays.</em></h1>
-      <p>Cinco mapas con barras, martillos, molinos, pistones, cintas, baldosas y huecos de doble salto. El recorrido cambia en cada partida. En cada ronda clasifican los primeros; con <b>E</b> le pegás una piña al de al lado.</p></div></div>
+      <p>Cinco mapas con barras, martillos, molinos, pistones, cintas, baldosas y huecos de doble salto. Las <b>placas rosas</b> te dan turbo y los <b>trampolines celestes</b> te hacen volar por arriba de los huecos. El recorrido cambia en cada partida. En cada ronda clasifican los primeros; con <b>E</b> le pegás una piña al de al lado.</p></div></div>
     <section class="panel">
       <h2>Armar una partida</h2>
       <form data-crear style="display:grid;gap:12px">
@@ -564,10 +564,12 @@ function abrirSala(code) {
 
   // ---------------------------------------------------------------- bucle
   // para pruebas automáticas (no cambia nada del juego)
-  window.__carrera = { get jugador() { return jugador; }, get remotos() { return remotos; }, get estado() { return est; }, get bots() { return botsRonda; }, get mirando() { return mirando(); }, posBot: (k) => { const b = botsRonda[k]; return b && posBot(mapa, b.ruta, Math.max(0, (sala.ahora() - est.inicio) / 1000), semilla); } };
+  window.__carrera = { escena, get jugador() { return jugador; }, get remotos() { return remotos; }, get estado() { return est; }, get bots() { return botsRonda; }, get mirando() { return mirando(); }, posBot: (k) => { const b = botsRonda[k]; return b && posBot(mapa, b.ruta, Math.max(0, (sala.ahora() - est.inicio) / 1000), semilla); } };
   let raf;
   let ultimo = performance.now();
   let acumulado = 0;
+  let estela = 0;
+  const marcoEl = $('.juego');
   let envio = 0;
   let ultimaCuenta = null;
   const reloj0 = performance.now();
@@ -622,15 +624,49 @@ function abrirSala(code) {
         const ev = jugador.paso(1 / 60, tp, ent, camYaw, otros);
         entrada.salto = entrada.buceo = false;
         for (const e of ev) {
-          if (e === 'salto' || e === 'buceo') sonar('salto');
-          if (e === 'doble') sonar('aviso');
-          if (e === 'golpe') sonar('pina');
-          if (e === 'caida') aviso('¡Al agua! Volvés al último punto', true);
-          if (e === 'checkpoint' && fase === 'carrera') aviso(`Punto de control: ${MAPAS[mapa].CHECKPOINTS[jugador.cp].nombre}`);
+          if (e === 'salto' || e === 'buceo') {
+            sonar('salto');
+            escena.polvo(jugador.x, jugador.y, jugador.z, { n: 7 });
+          }
+          if (e === 'doble') {
+            sonar('aviso');
+            escena.polvo(jugador.x, jugador.y, jugador.z, { n: 14, color: 0xc5f04a, fuerza: 3.2, sube: 0.6, vida: 0.4, g: 0, anillo: true });
+          }
+          if (e === 'aterriza') escena.polvo(jugador.x, jugador.y, jugador.z, { n: 8, fuerza: 2.8, sube: 0.8 });
+          if (e === 'golpe') {
+            sonar('pina');
+            escena.sacudir(0.45);
+            escena.polvo(jugador.x, jugador.y + 1, jugador.z, { n: 12, color: 0xffd166, fuerza: 5, sube: 3, vida: 0.4, g: 6 });
+          }
+          if (e === 'turbo') {
+            sonar('turbo');
+            escena.polvo(jugador.x, jugador.y, jugador.z, { n: 16, color: 0xff4fa3, fuerza: 4, sube: 2.5, vida: 0.5 });
+          }
+          if (e === 'rebote') {
+            sonar('rebote');
+            escena.rebote(jugador.rebote);
+          }
+          if (e === 'caida') {
+            if (jugador.caida) escena.salpicar(jugador.caida.x, jugador.caida.z);
+            sonar('agua');
+            aviso('¡Al agua! Volvés al último punto', true);
+          }
+          if (e === 'checkpoint') {
+            const c = MAPAS[mapa].CHECKPOINTS[jugador.cp];
+            escena.confeti(-9, c.y + 2, c.z, 50, 0.8);
+            escena.confeti(9, c.y + 2, c.z, 50, 0.8);
+            if (fase === 'carrera') {
+              sonar('aviso');
+              aviso(`Punto de control: ${c.nombre}`);
+            }
+          }
           if (e === 'meta' && fase === 'carrera' && !enviadoMeta) {
             enviadoMeta = true;
             sonar('gana');
-            escena.confeti(jugador.x, jugador.y, jugador.z);
+            escena.confeti(jugador.x, jugador.y, jugador.z, 200, 1.2);
+            escena.confeti(-6.5, jugador.y + 6, MAPAS[mapa].META_Z, 120);
+            escena.confeti(6.5, jugador.y + 6, MAPAS[mapa].META_Z, 120);
+            escena.sacudir(0.3);
             aviso('¡LLEGASTE!');
             sala.enviar({ t: 'meta', tiempo: Math.max(0, sala.ahora() - est.inicio) });
           }
@@ -761,7 +797,14 @@ function abrirSala(code) {
     } else esp.classList.add('hidden');
     if (fase === 'ronda' || fase === 'podio') show.render(dt);
     else {
-      escena.seguir(foco, camYaw, dt);
+      const mio = !mirando() && !jugador.espectador;
+      const conTurbo = mio && jugador.turbo > 0.15;
+      if (conTurbo && (estela += dt) > 0.05) {
+        estela = 0;
+        escena.polvo(jugador.x, jugador.y + 0.3, jugador.z, { n: 3, color: 0xff4fa3, fuerza: 0.8, sube: 1.2, vida: 0.35, tam: 0.36, g: 0 });
+      }
+      marcoEl.classList.toggle('con-turbo', conTurbo);
+      escena.seguir(foco, camYaw, dt, mio ? { yMin: MAPAS[mapa]?.CHECKPOINTS[jugador.cp]?.y - 1.5 || -1.5, turbo: conTurbo } : {});
       escena.render(dt);
     }
   }

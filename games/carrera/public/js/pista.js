@@ -19,6 +19,8 @@ export const COLORES = ['#ff4fa3', '#7aa2ff', '#ff7a45', '#f2c94c', '#c084fc', '
 const caja = (x, y, z, w, h, d, c = 0, extra = {}) => ({ x, y, z, w, h, d, c, ...extra });
 const piso = (z0, z1, ancho, top = 0, c = 0) => caja(0, top - 0.5, (z0 + z1) / 2, ancho, 1, Math.abs(z1 - z0), c);
 const bordes = (z0, z1, ancho, top = 0) => [caja(-ancho / 2 - 0.3, top + 0.4, (z0 + z1) / 2, 0.6, 0.8, Math.abs(z1 - z0), 4), caja(ancho / 2 + 0.3, top + 0.4, (z0 + z1) / 2, 0.6, 0.8, Math.abs(z1 - z0), 4)];
+const turbo = (x, y, z, w = 3, d = 4) => ({ tipo: 'turbo', x, y, z, w, d });
+const trampolin = (x, y, z, w = 2.6) => ({ tipo: 'trampolin', x, y, z, w, d: w });
 export const alturaRampa = (r, z) => r.y0 + ((r.z0 - z) / (r.z0 - r.z1)) * (r.y1 - r.y0);
 
 // Bolas que bajan por una rampa: aparece una por carril cada `periodo` segundos.
@@ -70,6 +72,8 @@ const M1 = {
       rampas: [this.rampa],
       cintas: [],
       carteles: [{ x: 0, y: 2.2, z: -102.5, texto: 'DOBLE SALTO' }],
+      // placas turbo (corrés más rápido un rato) y trampolines (te mandan por el aire)
+      impulsos: [turbo(-5, 0, -9), turbo(5, 0, -9), trampolin(-4.6, 0, -102.4), trampolin(4.6, 0, -102.4), turbo(0, 5, -157, 5)],
     };
   },
   moviles(t, semilla) {
@@ -124,6 +128,7 @@ const M2 = {
       rampas: [],
       cintas: [{ x: 0, y: 0, z: -29, w: 12, d: 30, vz: 3 }],
       carteles: [{ x: 0, y: 2.2, z: -102.5, texto: 'DOBLE SALTO' }],
+      impulsos: [turbo(-3.5, 0, -22), turbo(3.5, 0, -34), trampolin(-4, 0, -102.6, 1.5), trampolin(4, 0, -102.6, 1.5), turbo(0, 4, -155, 5)],
     };
   },
   moviles(t, semilla) {
@@ -176,6 +181,7 @@ const M3 = {
       rampas: [this.rampa],
       cintas: [],
       carteles: [{ x: 0, y: 2.2, z: -88.5, texto: 'DOBLE SALTO' }],
+      impulsos: [turbo(-4.5, 0, -41.5), turbo(4.5, 0, -41.5), trampolin(-2.7, 0, -88.2, 2), trampolin(2.7, 0, -88.2, 2), turbo(0, 5, -144.5, 5)],
     };
   },
   moviles(t, semilla) {
@@ -219,6 +225,7 @@ const M4 = {
     const e = M1.estaticos();
     e.cajas = e.cajas.map(c => ({ ...c, c: [5, 2, 3, 0, 1, 4][c.c] ?? c.c }));
     e.cajas.push(caja(-6, 0.5, -34, 2, 1, 3, 5), caja(6, 0.5, -88, 2, 1, 3, 5));
+    e.impulsos = [...e.impulsos, turbo(0, 0, -75.5, 4), trampolin(0, 0, -124.5, 2.6)];
     return e;
   },
   moviles(t, semilla) {
@@ -233,6 +240,7 @@ const M5 = {
     const e = M2.estaticos();
     e.cajas = e.cajas.map(c => ({ ...c, c: [1, 4, 5, 2, 0, 3][c.c] ?? c.c }));
     e.cajas.push(caja(-6, 0.6, -68, 1.2, 1.2, 2, 4), caja(6, 0.6, -125, 1.2, 1.2, 2, 4));
+    e.impulsos = [...e.impulsos, turbo(0, 0, -47, 4), turbo(0, 0, -112, 4)];
     return e;
   },
   moviles(t, semilla) {

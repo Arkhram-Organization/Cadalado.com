@@ -187,3 +187,11 @@ body:has(.menu) .menu .sala-fila .q small, body:has(.menu) .menu .vacio { color:
   .juego .chat-mini { bottom: 158px; }
   .juego.en-show .chat-mini { top: 54px; left: 8px; width: min(185px, 52vw); }
 }
+
+/* turbo: líneas de velocidad en los bordes de la pantalla */
+.juego::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s; z-index: 2;
+  background: repeating-conic-gradient(from 0deg at 50% 55%, rgba(255,255,255,0) 0 5deg, rgba(255,255,255,.5) 5.4deg 5.9deg, rgba(255,255,255,0) 6.3deg 11deg);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 55%, transparent 42%, #000 82%); mask-image: radial-gradient(ellipse at 50% 55%, transparent 42%, #000 82%); }
+.juego.con-turbo::after { opacity: .85; animation: fg-turbo .22s linear infinite; }
+@keyframes fg-turbo { from { transform: scale(1); } to { transform: scale(1.12) rotate(2deg); } }
+@media (prefers-reduced-motion: reduce) { .juego.con-turbo::after { animation: none; } }

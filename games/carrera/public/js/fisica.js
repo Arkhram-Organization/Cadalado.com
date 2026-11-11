@@ -10,6 +10,10 @@ const SALTO = 9.4;
 const DOBLE = 8.2;
 const G = 27;
 const BUCEO = 9;
+const TURBO = 1.55; // cuánto más rápido corrés arriba de una placa turbo
+const DUR_TURBO = 1.7;
+const REBOTE = 17; // velocidad con la que te despide un trampolín
+export const Y_AGUA = -9; // altura del agua: al tocarla volvés al último punto
 export const ENFRIAR_GOLPE = 4; // segundos entre piñas
 const TIRADO = 1.35; // cuánto queda en el piso cuando lo voltean
 
@@ -26,7 +30,7 @@ export class Jugador {
   }
 
   ubicar(x, y, z) {
-    Object.assign(this, { x, y, z, vx: 0, vy: 0, vz: 0, ry: 0, enSuelo: true, coyote: 0, saltos: 0, aturdido: 0, buceo: 0, pina: 0, anim: 'quieto', arrastreX: 0, arrastreZ: 0 });
+    Object.assign(this, { x, y, z, vx: 0, vy: 0, vz: 0, ry: 0, enSuelo: true, coyote: 0, saltos: 0, aturdido: 0, buceo: 0, pina: 0, anim: 'quieto', arrastreX: 0, arrastreZ: 0, turbo: 0, bufSalto: 0 });
   }
 
   respawn() {
@@ -99,6 +103,7 @@ export class Jugador {
     this.buceo = Math.max(0, this.buceo - dt);
     this.pina = Math.max(0, this.pina - dt);
     this.enfriar = Math.max(0, this.enfriar - dt);
+    this.turbo = Math.max(0, this.turbo - dt);
     this.coyote = this.enSuelo ? 0.12 : Math.max(0, this.coyote - dt);
     if (this.enSuelo) this.saltos = 0;
 
@@ -113,10 +118,11 @@ export class Jugador {
     const fz = -Math.cos(camYaw);
     const rx = Math.cos(camYaw);
     const rz = -Math.sin(camYaw);
-    const qx = (fx * iz + rx * ix) * VEL;
-    const qz = (fz * iz + rz * ix) * VEL;
+    const vmax = VEL * (this.turbo > 0 ? TURBO : 1);
+    const qx = (fx * iz + rx * ix) * vmax;
+    const qz = (fz * iz + rz * ix) * vmax;
     const control = this.aturdido > 0 ? 0 : this.buceo > 0 ? 0.1 : 1;
-    const acel = (this.enSuelo ? ACEL_SUELO : ACEL_AIRE) * control * dt;
+    const acel = (this.enSuelo ? ACEL_SUELO : ACEL_AIRE) * (this.turbo > 0 ? 1.6 : 1) * control * dt;
     const acercar = (v, obj) => (Math.abs(obj - v) <= acel ? obj : v + Math.sign(obj - v) * acel);
     if (this.aturdido > 0 && this.enSuelo) {
       // tirado en el piso: se frena de a poco
@@ -128,17 +134,22 @@ export class Jugador {
       this.vz = acercar(this.vz, qz);
     }
 
-    // salto y doble salto
-    if (input.salto && this.aturdido <= 0 && !this.llego) {
+    // salto y doble salto. Si apretás un toque antes de tocar el piso, el salto queda "guardado"
+    // y sale apenas aterrizás (así no se pierde ningún salto por apurarse).
+    if (input.salto) this.bufSalto = 0.15;
+    else this.bufSalto = Math.max(0, this.bufSalto - dt);
+    if (this.bufSalto > 0 && this.aturdido <= 0 && !this.llego) {
       if (this.coyote > 0) {
         this.vy = SALTO;
         this.enSuelo = false;
         this.coyote = 0;
         this.saltos = 1;
+        this.bufSalto = 0;
         ev.push('salto');
-      } else if (this.saltos < 2) {
+      } else if (input.salto && this.saltos < 2) {
         this.vy = DOBLE;
         this.saltos = 2;
+        this.bufSalto = 0;
         ev.push('doble');
       }
     }
@@ -168,6 +179,27 @@ export class Jugador {
       this.arrastreZ = s.az;
       if (!estaba) ev.push('aterriza');
     } else if (this.y > s.y + 0.05 || s.y === -Infinity) this.enSuelo = false;
+
+    // placas turbo y trampolines
+    if (this.enSuelo && this.aturdido <= 0) {
+      for (const p of this.est.impulsos || []) {
+        if (Math.abs(this.y - p.y) > 0.3) continue;
+        if (p.tipo === 'turbo') {
+          if (Math.abs(this.x - p.x) > p.w / 2 || Math.abs(this.z - p.z) > p.d / 2) continue;
+          if (this.turbo <= 0.3) ev.push('turbo');
+          this.turbo = DUR_TURBO;
+        } else if (Math.hypot(this.x - p.x, this.z - p.z) <= p.w / 2 + 0.15) {
+          this.vy = REBOTE;
+          this.vz = Math.min(this.vz, -VEL); // siempre te despide hacia adelante: alcanza para cruzar el hueco
+          this.enSuelo = false;
+          this.coyote = 0;
+          this.saltos = 1; // en el aire todavía queda el doble salto
+          this.bufSalto = 0;
+          this.rebote = p;
+          ev.push('rebote');
+        }
+      }
+    }
 
     // paredes fijas y pistones (que además empujan)
     const empujar = (c, vx = 0) => {
@@ -270,7 +302,8 @@ export class Jugador {
       }
     }
 
-    if (this.y < -12) {
+    if (this.y < Y_AGUA) {
+      this.caida = { x: this.x, z: this.z };
       this.respawn();
       ev.push('caida');
     }

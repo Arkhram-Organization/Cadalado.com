@@ -260,6 +260,9 @@ export function sonar(tipo = 'clic') {
       salto: () => tono(520, 0.1, 0.06, 'triangle'),
       tick: () => tono(1400, 0.03, 0.04, 'square'),
       pina: () => { ruido(0.12, 0.5, 600); tono(120, 0.15, 0.12, 'square'); },
+      turbo: () => { ruido(0.35, 0.35, 1800); for (let i = 0; i < 5; i++) tono(420 + i * 160, 0.09, 0.05, 'sawtooth', i * 0.04); },
+      rebote: () => { tono(240, 0.08, 0.1, 'sine'); tono(480, 0.1, 0.1, 'sine', 0.05); tono(820, 0.16, 0.08, 'sine', 0.11); },
+      agua: () => { ruido(0.45, 0.5, 900); tono(180, 0.2, 0.06, 'sine'); },
     })[tipo]?.();
   } catch {}
 }

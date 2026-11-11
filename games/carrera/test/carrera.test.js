@@ -239,8 +239,8 @@ test('los bots siempre pisan algo firme (no caminan por el aire ni sobre baldosa
 
 test('los obstáculos y las piñas te tiran al piso un rato', () => {
   const j = new Jugador(1, 7);
-  j.ubicar(0, 0, -10);
-  j.recibirGolpe(1, 0);
+  j.ubicar(0, 0, -4);
+  j.recibirGolpe(0, -1); // hacia adelante, por el medio (lejos de las placas turbo)
   let tirado = false;
   for (let i = 0; i < 90; i++) {
     j.paso(1 / 60, 1, { x: 0, z: 1 }, 0);
@@ -267,4 +267,39 @@ test('final: el cruce más temprano gana aunque su mensaje llegue después', asy
   assert.equal(e.resultados[0].puesto,1);
   assert.equal(e.ganador,e.resultados[0].id);
   assert.equal(e.resultados[1].nombre,'Segundo');
+});
+
+test('las placas turbo aceleran y los trampolines cruzan el hueco de doble salto', () => {
+  const j = new Jugador(1, 7);
+  j.ubicar(-5, 0, -7.2);
+  let turbo = false;
+  for (let i = 0; i < 40; i++) if (j.paso(1 / 60, 50, { x: 0, z: 1 }, 0).includes('turbo')) turbo = true;
+  assert.ok(turbo, 'pisó la placa');
+  assert.ok(Math.hypot(j.vx, j.vz) > 9, 'corre más rápido que lo normal');
+  for (let i = 0; i < 200; i++) j.paso(1 / 60, 50, { x: 0, z: 0 }, 0);
+  assert.equal(j.turbo, 0, 'el turbo se termina');
+
+  // trampolín antes del hueco (-104 a -109.5): parado y todo, te deja del otro lado
+  j.ubicar(-4.6, 0, -100.9);
+  let rebote = false;
+  for (let i = 0; i < 150 && !(rebote && j.enSuelo); i++) if (j.paso(1 / 60, 50, { x: 0, z: 1 }, 0).includes('rebote')) rebote = true;
+  assert.ok(rebote, 'rebotó');
+  assert.ok(j.enSuelo && j.z < -109.5 && j.y === 0, `aterrizó del otro lado (z=${j.z.toFixed(1)}, y=${j.y.toFixed(1)})`);
+});
+
+test('el salto apretado justo antes de aterrizar sale igual (buffer)', () => {
+  const j = new Jugador(1, 7);
+  j.ubicar(0, 0, -4);
+  j.paso(1 / 60, 50, { x: 0, z: 0, salto: true }, 0);
+  j.paso(1 / 60, 50, { x: 0, z: 0, salto: true }, 0); // doble salto
+  let saltos = 0;
+  let apretado = false;
+  for (let i = 0; i < 200; i++) {
+    // aprieta una sola vez, cuando está por tocar el piso (ya sin saltos disponibles)
+    const apretar = !apretado && j.vy < 0 && j.y < 0.9;
+    if (apretar) apretado = true;
+    if (j.paso(1 / 60, 50, { x: 0, z: 0, salto: apretar }, 0).includes('salto')) saltos++;
+  }
+  assert.ok(apretado, 'apretó en el aire');
+  assert.equal(saltos, 1, 'el salto guardado salió al aterrizar');
 });
