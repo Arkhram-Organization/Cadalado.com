@@ -12,6 +12,8 @@ const P = [
   ['angeles', 'Ángeles', 'PEÑA', 'g-baila', 1.3, 0.3, 'rayos', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['franba', 'El hijo del', 'CIBER', 'g-habla', 0.9, -0.15, 'ciber', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['elidiprimio', 'Elidiprimio', 'WOOOP', 'g-baila', 1.1, 0.25, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
+  ['ferchus', 'El del kiosco', 'FERCHUS', 'g-tiktok', 1.4, 0.35, 'kiosco', ['#3a1a02', '#e08a10', '#ffe08a']],
+  ['dorin', 'La Academia', 'DORIN', 'g-festeja', 0.9, -0.2, 'racing', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['teo', 'Am Israel Jai', 'TEO', 'g-festeja', 1.1, 0.2, 'israel', ['#0b2e7a', '#3c7be0', '#ffffff']],
   ['marti', 'La profe', 'MARTI', 'g-habla', 1.2, -0.25, 'estrellas', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['maica', 'Mejor amiga de Mica', 'MAICA', 'g-baila', 1.4, 0.25, 'corazones', ['#1d0636', '#8a3cf0', '#e3c2ff']],
@@ -72,6 +74,37 @@ const P = [
       if (estilo === 'estrellas') { rayos(12, .09); for (let i = 0; i < 70; i++) { g.fillStyle = 'rgba(234,242,255,' + (.25 + rr() * .6) + ')'; const x = rr() * W, y = rr() * H, s = 1 + rr() * 3; g.beginPath(); g.arc(x, y, s, 0, 7); g.fill(); } }
       if (estilo === 'corazones') { rayos(16, .1); g.fillStyle = 'rgba(255,224,240,.35)'; for (let i = 0; i < 26; i++) { const x = rr() * W, y = rr() * H, s = 8 + rr() * 16; g.beginPath(); g.moveTo(x, y + s * .9); g.bezierCurveTo(x - s * 1.6, y - s * .3, x - s * .6, y - s * 1.3, x, y - s * .3); g.bezierCurveTo(x + s * .6, y - s * 1.3, x + s * 1.6, y - s * .3, x, y + s * .9); g.fill(); } }
       if (estilo === 'mar') { for (let k = 0; k < 9; k++) { g.strokeStyle = 'rgba(255,255,255,' + (.06 + k * .01) + ')'; g.lineWidth = 5; g.beginPath(); for (let x = 0; x <= W; x += 10) { const y = H * .45 + k * 45 + Math.sin(x / 40 + k) * 10; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); } }
+      if (estilo === 'kiosco') {
+        rayos(16, .1, '#fff3c4');
+        // medialunas, tazas de café y corazoncitos de TikTok flotando
+        const medialuna = (x, y, esc, rot) => { g.save(); g.translate(x, y); g.rotate(rot); g.scale(esc, esc);
+          const gr2 = g.createLinearGradient(-40, -20, 40, 20); gr2.addColorStop(0, '#ffd27a'); gr2.addColorStop(1, '#c97a22');
+          g.fillStyle = gr2; g.beginPath(); g.moveTo(-46, 8); g.quadraticCurveTo(0, -46, 46, 8); g.quadraticCurveTo(30, 0, 22, 16); g.quadraticCurveTo(0, -12, -22, 16); g.quadraticCurveTo(-30, 0, -46, 8); g.fill();
+          g.strokeStyle = 'rgba(120,60,10,.5)'; g.lineWidth = 3; for (const k of [-16, 0, 16]) { g.beginPath(); g.moveTo(k - 6, -14 + Math.abs(k) * .45); g.lineTo(k + 6, -2 + Math.abs(k) * .45); g.stroke(); } g.restore(); };
+        const taza = (x, y, esc) => { g.save(); g.translate(x, y); g.scale(esc, esc); g.globalAlpha = .9;
+          g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(-24, -20); g.lineTo(24, -20); g.lineTo(18, 22); g.lineTo(-18, 22); g.closePath(); g.fill();
+          g.lineWidth = 6; g.strokeStyle = '#ffffff'; g.beginPath(); g.arc(28, 0, 10, -1.3, 1.3); g.stroke();
+          g.fillStyle = '#6b3d1e'; g.fillRect(-21, -20, 42, 6);
+          g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 3; for (const k of [-8, 6]) { g.beginPath(); g.moveTo(k, -28); g.bezierCurveTo(k - 8, -40, k + 8, -48, k, -60); g.stroke(); } g.restore(); };
+        medialuna(80, 110, 1.3, -.3); medialuna(W - 90, 150, 1.1, .4); medialuna(70, H * .7, 1.2, .2); medialuna(W - 80, H * .78, 1.4, -.25); medialuna(W * .5, 60, .8, .1);
+        taza(W - 120, H * .45, 1.2); taza(110, H * .45, .9);
+        // el celular grabando (REC)
+        g.save(); g.translate(W - 150, H * .2); g.rotate(.18); g.fillStyle = '#16161a'; g.beginPath(); g.roundRect(-34, -62, 68, 124, 12); g.fill(); g.fillStyle = '#ff3b8b'; g.beginPath(); g.roundRect(-28, -54, 56, 108, 8); g.fill();
+        g.fillStyle = '#fff'; g.beginPath(); g.arc(-12, -40, 5, 0, 7); g.fill(); g.font = '900 13px sans-serif'; g.fillText('REC', -4, -35); g.restore();
+        for (let i = 0; i < 18; i++) { const x = rr() * W, y = rr() * H, s2 = 5 + rr() * 9; g.fillStyle = ['rgba(255,59,139,.5)', 'rgba(56,217,230,.5)', 'rgba(255,255,255,.4)'][i % 3]; g.beginPath(); g.moveTo(x, y + s2 * .9); g.bezierCurveTo(x - s2 * 1.6, y - s2 * .3, x - s2 * .4, y - s2 * 1.3, x, y - s2 * .3); g.bezierCurveTo(x + s2 * .4, y - s2 * 1.3, x + s2 * 1.6, y - s2 * .3, x, y + s2 * .9); g.fill(); }
+      }
+      if (estilo === 'racing') {
+        // rayas celestes y blancas de la Academia, con luces de estadio
+        g.save(); g.globalAlpha = .34; for (let x = -40, k = 0; x < W + 40; x += 64, k++) { g.fillStyle = k % 2 ? '#ffffff' : '#7cc6ee'; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 64, 0); g.lineTo(x + 34, H); g.lineTo(x - 30, H); g.fill(); } g.restore();
+        rayos(14, .08, '#ffffff');
+        for (const [x, y] of [[40, 40], [W - 40, 40]]) { const lz = g.createRadialGradient(x, y, 0, x, y, 260); lz.addColorStop(0, 'rgba(255,255,255,.55)'); lz.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = lz; g.fillRect(0, 0, W, H);
+          g.fillStyle = '#2a2f3a'; g.fillRect(x - 30, y - 18, 60, 30); g.fillStyle = '#fffbe6'; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(x - 22 + (k % 3) * 22, y - 8 + Math.floor(k / 3) * 14, 5, 0, 7); g.fill(); } }
+        // papelitos celestes y blancos
+        for (let i = 0; i < 80; i++) { g.fillStyle = i % 2 ? 'rgba(255,255,255,.75)' : 'rgba(124,198,238,.85)'; g.save(); g.translate(rr() * W, rr() * H); g.rotate(rr() * 6); g.fillRect(-5, -3, 10, 6); g.restore(); }
+        // pelota
+        g.save(); g.translate(W - 110, H * .82); g.fillStyle = '#ffffff'; g.beginPath(); g.arc(0, 0, 34, 0, 7); g.fill(); g.fillStyle = '#1e1e22';
+        for (let k = 0; k < 5; k++) { const a = k * 1.2566 - 1.57; g.beginPath(); g.arc(Math.cos(a) * 22, Math.sin(a) * 22, 8, 0, 7); g.fill(); } g.beginPath(); g.arc(0, 0, 10, 0, 7); g.fill(); g.restore();
+      }
       if (estilo === 'israel') {
         rayos(16, .1, '#ffffff');
         const estrella = (x, y, rad, color, ancho) => { g.save(); g.strokeStyle = color; g.lineWidth = ancho; for (const off of [0, Math.PI]) { g.beginPath(); for (let k = 0; k < 3; k++) { const a = off - Math.PI / 2 + k * Math.PI * 2 / 3; k ? g.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad) : g.moveTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); } g.closePath(); g.stroke(); } g.restore(); };

@@ -111,6 +111,18 @@ const DICHOS = {
     pierde: ['Pe-pe-perdí. Me voy a comer a Aieka.', 'Mañana me pongo los tefilín y vuelvo más fuerte.'],
     turno: ['A ver… t-t-tiro yo.', 'Me toca. ¿Después vamos a Menorá?'],
   },
+  ferchus: {
+    saludo: ['¿Panini, medialunas, café?', 'Llegó el kiosco. Y el TikTok.', 'Hola, ¿grabamos uno juntos?'],
+    gana: ['¡Gané! Esto va para TikTok.', 'Gané. Medialunas para todos… a mitad de precio.', 'Que alguien le avise a Vicky que gané.'],
+    pierde: ['Perdí por estar grabando. Valió la pena.', 'Bueno, vuelvo al kiosco.', 'Vicky me va a matar.'],
+    turno: ['Me toca. Esperá que apoyo el celular.', 'Ahí voy. ¿Alguien quiere un café?', 'Tiro y vuelvo a bailar.'],
+  },
+  dorin: {
+    saludo: ['¡Vamos Racing!', 'Shalom. Llegó la Academia.', '¿Qué hacés, Franba, del Rojo?'],
+    gana: ['¡Como Racing en el 2001!', '¡Gané! Ni Conechny la erraba.', 'Esto en las Macabeadas es medalla de oro.'],
+    pierde: ['Perdí como Racing en la Libertadores.', 'La culpa es de Conechny.', 'No estoy pelado y no perdí. Es la luz.'],
+    turno: ['Me toca. Concentrado, como en las Macabeadas.', 'Tiro yo. Conechny, mirá y aprendé.'],
+  },
   mati: {
     saludo: ['Queque.'],
     gana: ['¡Queque!', 'Queque, queque.'],

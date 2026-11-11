@@ -227,6 +227,8 @@ export const NPCS = [
     // Modelo de Meshy: modelos/franba.glb. Cuando habla se agarra la cabeza (se revisa el pelo).
     look: { modelo: 'franba', clips: { habla: 'Headache_Relief', baila: 'Breakdance_1990', pina: 'Punch_Combo_4', patada: 'Sweep_Kick' }, travesuras: { quieto: ['habla', 'baila', 'habla', 'festeja', 'saluda'], corre: ['voltereta', 'festeja'] }, estilo: 'meshy', piel: '#e8bf9c', pelo: { estilo: 'rulosCorto', color: '#2a1d14' }, ojos: '#4a3020', cuerpo: 'normal', ropa: { remera: '#bfe3f2', pantalon: '#cfc2a3', zapatillas: '#f4f1ea' }, genero: 'h' },
     frases: [
+      'Dorin, Racing es un club de barrio con buena prensa.',
+      'Dorin, vos sí te estás quedando pelado. Yo no. Es distinto.',
       'Qué épocas las del ciber… el olor a gaseosa caliente y el CS a las 3 de la tarde.',
       'Yo me crié en el ciber. Media hora, después otra media hora, después le debía plata al del ciber.',
       'El ciber era nuestro club. Más que Independiente, casi.',
@@ -326,6 +328,59 @@ export const NPCS = [
       'Ch-ch-chicos, ¿me esperan? Me olvidé el shofar.',
       'Shabat shalom a todos, aunque sea martes.',
       'Pe-pe-perdón, ¿qué decían? Estaba pensando en Israel.',
+    ],
+  },
+  {
+    id: 'ferchus',
+    nombre: 'Ferchus',
+    // El del kiosco: le vende medialunas, paninis y café a todo el club. No para de bailar ni de grabar TikToks.
+    // Le hace caso a Vicky, la otra cocinera, que lo tiene medio pillo. Modelo de Meshy: modelos/ferchus.glb.
+    look: { modelo: 'ferchus', clips: { quieto: 'Idle_5', baila: ['Boom_Dance', 'Hip_Hop_Dance_3', 'Ferchus_Breakdance'], tiktok: ['Hip_Hop_Dance_3', 'Boom_Dance'], festeja: 'Hip_Hop_Dance_3', corre: 'run_fast_5', parkour: 'Jump_Down_from_Wall' }, travesuras: { quieto: ['tiktok', 'baila', 'tiktok', 'baila', 'habla', 'tiktok'], corre: ['festeja', 'voltereta'], pausa: [.6, 2.5] }, alBailar: ['¡Esto va para TikTok!', 'Mirá este pasito.', '¡Uh, este tema!'], alGesto: { tiktok: ['¡Grabando! Sonrían.', 'Esto lo subo ya.', 'Para los seguidores.', 'Otro TikTok, dale.', 'Vicky, no salgas en el video.'] }, estilo: 'meshy', piel: '#e2b48f', pelo: { estilo: 'corto', color: '#1e1610' }, ojos: '#2a1d14', cuerpo: 'gordito', ropa: { remera: '#f4f1ea', pantalon: '#f4f1ea', zapatillas: '#6b3d1e' }, genero: 'h' },
+    frases: [
+      '¿Querés panini, medialunas, café?',
+      '¿Panini? ¿Medialunas? ¿Un cafecito?',
+      'Medialunas recién salidas. De manteca y de grasa.',
+      'Dobro, ¿te llevo unas medialunas? Para vos, precio de casino.',
+      'Glinsky, el café con leche que pediste. Exponencial, como te gusta.',
+      'Julo, ¿un panini para compilar mejor?',
+      'Maica, si me traés el resumen te regalo una medialuna.',
+      'Teo, ¿unas medialunas para después de los tefilín?',
+      'Franba, un café para el ciber. Invita la casa… no, mentira, son mil.',
+      'Esperá que grabo un TikTok y te atiendo.',
+      'Este paso lo vi ayer y ya lo tengo. Mirá.',
+      'Un TikTok más y vuelvo al kiosco, lo juro.',
+      'Vicky me dijo que deje de bailar. Ya dejo. Ahora sí. Bueno, uno más.',
+      'Sí, Vicky. Ya voy, Vicky.',
+      'Vicky me tiene cortito. Pero las medialunas las hago yo.',
+      'Si viene Vicky, decile que estoy trabajando.',
+      '¡Vicky, se quema el panini!',
+      'Kiosco abierto. Bailando, pero abierto.',
+    ],
+  },
+  {
+    id: 'dorin',
+    nombre: 'Dorin',
+    // Hincha de Racing hasta la médula (y putea a los jugadores de Racing, sobre todo a Conechny). Habla de las
+    // Macabeadas y del judaísmo, jura que no se está quedando pelado y lo bardea a Franba por ser del Rojo.
+    // Modelo de Meshy: modelos/dorin.glb (con la camiseta de la Academia).
+    look: { modelo: 'dorin', clips: { quieto: 'Idle_3', habla: 'Talk_with_Hands_Open', baila: 'ymca_dance', festeja: 'Hop_with_Arms_Raised', muerto: 'dying_backwards' }, travesuras: { quieto: ['habla', 'habla', 'festeja', 'baila', 'saluda'], corre: ['voltereta', 'festeja'] }, estilo: 'meshy', piel: '#ecc8ab', pelo: { estilo: 'corto', color: '#8a5a32' }, ojos: '#3a2a1e', cuerpo: 'flaco', ropa: { remera: '#7cc6ee', pantalon: '#6f8aa0', zapatillas: '#f4f1ea' }, genero: 'h' },
+    frases: [
+      '¡Vamos Racing, la puta madre!',
+      'Conechny, ¿qué hacés? ¡Pasala, nene!',
+      'Conechny la tuvo y la tiró a la tribuna. Un clásico.',
+      'Otra vez Conechny. No puede ser, no puede ser.',
+      'Los quiero a todos, pero a este Racing lo putearía una hora entera.',
+      'Soy de la Academia. Sufrir es parte del abono.',
+      'Franba, sos del Rojo. Opinás de fútbol cuando ganen algo.',
+      'Franba, Independiente no existe. Es un rumor.',
+      'Franba, andá al ciber y dejá hablar a los grandes.',
+      'En las Macabeadas la rompí. Torneo de fútbol judío, nivel altísimo.',
+      'Las Macabeadas son como un Mundial, pero con más bobes en la tribuna.',
+      'Shabat shalom. Hoy no juego… bueno, un partidito.',
+      'En Pésaj no hay pan, pero hay Racing.',
+      'No me estoy quedando pelado. Es la luz.',
+      'No es entrada, es frente amplia. Hay una diferencia.',
+      'El pelo está perfecto. Franba sí que se está quedando pelado.',
     ],
   },
   {

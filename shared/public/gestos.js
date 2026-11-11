@@ -20,6 +20,7 @@ export const GESTOS = [
   { id: 'pina', nombre: 'Piña al aire', dur: 1.6, que: '¡Piña!' },
   { id: 'patada', nombre: 'Patada', dur: 1.6, que: '¡Patada!' },
   { id: 'salto', nombre: 'Saltito', dur: 1.3, que: '¡Salto!' },
+  { id: 'tiktok', nombre: 'TikTok', dur: 5.9, que: 'Grabando un TikTok' },
 ];
 // La rueda de la B tiene 8 lugares; cada uno elige qué gesto va en cada lugar (en el casillero).
 export const RUEDA_BASE = ['baila', 'festeja', 'saluda', 'voltereta', 'habla', 'flexiones', 'duerme', 'musculos'];
@@ -43,7 +44,7 @@ export function travieso(look = {}) {
   // los del elenco hacen muchos gestos: parados y también corriendo
   const cfg = look.travesuras || (delElenco ? { quieto: ['saluda', 'festeja', 'habla', 'baila', 'baila'], corre: ['voltereta', 'festeja'] } : null);
   const azar = (a, b) => a + Math.random() * (b - a);
-  let auto = null, hasta = 0, quietoT = 0, correT = 0, proxQ = azar(3, 9), proxC = azar(3, 8);
+  let auto = null, hasta = 0, quietoT = 0, correT = 0, proxQ = cfg?.pausa ? azar(.5, 2) : azar(3, 9), proxC = azar(3, 8);
   let pedido = null, pedidoHasta = -1;
   return {
     // gesto pedido a mano (dura lo que dura el gesto; moverse lo corta)
@@ -62,7 +63,9 @@ export function travieso(look = {}) {
         if (!auto && cfg.quieto?.length && quietoT > proxQ) {
           auto = cfg.quieto[Math.floor(Math.random() * cfg.quieto.length)];
           hasta = reloj + DURACION[auto];
-          proxQ = quietoT + DURACION[auto] + azar(3, 10);
+          // look.travesuras.pausa = [min, max]: cada cuánto vuelve a hacer algo (Ferchus casi no para)
+          const [pmin, pmax] = cfg.pausa || [3, 10];
+          proxQ = quietoT + DURACION[auto] + azar(pmin, pmax);
         }
       } else { quietoT = 0; proxQ = azar(3, 9); }
       if (estado === 'corre' && cfg.corre) {

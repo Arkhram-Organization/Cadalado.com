@@ -16,8 +16,10 @@ export const RAREZAS = {
 // Cada una con su frase célebre, que sale en la portada.
 export const SKINS = [
   { id: 'teo', rareza: 'mitica', precio: 500, frase: 'T-t-todo bien, Ma-Maica?', nuevo: true },
-  { id: 'marti', rareza: 'legendaria', precio: 500, frase: 'Una vez Asman entró a mi clase. Le enseñé quién manda.', nuevo: true },
-  { id: 'maica', rareza: 'epica', precio: 500, frase: '¿Alguien tiene el resumen de química?', nuevo: true },
+  { id: 'ferchus', rareza: 'legendaria', precio: 500, frase: '¿Querés panini, medialunas, café?', nuevo: true },
+  { id: 'dorin', rareza: 'epica', precio: 500, frase: 'No me estoy quedando pelado. Es la luz.', nuevo: true },
+  { id: 'marti', rareza: 'legendaria', precio: 500, frase: 'Una vez Asman entró a mi clase. Le enseñé quién manda.' },
+  { id: 'maica', rareza: 'epica', precio: 500, frase: '¿Alguien tiene el resumen de química?' },
   { id: 'trosman', rareza: 'epica', precio: 500, frase: 'YA ESTÁ, Shmitz y Jávila.' },
   { id: 'batata', rareza: 'mitica', precio: 500, frase: '¡Fe, gloria y aguante el Gasolero!' },
   { id: 'capitan', rareza: 'comun', precio: 500, frase: '¡Ningún pibe se queda sin mate!' },

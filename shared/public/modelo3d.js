@@ -11,7 +11,7 @@ const cache = new Map();
 let qMuslo = null, qRodilla = null; // giros para sentarse (sobre la pose de los huesos)
 
 // Biblioteca común: las animaciones de cada modelo de Meshy sirven para todos (mismo esqueleto Mixamo).
-const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra', 'anim-franba', 'anim-elidiprimio', 'anim-marti', 'anim-teo', 'anim-maica'];
+const BIBLIOTECA = ['anim-julo', 'anim-angeles', 'anim-glinsky', 'anim-faur', 'anim-volcho', 'anim-mati', 'anim-olcho', 'anim-dobro', 'anim-sandra', 'anim-franba', 'anim-elidiprimio', 'anim-marti', 'anim-teo', 'anim-maica', 'anim-ferchus', 'anim-dorin'];
 let biblioteca = null;
 function cargarBiblioteca() {
   biblioteca ??= Promise.all(BIBLIOTECA.map((n) => cargar(new URL(`./modelos/${n}.glb`, import.meta.url).href).catch(() => ({ animations: [] }))))
@@ -28,18 +28,19 @@ const CLIPS = {
   voltereta: ['Run_and_Jump', 'Run_and_Leap', 'Hop_with_Arms_Raised'],
   camina: ['Walking'],
   corre: ['RunFast', 'Running'], // la corrida de Julo
-  corre2: ['run_fast_2', 'Run_03', 'Run_02'],
+  corre2: ['run_fast_2', 'Run_03', 'Run_02', 'run_fast_5'],
   trota: ['Running'],
   atras: ['Walk_Backward', 'Walk_Backward_inplace'],
   salto: ['Jump_Over_Obstacle_2', 'Jump_Over_Obstacle', 'Run_and_Jump', 'Run_and_Leap'],
   festeja: ['Hop_with_Arms_Raised', 'All_Night_Dance', 'Clapping_Run', 'Cheer_with_Both_Hands'],
-  baila: ['Hip_Hop_Dance_4', 'Hip_Hop_Dance_1', 'Breakdance_1990', 'All_Night_Dance', 'Cardio_Dance', 'FunnyDancing_02', 'ymca_dance', 'Shake_It_Off_Dance', 'Denim_Pop_Dance', 'Step_Hip_Hop_Dance', 'FunnyDancing_03'],
+  baila: ['Hip_Hop_Dance_4', 'Hip_Hop_Dance_1', 'Breakdance_1990', 'All_Night_Dance', 'Cardio_Dance', 'FunnyDancing_02', 'ymca_dance', 'Shake_It_Off_Dance', 'Denim_Pop_Dance', 'Step_Hip_Hop_Dance', 'FunnyDancing_03', 'Boom_Dance', 'Hip_Hop_Dance_3', 'Ferchus_Breakdance'],
+  tiktok: ['Hip_Hop_Dance_3', 'Hip_Hop_Dance_4', 'Boom_Dance'], // baila y se graba con el celular en la mano (pose de selfie, abajo)
   musculos: ['Show_Both_Arm_Muscles'],
   pavoneo: ['Proud_Strut'],
   flexiones: ['push_up', 'situps'],
   abdominales: ['situps'],
   vertical: ['One_Arm_Handstand'],
-  parkour: ['Parkour_Vault_with_Roll', 'Run_Jump_and_Roll', 'Unarmed_Vault', 'Parkour_Vault_2', 'Handstand_Flip'],
+  parkour: ['Parkour_Vault_with_Roll', 'Run_Jump_and_Roll', 'Unarmed_Vault', 'Parkour_Vault_2', 'Handstand_Flip', 'Jump_Down_from_Wall'],
   mortal: ['Backflip_and_Hooks', 'Handstand_Flip', 'Run_Jump_and_Roll'],
   muerto: ['Shot_and_Blown_Back', 'dying_backwards', 'Shot_and_Fall_Backward', 'Shot_and_Fall_Forward'],
   golpe: ['Shot_and_Blown_Back'],
@@ -91,6 +92,16 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
   const cabeza = new THREE.Group(), manoI = new THREE.Group(), manoD = new THREE.Group();
   cabeza.position.y = 1.55; manoI.position.set(-.3, .9, 0); manoD.position.set(.3, .9, 0);
   grupo.add(cabeza, manoI, manoD);
+  const celular = new THREE.Group();
+  {
+    const cuerpoCel = new THREE.Mesh(new THREE.BoxGeometry(.11, .21, .016), new THREE.MeshStandardMaterial({ color: '#16161a', roughness: .35, metalness: .4 }));
+    const pantalla = new THREE.Mesh(new THREE.PlaneGeometry(.096, .19), new THREE.MeshBasicMaterial({ color: '#ff3b8b' }));
+    pantalla.position.z = .0085;
+    const luz = new THREE.Mesh(new THREE.CircleGeometry(.007, 12), new THREE.MeshBasicMaterial({ color: '#ffffff' }));
+    luz.position.set(.034, .085, -.0085); luz.rotation.y = Math.PI;
+    cuerpoCel.add(pantalla, luz);
+    celular.add(cuerpoCel); celular.visible = false; celular.userData.pantalla = pantalla;
+  }
   const sombra = new THREE.Mesh(new THREE.CircleGeometry(.4, 24), new THREE.MeshBasicMaterial({ color: '#17191e', transparent: true, opacity: .17, depthWrite: false }));
   sombra.rotation.x = -Math.PI / 2; sombra.position.y = .008; grupo.add(sombra);
   // brillo dorado (Mati, el easter egg)
@@ -120,11 +131,13 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
     const todas = new Map(lib); for (const a of g.animations) todas.set(a.name, a); // las propias primero
     for (const [estado, lista] of Object.entries(CLIPS)) {
       // la animación propia del personaje (look.clips) va primero; en los variados entran todas
+      // (puede ser una lista: el personaje alterna entre sus propias animaciones, como los bailes de Ferchus)
       const propia = look.clips?.[estado];
-      const nombres = propia ? [propia, ...lista.filter((n) => n !== propia)] : lista;
+      const propias = Array.isArray(propia) ? propia.filter((n) => todas.has(n)) : propia ? [propia] : [];
+      const nombres = propias.length ? [...propias, ...lista.filter((n) => !propias.includes(n))] : lista;
       const clips = nombres.map((n) => todas.get(n)).filter(Boolean);
       if (!clips.length) continue;
-      const usar = VARIADOS.has(estado) && !propia ? clips : [clips[0]];
+      const usar = propias.length > 1 ? clips.slice(0, propias.length) : VARIADOS.has(estado) && !propias.length ? clips : [clips[0]];
       acciones[estado] = usar.map((clip) => {
         const a = mixer.clipAction(clip);
         if (UNA_VEZ.has(estado)) { a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; }
@@ -146,10 +159,43 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
     // en los huesos de Mixamo la mano apunta hacia los dedos (+Y): el enganche se gira para que -Z siga los dedos
     if (huesos.LeftHand) { manoI.position.set(0, 0, 0); manoI.rotation.set(Math.PI / 2, 0, 0); huesos.LeftHand.add(manoI); manoI.scale.setScalar(escalaDe(huesos.LeftHand)); }
     if (huesos.RightHand) { manoD.position.set(0, 0, 0); manoD.rotation.set(Math.PI / 2, 0, 0); huesos.RightHand.add(manoD); manoD.scale.setScalar(escalaDe(huesos.RightHand)); }
+
     if (huesos.Hips) alturaCadera = huesos.Hips.getWorldPosition(new THREE.Vector3()).y - grupo.position.y;
     poner(estadoActual || 'quieto', 0);
     mixer.update(0);
   });
+
+  // Apunta un hueso hacia una dirección del mundo: mide hacia dónde va (del hueso a su hijo) y lo gira lo justo.
+  // (no se asume ningún eje: los esqueletos de Meshy no tienen los huesos alineados igual que Mixamo)
+  const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), ARRIBA = new THREE.Vector3(0, 1, 0);
+  function apuntar(hueso, hijo, dir) {
+    hueso.updateWorldMatrix(true, true);
+    hueso.getWorldPosition(_v2); hijo.getWorldPosition(_v1);
+    _v1.sub(_v2).normalize();
+    hueso.getWorldQuaternion(_q1);
+    _q2.setFromUnitVectors(_v1, dir).multiply(_q1); // rotación nueva en el mundo
+    hueso.parent.getWorldQuaternion(_q1).invert();
+    hueso.quaternion.copy(_q1.multiply(_q2));
+    hueso.updateWorldMatrix(false, true);
+  }
+  const _der = new THREE.Vector3(), _ade = new THREE.Vector3(), _d = new THREE.Vector3(), _mano = new THREE.Vector3(), _cara = new THREE.Vector3();
+  function selfie(t) {
+    huesos.RightArm.getWorldPosition(_der); huesos.LeftArm.getWorldPosition(_v2);
+    _der.sub(_v2); _der.y = 0; _der.normalize(); // hacia la derecha del personaje
+    _ade.crossVectors(ARRIBA, _der).normalize(); // hacia adelante
+    const vaiven = Math.sin(t * 2.2) * .12; // la mano se mueve un poco, como cuando grabás
+    apuntar(huesos.RightArm, huesos.RightForeArm, _d.copy(_ade).multiplyScalar(.85).addScaledVector(_der, .3 + vaiven).addScaledVector(ARRIBA, .02).normalize());
+    if (huesos.RightHand) apuntar(huesos.RightForeArm, huesos.RightHand, _d.copy(_ade).multiplyScalar(.9).addScaledVector(_der, -.12 + vaiven * .5).addScaledVector(ARRIBA, .42).normalize());
+    const dedo = huesos.RightHandMiddle1 || huesos.RightHandIndex1;
+    if (dedo) apuntar(huesos.RightHand, dedo, _d.copy(ARRIBA).multiplyScalar(.9).addScaledVector(_ade, .25).addScaledVector(_der, -.2).normalize());
+    // el celular, en la mano y con la pantalla hacia la cara
+    (huesos.RightHand || huesos.RightForeArm).getWorldPosition(_mano);
+    _mano.addScaledVector(ARRIBA, .07 * grupo.scale.y);
+    (huesos.Head || huesos.Neck).getWorldPosition(_cara);
+    if (celular.parent !== grupo) grupo.add(celular);
+    celular.position.copy(grupo.worldToLocal(_mano.clone()));
+    celular.lookAt(_cara);
+  }
 
   let estadoClip = '';
   function poner(estado, fundido = .22) {
@@ -200,10 +246,16 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
         transcurrido = 0; estadoActual = estado;
         // algunos dicen algo cuando arrancan a bailar (Elidiprimio: "dale MXD")
         if (estado === 'baila' && look.alBailar?.length) api.decir(look.alBailar[Math.floor(Math.random() * look.alBailar.length)], 3);
+        // y frases propias al arrancar otros gestos (look.alGesto = { tiktok: [...] })
+        const dice = look.alGesto?.[estado];
+        if (dice?.length && Math.random() < .8) api.decir(dice[Math.floor(Math.random() * dice.length)], 3);
+        celular.visible = estado === 'tiktok';
       } else transcurrido += dt;
       if (mixer) {
         if (clip) { poner(clip); mixer.update(dt); }
         else { mixer.stopAllAction(); actual = null; }
+        // TikTok: sobre el baile, el brazo derecho estirado adelante y arriba (selfie) con el celular mirando a la cara
+        if (estado === 'tiktok' && huesos.RightArm && huesos.RightForeArm && huesos.LeftArm) selfie(reloj);
         // sentado: piernas dobladas a 90° sobre la animación de parado
         if (sentado && huesos.LeftUpLeg) {
           for (const l of ['Left', 'Right']) {

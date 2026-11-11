@@ -466,6 +466,13 @@ function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 
         brazos[1].hombro.rotation.set(-Math.sin(reloj * 3.5) * .6, 0, 1.3 - b * .5); brazos[1].codo.rotation.x = 1.1;
         piernas[0].rodilla.rotation.x = -Math.max(0, b) * .5; piernas[1].rodilla.rotation.x = -Math.max(0, -b) * .5;
         cabeza.rotation.z = b * .15; boca.scale.y = 1.4;
+      } else if (estado === 'tiktok') {
+        // se graba: brazo derecho estirado adelante con la mano arriba y un bailecito
+        const b = Math.sin(reloj * 6);
+        cuerpo.position.set(b * .04, Math.abs(b) * .04, 0); torso.rotation.y = Math.sin(reloj * 3) * .2;
+        brazos[1].hombro.rotation.set(-1.25, 0, .25); brazos[1].codo.rotation.x = -.5;
+        brazos[0].hombro.rotation.set(Math.sin(reloj * 3) * .5, 0, -1.1 - b * .4); brazos[0].codo.rotation.x = 1;
+        cabeza.rotation.z = b * .12; boca.scale.y = 1.4;
       } else if (estado === 'saluda') {
         brazos[1].hombro.rotation.set(0, 0, 2.55); brazos[1].codo.rotation.set(0, 0, Math.sin(reloj * 11) * .45);
         cabeza.rotation.z = -.1; boca.scale.y = 1.3;
