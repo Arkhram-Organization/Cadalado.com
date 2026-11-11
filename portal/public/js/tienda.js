@@ -4,6 +4,7 @@ import { POR_ID } from '/comun/npcs.js';
 import { limpiarLook, LOOK_BASE } from '/comun/look.js';
 import { pid } from '/comun/sala.js';
 import { iniciarPagina, api, yo, esc, toast } from './comun.js';
+import { montarCofre, cofreSvg } from './cofre-diario.js';
 
 iniciarPagina();
 const $ = (s) => document.querySelector(s);
@@ -63,7 +64,7 @@ setInterval(reloj, 1000);
 async function cargar() {
   try {
     datos = await api('/api/club/tienda?pid=' + encodeURIComponent(pid()));
-    pintar(); reloj();
+    pintar(); reloj(); cofre.pintarBoton();
     if (datos.regalos?.length) regaloRecibido(datos.regalos[0]);
   } catch (e) {
     $('[data-destacadas]').innerHTML = `<div class="vacio">${esc(e.message)}</div>`;
@@ -244,6 +245,16 @@ $('[data-codigo]').addEventListener('submit', async (e) => {
   } catch (err) { toast(err.message, true); }
   b.disabled = false;
 });
+// cofre diario (una vez por día, una skin de un pool de 12)
+const cofre = montarCofre({
+  datos: () => datos, rarezas: () => datos.rarezas, api, pid, portada, nombre, toast,
+  frase: (id) => esc(datos.skins.find((s) => s.id === id)?.frase || ''),
+  usar: (id) => usar(id),
+  alActualizar: (r) => { datos.saldo = r.saldo; datos.mias = r.mias; datos.cofre = r.cofre; pintar(); cofre.pintarBoton(); },
+});
+$('[data-cofre-abrir]').insertAdjacentHTML('afterbegin', cofreSvg('mini'));
+$('[data-cofre-abrir]').addEventListener('click', () => cofre.mostrar());
+
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-cerrar]') || e.target.matches('[data-modal]')) return cerrar();
   const v = e.target.closest('[data-ver]');

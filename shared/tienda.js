@@ -73,6 +73,7 @@ export async function tienda(pid, u) {
   const dia = diaDeHoy(), rot = rotacion(dia);
   await cargaEspecial(u).catch(() => 0);
   return {
+    cofre: await estadoCofre(q),
     saldo: await saldo(q), mias: await mias(q), rarezas: RAREZAS, cuenta: !!u, regalos: u ? await regalosNuevos(u) : [],
     skins: SKINS,
     ...rot,
@@ -141,6 +142,63 @@ export async function canjear(pid, u, codigo) {
     await store.del(marca).catch(() => {});
     throw e;
   }
+}
+
+// ---------- cofre diario: una vez por día, una skin de un pool de 12 que rota cada semana ----------
+// 1 mítica, 2 legendarias, 3 épicas, 3 raras y 3 comunes. La mítica sale muy de vez en cuando, pero hay
+// garantía: después de GARANTIA aperturas seguidas sin legendaria ni mítica, la próxima es legendaria o mejor.
+export const PROB_COFRE = { mitica: 0.025, legendaria: 0.09, epica: 0.2, rara: 0.3, comun: 0.385 };
+export const GARANTIA = 7;
+export const FICHAS_REPETIDA = 250;
+const ORDEN_RAREZAS = ['mitica', 'legendaria', 'epica', 'rara', 'comun'];
+const rarezaDe = (id) => SKINS.find((x) => x.id === id)?.rareza;
+export function poolCofre(dia = diaDeHoy()) {
+  const semana = Math.floor(dia / 7);
+  const de = (rareza, n, k) => mezclar(SKINS.filter((x) => x.rareza === rareza), semana * 53 + k).slice(0, n);
+  return [...de('mitica', 1, 1), ...de('legendaria', 2, 2), ...de('epica', 3, 3), ...de('rara', 3, 4), ...de('comun', 3, 5)].map((x) => x.id);
+}
+export function sortearCofre(pool, r = Math.random, garantizada = false) {
+  const por = {};
+  for (const id of pool) (por[rarezaDe(id)] ??= []).push(id);
+  let rareza = null;
+  if (garantizada) rareza = por.mitica && r() < 0.2 ? 'mitica' : por.legendaria ? 'legendaria' : 'mitica';
+  else {
+    const hay = ORDEN_RAREZAS.filter((k) => por[k]);
+    const total = hay.reduce((n, k) => n + PROB_COFRE[k], 0);
+    let x = r() * total;
+    for (const k of hay) { x -= PROB_COFRE[k]; if (x < 0) { rareza = k; break; } }
+    rareza ??= hay[hay.length - 1];
+  }
+  const lista = por[rareza];
+  return lista[Math.floor(r() * lista.length)];
+}
+const azarSeguro = () => crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
+const claveCofre = (q, dia) => `cofre-diario:${q}:${dia}`;
+export async function estadoCofre(q) {
+  const store = getStore(), dia = diaDeHoy();
+  const hecho = await store.get(claveCofre(q, dia));
+  const seguidas = Number(await store.get(`cofre-pity:${q}`)) || 0;
+  return {
+    pool: poolCofre(dia), probabilidades: PROB_COFRE, disponible: !hecho, proximo: (dia + 1) * DIA_MS + ARG_MS,
+    garantiaEn: Math.max(1, GARANTIA + 1 - seguidas), ultimo: hecho ? JSON.parse(hecho) : null, repetida: FICHAS_REPETIDA,
+  };
+}
+export async function abrirCofreDiario(pid, u) {
+  const q = quien(pid, u?.id), store = getStore(), dia = diaDeHoy();
+  if (!(await store.setNX(claveCofre(q, dia), '{}', 2 * DIA_MS))) throw err('Ya abriste el cofre de hoy. Volvé mañana.', 409);
+  const seguidas = Number(await store.get(`cofre-pity:${q}`)) || 0;
+  const garantizada = seguidas >= GARANTIA;
+  const skin = sortearCofre(poolCofre(dia), azarSeguro, garantizada);
+  const rareza = rarezaDe(skin), buena = rareza === 'mitica' || rareza === 'legendaria';
+  await store.set(`cofre-pity:${q}`, String(buena ? 0 : seguidas + 1), 365 * 86400);
+  const tengo = await mias(q);
+  const repetida = tengo.includes(skin);
+  let saldoFinal;
+  if (repetida) saldoFinal = await mover(q, FICHAS_REPETIDA);
+  else { await store.set(clave(q), JSON.stringify([...tengo, skin]), 365 * 86400); saldoFinal = await saldo(q); }
+  const resultado = { skin, rareza, repetida, fichas: repetida ? FICHAS_REPETIDA : 0, garantizada, ts: Date.now() };
+  await store.set(claveCofre(q, dia), JSON.stringify(resultado), 2 * 86400);
+  return { ...resultado, saldo: saldoFinal, mias: await mias(q), cofre: await estadoCofre(q) };
 }
 
 // ¿Puede usar esta skin? (las del elenco hay que comprarlas)

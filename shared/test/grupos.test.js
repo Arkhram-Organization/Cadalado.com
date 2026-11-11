@@ -212,3 +212,25 @@ test('amigos sugeridos: también todos los que están en línea ahora (menos vos
   r = await a('GET', '/sugeridos');
   assert.ok(!r.data.enLinea.some((x) => x.usuario === ub), 'los amigos no se repiten');
 });
+
+test('cofre diario: una vez por día, sale del pool de 12 y la garantía da legendaria o mejor', async () => {
+  const { poolCofre, sortearCofre, GARANTIA, SKINS } = await import('../tienda.js');
+  const pool = poolCofre();
+  assert.equal(pool.length, 12);
+  const rar = (id) => SKINS.find((s) => s.id === id).rareza;
+  assert.equal(pool.filter((id) => rar(id) === 'mitica').length, 1);
+  assert.equal(pool.filter((id) => rar(id) === 'legendaria').length, 2);
+  for (let i = 0; i < 50; i++) assert.ok(['mitica', 'legendaria'].includes(rar(sortearCofre(pool, Math.random, true))), 'garantizada');
+  const a = cliente('11.0.0.61');
+  const pid = 'pidcofre' + rnd();
+  let r = await a('GET', `/tienda?pid=${pid}`);
+  assert.equal(r.data.cofre.disponible, true);
+  assert.equal(r.data.cofre.garantiaEn, GARANTIA + 1);
+  r = await a('POST', '/tienda/cofre', { pid });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.ok(pool.includes(r.data.skin));
+  assert.ok(r.data.mias.includes(r.data.skin), 'la skin queda tuya');
+  assert.equal(r.data.cofre.disponible, false);
+  assert.equal((await a('POST', '/tienda/cofre', { pid })).status, 409, 'una vez por día');
+  assert.equal((await a('GET', `/tienda?pid=${pid}`)).data.cofre.ultimo.skin, r.data.skin);
+});
