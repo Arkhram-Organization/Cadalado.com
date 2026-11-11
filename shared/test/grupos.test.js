@@ -225,10 +225,13 @@ test('cofre diario: una vez por día, sale del pool de 12 y la garantía da lege
   const pid = 'pidcofre' + rnd();
   let r = await a('GET', `/tienda?pid=${pid}`);
   assert.equal(r.data.cofre.disponible, true);
+  assert.equal(r.data.cofre.pool, undefined, 'lo de adentro no se ve antes de abrir');
   assert.equal(r.data.cofre.garantiaEn, GARANTIA + 1);
   r = await a('POST', '/tienda/cofre', { pid });
   assert.equal(r.status, 200, JSON.stringify(r.data));
   assert.ok(pool.includes(r.data.skin));
+  assert.equal(r.data.pool.length, 12, 'al abrir se ve lo que había');
+  assert.notDeepEqual(poolCofre(20900), poolCofre(20901), 'cambia cada día');
   assert.ok(r.data.mias.includes(r.data.skin), 'la skin queda tuya');
   assert.equal(r.data.cofre.disponible, false);
   assert.equal((await a('POST', '/tienda/cofre', { pid })).status, 409, 'una vez por día');
