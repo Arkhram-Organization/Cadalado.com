@@ -53,6 +53,10 @@ El mismo código corre también en Cloudflare (`worker/`, `wrangler.json`), dond
 - En el navegador, `shared/public/conexion.js` abre el WebSocket solo si el servidor lo ofrece (header
   `x-cadalado-ws`); si no (Vercel) o si se corta, se sigue consultando por HTTP como antes.
 
+Publicación: el proyecto `cadalado-com` de Cloudflare (Workers & Pages) está conectado a este repo y compila
+la rama **`main`** en cada push (build `npm run build`, deploy `npx wrangler deploy`). El nombre del Worker en
+`wrangler.json` tiene que ser el mismo que el del proyecto en Cloudflare.
+
 ```
 npm run cf:dev       todo el sitio en el motor local de Cloudflare (http://localhost:8788)
 npm run cf:deploy    publicar (necesita estar logueado: npx wrangler login)
