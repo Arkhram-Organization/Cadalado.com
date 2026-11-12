@@ -364,7 +364,8 @@ export const NPCS = [
     nombre: 'Vicky',
     // La jefa del comedor del colegio. Trabaja con Ferchus y lo tiene pillo: él le hace caso porque ella manda.
     // Lo carga con sus TikToks (aunque a veces graban juntos). Vende medialunas y paninis: solo tarjeta o efectivo.
-    look: { delantal: '#6fb3e0', toca: '#ffffff', camisa: true, liso: true, piel: '#efc7a6', pelo: { estilo: 'largo', color: '#3b2416' }, ojos: '#3a2a1e', cuerpo: 'normal', ropa: { remera: '#f4f1ea', pantalon: '#2b2b33', zapatillas: '#1e1e22', bolso: false }, genero: 'm', travesuras: { quieto: ['habla', 'habla', 'tiktok', 'saluda', 'baila', 'habla'], corre: ['festeja'] }, alGesto: { tiktok: ['Uno juntos, Ferchus. Uno solo.', 'Grabo yo, que vos tardás.', 'Este sí lo subimos.'] } },
+    // Modelo de Meshy: modelos/vicky.glb (el delantal y el gorro de abajo son para el avatar dibujado).
+    look: { modelo: 'vicky', estilo: 'meshy', clips: { habla: 'Talk_with_Hands_Open', baila: ['Hip_Hop_Dance_3', 'Cardio_Dance'], tiktok: ['Hip_Hop_Dance_3', 'Boom_Dance'] }, delantal: '#f4f1ea', toca: '#24356b', camisa: true, liso: true, piel: '#e9b996', pelo: { estilo: 'largo', color: '#2a1a12' }, ojos: '#3a2a1e', cuerpo: 'normal', ropa: { remera: '#f4f1ea', pantalon: '#f4f1ea', zapatillas: '#1e1e22', bolso: false }, genero: 'm', travesuras: { quieto: ['habla', 'habla', 'tiktok', 'saluda', 'baila', 'habla'], corre: ['festeja'] }, alGesto: { tiktok: ['Uno juntos, Ferchus. Uno solo.', 'Grabo yo, que vos tardás.', 'Este sí lo subimos.'] } },
     frases: [
       '¿Medialunas? ¿Un panini? Pagás con tarjeta o en efectivo, nada más.',
       'Solo tarjeta o efectivo. Transferencia no, mi amor.',

@@ -13,7 +13,7 @@ const P = [
   ['franba', 'El hijo del', 'CIBER', 'g-habla', 0.9, -0.15, 'ciber', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['elidiprimio', 'Elidiprimio', 'WOOOP', 'g-baila', 1.1, 0.25, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['ferchus', 'El del kiosco', 'FERCHUS', 'g-tiktok', 1.4, 0.35, 'kiosco', ['#3a1a02', '#e08a10', '#ffe08a']],
-  ['vicky', 'La jefa del comedor', 'VICKY', 'g-tiktok', 1.2, -0.3, 'kiosco', ['#3a1a02', '#e08a10', '#ffe08a'], 1.45],
+  ['vicky', 'La jefa del comedor', 'VICKY', 'g-tiktok', 1.2, -0.3, 'kiosco', ['#3a1a02', '#e08a10', '#ffe08a'], 1.1],
   ['dorin', 'La Academia', 'DORIN', 'g-festeja', 0.9, -0.2, 'racing', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['teo', 'Am Israel Jai', 'TEO', 'g-festeja', 1.1, 0.2, 'israel', ['#0b2e7a', '#3c7be0', '#ffffff']],
   ['marti', 'La profe', 'MARTI', 'g-habla', 1.2, -0.25, 'estrellas', ['#3a1a02', '#e08a10', '#ffe08a']],
