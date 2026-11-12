@@ -126,3 +126,39 @@ test('perfil: datos personalizables, foto y portada, y vista pública', async ()
   assert.equal(r.data.usuario.perfil.estado, 'jugando haxball');
   assert.equal(r.data.relacion, '');
 });
+
+test('recuperar la contraseña: con el código propio o con la clave de admin', async () => {
+  const { handle } = await import('../club-api.js');
+  const cli = (ip) => {
+    let cookie = '';
+    return async (metodo, ruta, body) => {
+      const res = await handle(new Request('http://localhost/api/club' + ruta, { method: metodo, headers: { 'content-type': 'application/json', cookie, 'x-forwarded-for': ip }, body: body ? JSON.stringify(body) : undefined }));
+      const sc = res.headers.get('set-cookie'); if (sc) cookie = sc.split(';')[0];
+      return { status: res.status, data: await res.json() };
+    };
+  };
+  const yo = cli('13.0.0.1'), otro = cli('13.0.0.2');
+  const usuario = 'olvido' + Math.random().toString(36).slice(2, 7);
+  await yo('POST', '/registro', { usuario, nombre: 'Olvidadizo', clave: 'vieja123' });
+  assert.equal((await otro('GET', '/recuperacion')).status, 401, 'el código solo se ve con la cuenta');
+  const { codigo } = (await yo('GET', '/recuperacion')).data;
+  assert.match(codigo, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  assert.equal((await yo('GET', '/recuperacion')).data.codigo, codigo, 'es siempre el mismo hasta que lo cambies');
+
+  assert.equal((await otro('POST', '/recuperar', { usuario, codigo: 'AAAA-BBBB', clave: 'nueva123' })).status, 401, 'código equivocado');
+  let r = await otro('POST', '/recuperar', { usuario, codigo: codigo.toLowerCase().replace('-', ' '), clave: 'nueva123' });
+  assert.equal(r.status, 200, 'con el código (sin importar mayúsculas ni el guion)');
+  assert.equal(r.data.usuario.usuario, usuario);
+  assert.equal((await otro('GET', '/yo')).data.usuario?.usuario, usuario, 'queda adentro');
+  assert.equal((await cli('13.0.0.3')('POST', '/entrar', { usuario, clave: 'vieja123' })).status, 401, 'la vieja ya no sirve');
+  assert.equal((await cli('13.0.0.3')('POST', '/entrar', { usuario, clave: 'nueva123' })).status, 200, 'la nueva sí');
+  assert.equal((await cli('13.0.0.4')('POST', '/recuperar', { usuario, codigo, clave: 'otra1234' })).status, 401, 'el código usado ya no sirve');
+
+  // la clave de admin sirve para cualquier cuenta
+  process.env.ADMIN_CLAVE = 'clave-admin-de-prueba';
+  r = await cli('13.0.0.5')('POST', '/recuperar', { usuario, codigo: 'clave-admin-de-prueba', clave: 'desdeadmin' });
+  assert.equal(r.status, 200);
+  assert.equal((await cli('13.0.0.6')('POST', '/entrar', { usuario, clave: 'desdeadmin' })).status, 200);
+  delete process.env.ADMIN_CLAVE;
+  assert.equal((await cli('13.0.0.7')('POST', '/recuperar', { usuario, codigo: 'clave-admin-de-prueba', clave: 'x1234567' })).status, 401, 'sin la clave configurada, no');
+});

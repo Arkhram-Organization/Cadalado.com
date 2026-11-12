@@ -136,6 +136,42 @@ export async function entrar(request, { usuario, clave }) {
   return { usuario: publico(u), token: await abrirSesion(u.id) };
 }
 
+// ---------------------------------------------------------------- recuperar la contraseña (simple, sin mail)
+// Cada cuenta tiene un código de recuperación (se ve en el club estando adentro). Con usuario + código se
+// pone una contraseña nueva. La clave de administrador (ADMIN_CLAVE, secreto del servidor) sirve para
+// cualquier cuenta: así el admin puede resetearle la contraseña a quien se la olvidó.
+const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const normalizarCodigo = (c) => String(c ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+export async function codigoRecuperacion(u, nuevo = false) {
+  const store = getStore();
+  let codigo = nuevo ? null : await store.get(`recup:${u.id}`);
+  if (!codigo) {
+    const b = randomBytes(8);
+    codigo = Array.from(b, (x) => LETRAS[x % LETRAS.length]).join('').replace(/^(.{4})/, '$1-');
+    await store.set(`recup:${u.id}`, codigo);
+  }
+  return codigo;
+}
+export async function recuperarClave(request, { usuario, codigo, clave }) {
+  await limitar(request, 'recuperar', 8);
+  const malo = new ErrorCuenta('El usuario o el código no coinciden.', 401);
+  const u = await usuarioPorNombre(usuario);
+  if (!u) throw malo;
+  if (String(clave ?? '').length < 6) throw new ErrorCuenta('La contraseña nueva tiene que tener al menos 6 caracteres.');
+  if (String(clave).length > 200) throw new ErrorCuenta('La contraseña es demasiado larga.');
+  const store = getStore();
+  const dado = normalizarCodigo(codigo);
+  const propio = normalizarCodigo(await store.get(`recup:${u.id}`));
+  const admin = String(process.env.ADMIN_CLAVE || '');
+  const esAdmin = admin.length >= 8 && String(codigo ?? '') === admin;
+  if (!esAdmin && !(propio && dado === propio)) throw malo;
+  u.sal = randomBytes(16).toString('base64url');
+  u.hash = (await scryptAsync(String(clave), u.sal)).toString('base64url');
+  await store.set(`u:${u.id}`, JSON.stringify(u));
+  if (!esAdmin) await codigoRecuperacion(u, true); // el código usado ya no sirve: queda uno nuevo
+  return { usuario: publico(u), token: await abrirSesion(u.id) };
+}
+
 export async function salir(request) {
   const token = cookies(request)[COOKIE];
   if (token) olvidarSesion(token);

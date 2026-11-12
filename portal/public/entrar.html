@@ -32,9 +32,11 @@
         </div>
         <div class="campo"><label for="usuario">Usuario</label><input id="usuario" name="usuario" autocomplete="username" required minlength="3" maxlength="20" autocapitalize="none" spellcheck="false"><small data-solo-registro class="hidden">3 a 20 letras, números, punto o guion bajo. Así te encuentran tus amigos.</small></div>
         <div class="campo hidden" data-solo-registro><label for="nombre">Nombre para mostrar</label><input id="nombre" name="nombre" autocomplete="nickname" maxlength="24" placeholder="Cómo te ven en la mesa"></div>
-        <div class="campo"><label for="clave">Contraseña</label><input id="clave" name="clave" type="password" autocomplete="current-password" required minlength="6"><small data-solo-registro class="hidden">Mínimo 6 caracteres.</small></div>
+        <div class="campo hidden" data-solo-recuperar><label for="codigo">Código de recuperación</label><input id="codigo" name="codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="ABCD-1234"><small>Lo ves en el club, estando adentro con tu cuenta. Si no lo tenés, pedile al admin del club que te la resetee.</small></div>
+        <div class="campo"><label for="clave" data-label-clave>Contraseña</label><input id="clave" name="clave" type="password" autocomplete="current-password" required minlength="6"><small data-solo-registro class="hidden">Mínimo 6 caracteres.</small></div>
         <p class="error" data-error role="alert"></p>
         <button class="btn btn-lima btn-grande" data-enviar>Entrar</button>
+        <button type="button" data-olvide style="background:none;border:0;color:var(--lima);font:600 15px var(--texto, inherit);cursor:pointer;padding:0">¿Te olvidaste la contraseña?</button>
         <a href="/" style="color:var(--gris);text-align:center;font-size:15px">Seguir sin cuenta →</a>
       </form>
     </section>

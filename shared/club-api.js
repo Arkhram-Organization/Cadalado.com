@@ -29,6 +29,14 @@ export async function handle(request) {
       const { usuario, token } = await c.entrar(request, body);
       return json({ usuario }, 200, { 'set-cookie': c.cookieSesion(request, token) });
     }
+    if (ruta === '/recuperar' && metodo === 'POST') {
+      const { usuario, token } = await c.recuperarClave(request, body);
+      return json({ usuario }, 200, { 'set-cookie': c.cookieSesion(request, token) });
+    }
+    if (ruta === '/recuperacion') {
+      const u = await necesitaCuenta(request);
+      return json({ codigo: await c.codigoRecuperacion(u, metodo === 'POST' && body.nuevo === true) });
+    }
     if (ruta === '/salir' && metodo === 'POST') {
       await c.salir(request);
       return json({ ok: true }, 200, { 'set-cookie': c.cookieSesion(request, null) });

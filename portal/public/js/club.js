@@ -37,6 +37,17 @@ function pintarPerfil() {
   $('[data-usuario]').textContent = '@' + yoMismo.usuario + ' · en cadalado desde ' + new Date(yoMismo.creado).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
 }
 
+// código para recuperar la contraseña (se muestra solo cuando lo pedís)
+$('[data-recup-ver]')?.addEventListener('click', async () => {
+  const caja = $('[data-recup]');
+  caja.classList.toggle('hidden');
+  if (caja.classList.contains('hidden')) return;
+  try { $('[data-recup-codigo]').textContent = (await api('/api/club/recuperacion')).codigo; } catch (e) { toast(e.message, true); }
+});
+$('[data-recup-nuevo]')?.addEventListener('click', async () => {
+  if (!confirm('¿Cambiar el código? El anterior deja de servir.')) return;
+  try { $('[data-recup-codigo]').textContent = (await api('/api/club/recuperacion', { nuevo: true })).codigo; } catch (e) { toast(e.message, true); }
+});
 $('[data-salir]')?.addEventListener('click', async () => {
   await api('/api/club/salir', {}).catch(() => {});
   location.href = '/';

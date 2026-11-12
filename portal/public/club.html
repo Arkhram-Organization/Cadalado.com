@@ -37,9 +37,15 @@
             <a class="btn btn-lima btn-chico" href="/perfil">Tu perfil</a>
             <a class="btn btn-borde btn-chico" href="/personaje">Tu personaje</a>
             <button class="btn btn-borde btn-chico" data-editar>Cambiar nombre</button>
+            <button class="btn btn-borde btn-chico" data-recup-ver>Código de recuperación</button>
             <button class="btn btn-borde btn-chico" data-salir>Salir</button>
           </div>
         </section>
+        <div class="recup hidden" data-recup>
+          <span>Si te olvidás la contraseña, en <b>Entrar → ¿Te olvidaste la contraseña?</b> ponés tu usuario y este código. Guardalo (sacale foto) y no se lo pases a nadie.</span>
+          <code data-recup-codigo>····-····</code>
+          <button class="btn btn-borde btn-chico" data-recup-nuevo>Cambiar el código</button>
+        </div>
         <div class="stats entra" style="--d:.08s" data-stats></div>
         <div class="club-tabs" role="tablist">
           <button role="tab" aria-selected="true" data-tab="historial">Historial</button>

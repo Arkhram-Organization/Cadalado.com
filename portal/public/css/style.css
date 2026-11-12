@@ -413,3 +413,8 @@ a.novedad:hover { transform: translateY(-4px); }
 .idea p { color: var(--blanco-2); font-size: 15.5px; }
 @media (max-width: 1000px) { .juegos { grid-template-columns: 1fr 1fr; } .juego-grande, .juego-chico { grid-column: span 1; } .ideas { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 760px) { .juegos, .ideas { grid-template-columns: 1fr; } }
+
+/* código de recuperación de la contraseña (club) */
+.recup { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 12px 0 0; padding: 14px 16px; border-radius: 14px; background: var(--carbon-2); box-shadow: inset 0 0 0 1px var(--borde); color: var(--blanco-2); font-size: 15px; }
+.recup span { flex: 1 1 280px; }
+.recup code { font: 700 26px var(--mono); letter-spacing: .12em; color: var(--lima); background: var(--carbon); padding: 6px 14px; border-radius: 10px; }
