@@ -74,15 +74,30 @@ async function limitar(request, accion, max = 15) {
 }
 
 // ---------- sesión ----------
+// Cada pantalla consulta seguido: la sesión se recuerda unos segundos en memoria (por instancia del servidor)
+// y el "visto / en línea" se escribe como mucho una vez por minuto.
+const SESION_MEM_MS = 8000, VISTO_CADA_MS = 60_000;
+const sesionesMem = new Map(), vistoMem = new Map();
+export function olvidarSesion(token) { sesionesMem.delete(token); }
 export async function usuarioActual(request) {
   const token = cookies(request)[COOKIE];
   if (!token || !/^[A-Za-z0-9_-]{20,80}$/.test(token)) return null;
-  const store = getStore();
-  const id = await store.get(`ses:${token}`);
-  const u = await usuarioPorId(id);
-  if (u) {
-    await store.set(`visto:${u.id}`, String(Date.now()), 30 * 86400);
-    await store.hset('enlinea', u.id, String(Date.now()), 2 * 86400); // para "en línea ahora" al agregar amigos
+  const ahora = Date.now();
+  const mem = sesionesMem.get(token);
+  let u;
+  if (mem && ahora - mem.t < SESION_MEM_MS) u = mem.u;
+  else {
+    const store = getStore();
+    const id = await store.get(`ses:${token}`);
+    u = await usuarioPorId(id);
+    if (sesionesMem.size > 2000) sesionesMem.clear();
+    sesionesMem.set(token, { u, t: ahora });
+  }
+  if (u && !(ahora - (vistoMem.get(u.id) || 0) < VISTO_CADA_MS)) {
+    vistoMem.set(u.id, ahora);
+    const store = getStore();
+    await store.set(`visto:${u.id}`, String(ahora), 30 * 86400);
+    await store.hset('enlinea', u.id, String(ahora), Math.random() < 0.05 ? 2 * 86400 : 0); // para "en línea ahora" al agregar amigos
   }
   return u;
 }
@@ -123,6 +138,7 @@ export async function entrar(request, { usuario, clave }) {
 
 export async function salir(request) {
   const token = cookies(request)[COOKIE];
+  if (token) olvidarSesion(token);
   if (token) await getStore().del(`ses:${token}`);
 }
 

@@ -210,7 +210,14 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
     } else await refrescar();
     alCambiar?.(grupo);
   })();
-  setInterval(() => { if (!document.hidden) refrescar(); }, 400);
+  // Cada consulta cuesta (funciones y base de datos): con amigos en la lobby, casi 1 por segundo; solo, cada 2,5 s.
+  // Al tocar algo (gesto, jugar, invitar) se consulta enseguida igual.
+  let proxima = 0;
+  setInterval(() => {
+    if (document.hidden || Date.now() < proxima) return;
+    proxima = Date.now() + ((grupo?.miembros?.length || 1) > 1 || abierto ? 900 : 2500);
+    refrescar();
+  }, 250);
   setInterval(() => { if (!document.hidden && abierto) cargarListas(); }, 8000);
 
   return {

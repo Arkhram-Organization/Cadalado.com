@@ -67,7 +67,9 @@ export function crearJuego(def) {
     return out;
   }
   const enLinea = (pres, now) => new Set(Object.entries(pres).filter(([, ts]) => now - ts < ONLINE_MS).map(([p]) => p));
-  const tocar = (code, pid) => getStore().hset(presKey(code), pid, String(Date.now()), 3600);
+  // la presencia se renueva cada 5 s (no en cada consulta); el vencimiento de la lista, solo de vez en cuando
+  const REFRESCO_PRES = 5000;
+  const tocar = (code, pid, nuevo) => getStore().hset(presKey(code), pid, String(Date.now()), nuevo || azar() < 0.05 ? 3600 : 0);
 
   function contexto(r, extra) {
     const ctx = {
@@ -143,6 +145,7 @@ export function crearJuego(def) {
       if (!ok) await sleep(25 + Math.random() * 35);
     }
     if (!ok) return { error: 'La sala está ocupada, probá de nuevo' };
+    const tomado = Date.now();
     try {
       const r = await cargar(code);
       if (!r) return { noExiste: true };
@@ -159,7 +162,8 @@ export function crearJuego(def) {
       }
       return { ...res, r, pres };
     } finally {
-      if ((await store.get(candado(code))) === token) await store.del(candado(code));
+      // si terminó bien antes de que venza el candado, sigue siendo nuestro: se suelta con una sola operación
+      if (Date.now() - tomado < 3000 || (await store.get(candado(code))) === token) await store.del(candado(code));
     }
   }
 
@@ -217,12 +221,14 @@ export function crearJuego(def) {
     const cursor = q.cursor === undefined || q.cursor === null || q.cursor === '' ? null : Number(q.cursor);
     const msg = body?.msg || null;
     if (!code) return json({ noExiste: true }, 404);
-    if (pid && (q.ping || msg)) await tocar(code, pid);
-
     let r = await cargar(code);
     if (!r && def.publicas?.[code]) r = await crear({ code, opciones: { ...def.publicas[code], publica: true } });
     if (!r) return json({ noExiste: true }, 404);
     let pres = await presencia(code);
+    if (pid && (q.ping || msg) && !(Date.now() - (pres[pid] || 0) < REFRESCO_PRES)) {
+      await tocar(code, pid, !pres[pid]);
+      pres[pid] = Date.now();
+    }
     let error;
 
     if (msg && pid) {

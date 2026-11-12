@@ -33,9 +33,16 @@ async function guardar(g) {
     return null;
   }
   if (!g.miembros.some((m) => m.k === g.lider)) g.lider = g.miembros[0].k;
+  // la lista de lobbys abiertas solo se toca cuando la lobby se abre o se cierra (y las abiertas, cada tanto,
+  // para que la lista sepa que siguen vivas)
+  const tocarLista = g.abierto !== g.abiertoGuardado || (g.abierto && Date.now() - (g.listaT || 0) > 60_000);
+  g.abiertoGuardado = g.abierto;
+  if (tocarLista) g.listaT = Date.now();
   await s.set(`grupo:${g.id}`, JSON.stringify(g), TTL);
-  if (g.abierto) await s.hset('grupos:abiertos', g.id, JSON.stringify({ id: g.id, t: Date.now() }));
-  else await s.hdel('grupos:abiertos', [g.id]);
+  if (tocarLista) {
+    if (g.abierto) await s.hset('grupos:abiertos', g.id, JSON.stringify({ id: g.id, t: Date.now() }));
+    else await s.hdel('grupos:abiertos', [g.id]);
+  }
   return g;
 }
 const vista = (g, yo) => g && {
@@ -210,19 +217,37 @@ export async function listarGrupos(yo) {
   return { abiertos: abiertos.filter((g) => !g.mia).slice(0, 30), amigos };
 }
 
-async function conGrupo(yo, body, fn) {
+async function conGrupo(yo, body, fn, yaSe) {
   const s = getStore();
-  const id = body?.accion === 'unirse' ? String(body.id).toUpperCase() : await s.get(`grupo-de:${yo.k}`) || yo.k;
+  const id = body?.accion === 'unirse' ? String(body.id).toUpperCase() : (yaSe !== undefined ? yaSe : await s.get(`grupo-de:${yo.k}`)) || yo.k;
   const lock = `lock:grupo:${id}`;
   const token = crypto.randomUUID();
   for (let i = 0; i < 80; i++) {
     if (await s.setNX(lock, token, 10000)) {
+      const tomado = Date.now();
       try { return await fn(); }
-      finally { if (await s.get(lock) === token) await s.del(lock); }
+      finally { if (Date.now() - tomado < 8000 || await s.get(lock) === token) await s.del(lock); }
     }
     await new Promise(r => setTimeout(r, 25));
   }
   throw err('La lobby está ocupada. Reintentá en un momento.', 409);
 }
-export const miGrupo = yo => conGrupo(yo, null, () => miGrupoInterno(yo));
+// Consulta rápida (la que se hace a cada rato): si sigo en mi grupo, me marcaron hace poco y no cambié nada,
+// se responde leyendo, sin candado ni escritura. Cada 12 s (o si cambió algo) se hace la completa.
+const REFRESCO = 12_000;
+export async function miGrupo(yo) {
+  const s = getStore();
+  const id = await s.get(`grupo-de:${yo.k}`);
+  const g = id ? await leer(id) : null;
+  const m = g?.miembros.find((x) => x.k === yo.k);
+  const igual = m && m.nombre === yo.nombre && JSON.stringify(m.look ?? null) === JSON.stringify(yo.look ?? null);
+  // si la lobby tiene una sala a la que ir, se confirma que siga existiendo (si no, va el camino completo, que la limpia)
+  const destino = g?.ir?.url.match(/^\/([a-z]+)\/(?:sala|mesa|game)\/([A-Za-z0-9-]+)$/);
+  const irVale = !g?.ir || (destino && (await s.get(claveDestino(destino[1], destino[2]))));
+  if (igual && Date.now() - m.visto < REFRESCO && irVale) {
+    g.miembros = g.miembros.filter((x) => Date.now() - x.visto < VIVO_MS);
+    return vista(g, yo);
+  }
+  return conGrupo(yo, null, () => miGrupoInterno(yo), id);
+}
 export const accionGrupo = (yo, body) => conGrupo(yo, body, () => accionGrupoInterno(yo, body));

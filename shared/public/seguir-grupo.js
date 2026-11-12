@@ -16,13 +16,18 @@ export function seguirGrupo() {
   try { look = JSON.parse(leer('cadalado.look')); } catch {}
   const nombre = leer('cadalado.nombre') || 'Invitado';
   const q = `pid=${encodeURIComponent(pid)}&nombre=${encodeURIComponent(nombre)}${look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''}`;
+  // solo hace falta mirar seguido si estás con alguien en la lobby (solo, cada 20 s alcanza para enterarte)
+  let enGrupo = false, ultima = 0;
   async function mirar() {
     if (document.hidden) return;
+    if (Date.now() - ultima < (enGrupo ? 4000 : 20000)) return;
+    ultima = Date.now();
     try {
       const r = await fetch('/api/club/grupo?' + q, { cache: 'no-store' });
       if (!r.ok) return;
       const { grupo, now } = await r.json();
-      if (!grupo || grupo.miembros.length < 2) return;
+      enGrupo = !!grupo && grupo.miembros.length >= 2;
+      if (!enGrupo) return;
       const aca = enSala();
       if (grupo.soyLider) {
         // el líder entró a una sala: avisarle a la lobby
@@ -54,5 +59,5 @@ export function seguirGrupo() {
     } catch {}
   }
   mirar();
-  setInterval(mirar, 3000);
+  setInterval(mirar, 1000);
 }
