@@ -15,8 +15,9 @@ export const RAREZAS = {
 // Por ahora todas salen 500 fichas (la rareza queda para el color y lo exclusivo).
 // Cada una con su frase célebre, que sale en la portada.
 export const SKINS = [
-  { id: 'teo', rareza: 'mitica', precio: 500, frase: 'T-t-todo bien, Ma-Maica?', nuevo: true },
+  { id: 'teo', rareza: 'mitica', precio: 500, frase: 'T-t-todo bien, Ma-Maica?' },
   { id: 'ferchus', rareza: 'legendaria', precio: 500, frase: '¿Querés panini, medialunas, café?', nuevo: true },
+  { id: 'vicky', rareza: 'legendaria', precio: 500, frase: 'Solo tarjeta o efectivo.', nuevo: true },
   { id: 'dorin', rareza: 'epica', precio: 500, frase: 'No me estoy quedando pelado. Es la luz.', nuevo: true },
   { id: 'marti', rareza: 'legendaria', precio: 500, frase: 'Una vez Asman entró a mi clase. Le enseñé quién manda.' },
   { id: 'maica', rareza: 'epica', precio: 500, frase: '¿Alguien tiene el resumen de química?' },

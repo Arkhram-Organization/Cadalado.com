@@ -355,6 +355,30 @@ export const NPCS = [
       'Si viene Vicky, decile que estoy trabajando.',
       '¡Vicky, se quema el panini!',
       'Kiosco abierto. Bailando, pero abierto.',
+      'Hoy Vicky grabó conmigo. Se viene viral.',
+      'Vicky es la jefa. Yo solo pongo los pasos.',
+    ],
+  },
+  {
+    id: 'vicky',
+    nombre: 'Vicky',
+    // La jefa del comedor del colegio. Trabaja con Ferchus y lo tiene pillo: él le hace caso porque ella manda.
+    // Lo carga con sus TikToks (aunque a veces graban juntos). Vende medialunas y paninis: solo tarjeta o efectivo.
+    look: { delantal: '#6fb3e0', toca: '#ffffff', camisa: true, liso: true, piel: '#efc7a6', pelo: { estilo: 'largo', color: '#3b2416' }, ojos: '#3a2a1e', cuerpo: 'normal', ropa: { remera: '#f4f1ea', pantalon: '#2b2b33', zapatillas: '#1e1e22', bolso: false }, genero: 'm', travesuras: { quieto: ['habla', 'habla', 'tiktok', 'saluda', 'baila', 'habla'], corre: ['festeja'] }, alGesto: { tiktok: ['Uno juntos, Ferchus. Uno solo.', 'Grabo yo, que vos tardás.', 'Este sí lo subimos.'] } },
+    frases: [
+      '¿Medialunas? ¿Un panini? Pagás con tarjeta o en efectivo, nada más.',
+      'Solo tarjeta o efectivo. Transferencia no, mi amor.',
+      'Paninis de jamón y queso recién hechos. Tarjeta o efectivo.',
+      'Medialunas a mil. Y no, fiado no hay.',
+      '¡Ferchus! Dejá el celular y atendé.',
+      'Ferchus, ¿otra vez grabando? El panini se quema solo, eh.',
+      'Ferchus me hace caso porque acá la jefa soy yo.',
+      'Ferchus, al mostrador. Ya.',
+      'Ese TikTok de Ferchus lo vieron tres personas. Las tres somos nosotros.',
+      'Bueno, uno juntos. Pero rápido que hay cola.',
+      'El comedor abre a las doce. Antes no me pidan nada.',
+      '¿Café con leche y dos medialunas? Tarjeta o efectivo.',
+      'El que no lleva la bandeja de vuelta no come mañana.',
     ],
   },
   {

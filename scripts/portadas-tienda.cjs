@@ -13,6 +13,7 @@ const P = [
   ['franba', 'El hijo del', 'CIBER', 'g-habla', 0.9, -0.15, 'ciber', ['#3a1a02', '#e08a10', '#ffe08a']],
   ['elidiprimio', 'Elidiprimio', 'WOOOP', 'g-baila', 1.1, 0.25, 'confeti', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['ferchus', 'El del kiosco', 'FERCHUS', 'g-tiktok', 1.4, 0.35, 'kiosco', ['#3a1a02', '#e08a10', '#ffe08a']],
+  ['vicky', 'La jefa del comedor', 'VICKY', 'g-tiktok', 1.2, -0.3, 'kiosco', ['#3a1a02', '#e08a10', '#ffe08a'], 1.45],
   ['dorin', 'La Academia', 'DORIN', 'g-festeja', 0.9, -0.2, 'racing', ['#1d0636', '#8a3cf0', '#e3c2ff']],
   ['teo', 'Am Israel Jai', 'TEO', 'g-festeja', 1.1, 0.2, 'israel', ['#0b2e7a', '#3c7be0', '#ffffff']],
   ['marti', 'La profe', 'MARTI', 'g-habla', 1.2, -0.25, 'estrellas', ['#3a1a02', '#e08a10', '#ffe08a']],
@@ -144,14 +145,14 @@ const P = [
       g.shadowBlur = 0; g.font = '900 64px "Barlow Condensed", Impact, sans-serif'; g.globalAlpha = .9; g.fillStyle = 'rgba(255,255,255,.35)'; g.fillText(chico.toUpperCase(), 24, y - tam * .78 - tam * .62);
       g.restore();
     }
-    window.portada = async (id, chico, grande, pose, t, rot, estilo, colores) => {
+    window.portada = async (id, chico, grande, pose, t, rot, estilo, colores, lejos = 1) => {
       const look = { ...POR_ID[id].look };
       const pr = crearPersona(THREE, look, { sombras: false }); await pr.listo;
       esc.add(pr.grupo); pr.grupo.rotation.y = rot;
       const pasos = Math.round(t * 30); for (let i = 0; i < pasos; i++) pr.animar(pose, 1 / 30);
       const fuera = []; pr.grupo.traverse((o) => { if ((o.isMesh && o.geometry?.type === 'CircleGeometry') || o.isSprite) fuera.push(o); }); fuera.forEach((o) => o.removeFromParent());
       const caja = new THREE.Box3().setFromObject(pr.grupo); const cc = caja.getCenter(new THREE.Vector3()); const sz = caja.getSize(new THREE.Vector3());
-      const cam = new THREE.PerspectiveCamera(24, 720 / 960, .1, 50); const d = Math.max(sz.y, sz.x * 960 / 720) * 1.0 / 2 / Math.tan(12 * Math.PI / 180);
+      const cam = new THREE.PerspectiveCamera(24, 720 / 960, .1, 50); const d = Math.max(sz.y, sz.x * 960 / 720) * lejos / 2 / Math.tan(12 * Math.PI / 180);
       cam.position.set(cc.x, cc.y + .15, cc.z - d); cam.lookAt(cc.x, cc.y + .05, cc.z);
       r.render(esc, cam); esc.remove(pr.grupo); pr.dispose?.();
       const out = document.createElement('canvas'); out.width = W; out.height = H; const g = out.getContext('2d');

@@ -117,6 +117,12 @@ const DICHOS = {
     pierde: ['Perdí por estar grabando. Valió la pena.', 'Bueno, vuelvo al kiosco.', 'Vicky me va a matar.'],
     turno: ['Me toca. Esperá que apoyo el celular.', 'Ahí voy. ¿Alguien quiere un café?', 'Tiro y vuelvo a bailar.'],
   },
+  vicky: {
+    saludo: ['¿Medialunas, paninis? Tarjeta o efectivo.', 'Abrió el comedor. Ferchus, al mostrador.'],
+    gana: ['Gané. Como siempre en el comedor: mando yo.', '¡Ganamos! Ferchus, grabá esto.'],
+    pierde: ['Perdí por estar atendiendo. Ferchus, la culpa es tuya.', 'Bueno, mañana no hay medialunas para nadie.'],
+    turno: ['Me toca. Ferchus, cuidame la caja.', 'Ya va, que estoy cobrando. Tarjeta o efectivo.'],
+  },
   dorin: {
     saludo: ['¡Vamos Racing!', 'Shalom. Llegó la Academia.', '¿Qué hacés, Franba, del Rojo?'],
     gana: ['¡Como Racing en el 2001!', '¡Gané! Ni Conechny la erraba.', 'Esto en las Macabeadas es medalla de oro.'],

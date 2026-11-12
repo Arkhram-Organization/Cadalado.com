@@ -102,6 +102,15 @@ function crearPersonaBase(THREE, look = {}, opciones = {}) {
       for (let i = 0; i < n; i++) bola(.009, L.camisa ? blanco : negro, 0, .43 - i * .065, frente - .012, torso);
       if (L.camisa) cubo(.022, .34, .012, tela, 0, .28, frente - .008, torso);
     }
+    // Delantal de cocina: peto, falda que cae sobre el pantalón y tiras al cuello y a la cintura.
+    if (L.delantal) {
+      const d = mat(L.delantal), d2 = mat(new THREE.Color(L.delantal).multiplyScalar(.85));
+      cubo(.24, .22, .014, d, 0, .29, frente - .024, torso);
+      cubo(ancho * 1.5, .32, .016, d, 0, -.03, frente - .03, torso);
+      cubo(.12, .05, .018, d2, 0, .06, frente - .042, torso); // bolsillo
+      const cinta = aro(ancho * (gordo ? .98 : .95), .012, d2, 0, .14, 0, torso); cinta.rotation.x = Math.PI / 2; cinta.scale.y = gordo ? .96 : .82;
+      for (const sd of [-1, 1]) { const t = cubo(.02, .16, .012, d2, sd * .085, .44, frente * .7, torso); t.rotation.set(-.5, 0, sd * -.25); }
+    }
     // Buzo con capucha: bolsillo canguro, cordones y la capucha caída atrás del cuello (si no está puesta).
     if (capucha) {
       cubo(.22, .1, .02, tela, 0, .14, frente - .012, torso);
@@ -170,6 +179,10 @@ function crearPersonaBase(THREE, look = {}, opciones = {}) {
     }
     return { hombro, codo, mano };
   });
+  // Celular para el gesto TikTok: en la mano derecha, de canto al brazo y con la pantalla mirando a la cara.
+  const celular = new THREE.Group(); celular.visible = false; brazos[1].mano.add(celular);
+  cubo(.075, .016, .14, mat('#16161a', { metalness: .4, roughness: .35 }), 0, -.07, -.02, celular);
+  cubo(.064, .006, .122, mat('#ff3b8b', { emissive: '#ff3b8b', emissiveIntensity: .7 }), 0, -.06, -.02, celular);
 
   const cabeza = new THREE.Group(); cabeza.position.y = .82; torso.add(cabeza);
   // Cráneo y mandíbula separados: mejillas anchas y mentón blando, sin forma de bola lisa.
@@ -301,6 +314,13 @@ function crearPersonaBase(THREE, look = {}, opciones = {}) {
     visera.rotation.x = -.12;
     bola(.022, g, 0, .385, .0, cabeza);
   }
+  // Gorro de cocina (toca): banda y copa inflada
+  if (L.toca) {
+    const t = mat(L.toca);
+    pieza(new THREE.CylinderGeometry(.325, .33, .2, 24), t, 0, .28, .01, cabeza);
+    bola(.34, t, 0, .45, .01, cabeza, 1, .62, .95);
+    for (const k of [-1, 0, 1]) bola(.13, t, k * .15, .52, .01, cabeza, 1, 1, 1);
+  }
   if (L.sombrero) {
     bola(.38, mat(L.sombrero), 0, .29, 0, cabeza, 1, .08, .87);
     pieza(new THREE.CylinderGeometry(.20, .24, .21, 24), mat(L.sombrero), 0, .40, 0, cabeza);
@@ -361,13 +381,13 @@ function crearPersonaBase(THREE, look = {}, opciones = {}) {
   const cachetes = [-1, 1].map(s => bola(.073, piel, s * .183, -.100, -.224, cabeza, 1, .95, .70));
   const arruga = aro(.033, .004, mat('#aa7860'), 0, -.047, -.309, cabeza, Math.PI);
   lengua.visible = dientes.visible = arruga.visible = false; cachetes.forEach(c => c.visible = false);
-  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera: .69, trav: travieso(L) }, { nombre, colorNombre, tamCartel, tamGlobo });
+  return armarApi(THREE, { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, celular, alturaCadera: .69, trav: travieso(L) }, { nombre, colorNombre, tamCartel, tamGlobo });
 }
 
 // Rig compartido: animaciones, globos de diálogo, cartel con el nombre y polvo al correr.
 // Sirve para cualquier cuerpo que tenga estas articulaciones (cuerpo, torso, cabeza, brazos y piernas).
 function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 0.65, tamGlobo = 0.5 } = {}) {
-  const { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, alturaCadera = .69, poseQuieto = null, alListo = null, abrirBrazos = .08, trav = null } = P;
+  const { grupo, cuerpo, torso, cabeza, brazos, piernas, boca, sonrisa, lengua, dientes, arruga, cachetes, cejas, ojos, capa, aura, seg, celular = null, alturaCadera = .69, poseQuieto = null, alListo = null, abrirBrazos = .08, trav = null } = P;
   const cartel = nombre ? sprite(THREE, nombre, colorNombre, 'rgba(20,20,19,.76)', tamCartel) : null;
   if (cartel) { cartel.position.y = 2.13; grupo.add(cartel); }
   let globo = null, globoHasta = 0, reloj = 0, fase = 0, transcurrido = 0, anterior = '', parpadeo = 3;
@@ -437,6 +457,7 @@ function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 
       cejas.forEach(c => c.position.y = .095);
       for (const p of piernas) { p.cadera.rotation.set(0, 0, 0); p.rodilla.rotation.set(0, 0, 0); }
       for (let i = 0; i < 2; i++) { brazos[i].hombro.rotation.set(0, 0, i ? abrirBrazos : -abrirBrazos); brazos[i].codo.rotation.set(.12, 0, 0); }
+      if (celular) celular.visible = estado === 'tiktok';
       if (estado === 'corre') {
         // Carrera: rodilla bien arriba adelante, talón al glúteo atrás, brazos que bombean,
         // cuerpo inclinado que rebota y gira un poco contra los brazos.
@@ -467,10 +488,11 @@ function armarApi(THREE, P, { nombre = '', colorNombre = '#ffffff', tamCartel = 
         piernas[0].rodilla.rotation.x = -Math.max(0, b) * .5; piernas[1].rodilla.rotation.x = -Math.max(0, -b) * .5;
         cabeza.rotation.z = b * .15; boca.scale.y = 1.4;
       } else if (estado === 'tiktok') {
-        // se graba: brazo derecho estirado adelante con la mano arriba y un bailecito
+        // se graba: brazo derecho estirado adelante y arriba (selfie) con el celular, y un bailecito
         const b = Math.sin(reloj * 6);
         cuerpo.position.set(b * .04, Math.abs(b) * .04, 0); torso.rotation.y = Math.sin(reloj * 3) * .2;
-        brazos[1].hombro.rotation.set(-1.25, 0, .25); brazos[1].codo.rotation.x = -.5;
+        brazos[1].hombro.rotation.set(1.85 + Math.sin(reloj * 2) * .08, 0, -.25); brazos[1].codo.rotation.x = .35;
+        cabeza.rotation.x = -.12;
         brazos[0].hombro.rotation.set(Math.sin(reloj * 3) * .5, 0, -1.1 - b * .4); brazos[0].codo.rotation.x = 1;
         cabeza.rotation.z = b * .12; boca.scale.y = 1.4;
       } else if (estado === 'saluda') {
