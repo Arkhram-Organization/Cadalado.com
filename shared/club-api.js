@@ -18,6 +18,9 @@ export async function handle(request) {
     const metodo = request.method;
     const body = metodo === 'POST' ? await readJson(request) : {};
 
+    // Salas abiertas de todos los juegos en una sola consulta (la portada antes pedía una por juego)
+    if (ruta === '/salas' && metodo === 'GET') return json(await salasAbiertas(request), 200, { 'cache-control': 'public, max-age=10' });
+
     if (ruta === '/registro' && metodo === 'POST') {
       const { usuario, token } = await c.registrar(request, body);
       return json({ usuario }, 200, { 'set-cookie': c.cookieSesion(request, token) });
@@ -152,4 +155,25 @@ async function chatGeneralAnonimo() {
   const { getStore } = await import('./store.js');
   const raw = await getStore().lrange('chat:general', 0, 59);
   return raw.map((r) => JSON.parse(r)).reverse().map(({ de, ...m }) => m);
+}
+
+const LISTAS_DE_SALAS = {
+  royale: ['/api/royale/lobby', () => import('../games/royale/api.js')],
+  carrera: ['/api/carrera/lobby', () => import('../games/carrera/api.js')],
+  casino: ['/api/casino/lobby', () => import('../games/casino/api.js')],
+  haxball: ['/api/haxball/lobby', () => import('../games/haxball/api.js')],
+  memes: ['/api/memes/lobby', () => import('../games/memes/api.js')],
+  truco: ['/api/truco/lobby', () => import('../games/truco/api.js')],
+  ajedrez: ['/ajedrez/api/lobby', () => import('../games/chessort/api.js')],
+};
+async function salasAbiertas(request) {
+  const out = {};
+  await Promise.all(Object.entries(LISTAS_DE_SALAS).map(async ([id, [ruta, cargar]]) => {
+    try {
+      const { handle } = await cargar();
+      const res = await handle(new Request(new URL(ruta, request.url)));
+      if (res.ok) out[id] = await res.json();
+    } catch {}
+  }));
+  return out;
 }

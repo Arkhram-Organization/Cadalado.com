@@ -1,6 +1,7 @@
 import { Chess } from '../vendor/chess.js';
 import { createCore, findTimeControl } from './core.js';
 import { getPid, getName } from './settings.js';
+import { Conexion } from '/comun/conexion.js';
 
 const core = createCore(Chess);
 
@@ -16,8 +17,8 @@ class Emitter {
   }
 }
 
-// Conexión con la sala en el servidor (Vercel no tiene WebSockets: consultamos el estado
-// cada ~1 segundo y mandamos las acciones por POST).
+// Conexión con la sala en el servidor. En Vercel consultamos el estado cada ~1 segundo y mandamos las
+// acciones por POST; en Cloudflare la sala avisa sola por WebSocket (conexion.js) y todo va por ahí.
 export class OnlineController extends Emitter {
   constructor(gameId) {
     super();
@@ -40,6 +41,7 @@ export class OnlineController extends Emitter {
 
   // Cada cuánto preguntar: rápido cuando mueve el rival, más lento si la pestaña está oculta.
   interval() {
+    if (this.vivo?.abierta) return 15000; // en vivo: solo una consulta de control cada tanto
     if (document.hidden) return 5000;
     const g = this.game;
     if (!g) return 1000;
@@ -65,8 +67,7 @@ export class OnlineController extends Emitter {
     if (this.closed) return;
     const ping = Date.now() - this.lastPing > 8000;
     try {
-      const res = await fetch(`${this.base}?pid=${encodeURIComponent(getPid())}${ping ? '&ping=1' : ''}`, { cache: 'no-store' });
-      const data = await res.json().catch(() => ({}));
+      const { res, data } = await this.pedir('GET', { pid: getPid(), ...(ping ? { ping: 1 } : {}) });
       if (res.status === 404) return this.notFound();
       if (data.t === 'state') {
         if (ping) this.lastPing = Date.now();
@@ -83,12 +84,7 @@ export class OnlineController extends Emitter {
   async post(msg) {
     this.pending = (this.pending || 0) + 1;
     try {
-      const res = await fetch(this.base, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...msg, pid: getPid(), name: getName() }),
-      });
-      const data = await res.json().catch(() => ({}));
+      const { res, data } = await this.pedir('POST', { ...msg, pid: getPid(), name: getName() });
       if (res.status === 404) return this.notFound();
       if (data.error) this.emit('error', data.error);
       if (data.t === 'state') this.handle(data);
@@ -99,6 +95,32 @@ export class OnlineController extends Emitter {
     } finally {
       this.pending--;
     }
+  }
+
+  // Pide por el WebSocket si está abierto; si no, por HTTP (y si el servidor tiene WebSocket, lo abre).
+  async pedir(metodo, datos) {
+    if (this.vivo?.abierta) {
+      try {
+        const { s, r } = await this.vivo.pedir(metodo, metodo === 'GET' ? { q: datos } : { b: datos });
+        return { res: { status: s }, data: r || {} };
+      } catch {}
+    }
+    const res = await fetch(metodo === 'GET' ? `${this.base}?${new URLSearchParams(datos)}` : this.base, {
+      method: metodo,
+      cache: 'no-store',
+      headers: metodo === 'GET' ? undefined : { 'content-type': 'application/json' },
+      body: metodo === 'GET' ? undefined : JSON.stringify(datos),
+    });
+    if (res.headers.get('x-cadalado-ws') && !this.vivo && !this.closed) this.enVivo();
+    return { res, data: await res.json().catch(() => ({})) };
+  }
+
+  enVivo() {
+    this.vivo = new Conexion(`${this.base}/ws`, { hola: () => ({ pid: getPid() }), alCambiar: (ok) => { this.setConnected(true); this.schedule(this.interval()); } });
+    this.vivo.alAviso = (data, s) => {
+      if (s === 404) return this.notFound();
+      if (data?.t === 'state') this.handle(data);
+    };
   }
 
   handle(data) {
@@ -138,6 +160,7 @@ export class OnlineController extends Emitter {
 
   close() {
     this.closed = true;
+    this.vivo?.cerrar();
     clearTimeout(this.timer);
     document.removeEventListener('visibilitychange', this.onVisible);
   }

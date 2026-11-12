@@ -1,1 +1,19 @@
-{"name":"cadalado-local","main":"dist/server/index.js","compatibility_date":"2026-05-15","compatibility_flags":["nodejs_compat"],"d1_databases":[{"binding":"DB","database_name":"cadalado-local","database_id":"00000000-0000-4000-8000-000000000000","migrations_dir":"drizzle"}]}
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cadalado",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*", "/ajedrez/api/*", "/*/sala/*", "/casino/mesa/*", "/ajedrez/game/*", "/ajedrez/local", "/equipo", "/creadores"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "OBJETOS", "class_name": "Objeto" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Objeto"] }],
+  "observability": { "enabled": true }
+}

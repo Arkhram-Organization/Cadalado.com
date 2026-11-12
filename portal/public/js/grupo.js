@@ -4,6 +4,7 @@ import { api, esc, toast } from './comun.js';
 import { avatarSvg, lookDeNombre } from '/comun/avatar.js';
 import { lookParaDibujo } from '/comun/look.js';
 import { JUEGOS } from './datos.js';
+import { pedirClub, clubEnVivo, alCambiarLobby } from '/comun/club-vivo.js';
 
 const PID_KEY = 'cadalado.pid'; // el mismo que usan los juegos
 function pid() {
@@ -56,7 +57,7 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
   async function accion(datos) {
     revision++; accionesPendientes++;
     try {
-      const r = await api('/api/club/grupo', { ...yo(), ...datos });
+      const r = await pedirClub('/api/club/grupo', { b: { ...yo(), ...datos } });
       grupo = r.grupo; if (grupo) grupo.relojOffset = (r.now || Date.now()) - Date.now(); pintar(); alCambiar?.(grupo);
       return grupo;
     } catch (e) { toast(e.message, true); return null; } finally { revision++; accionesPendientes--; }
@@ -66,7 +67,7 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
     consultando = true;
     const rev = revision;
     try {
-      const r = await api('/api/club/grupo?' + q() + '&desde=' + desde);
+      const r = await pedirClub('/api/club/grupo', { q: { ...Object.fromEntries(new URLSearchParams(q())), desde } });
       if (rev !== revision) return;
       const antes = grupo;
       grupo = r.grupo; if (grupo) grupo.relojOffset = (r.now || Date.now()) - Date.now();
@@ -212,12 +213,14 @@ export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
   })();
   // Cada consulta cuesta (funciones y base de datos): con amigos en la lobby, casi 1 por segundo; solo, cada 2,5 s.
   // Al tocar algo (gesto, jugar, invitar) se consulta enseguida igual.
+  // En vivo (Cloudflare) el club avisa cuando la lobby cambia: alcanza con un "sigo acá" cada 15 s.
   let proxima = 0;
   setInterval(() => {
     if (document.hidden || Date.now() < proxima) return;
-    proxima = Date.now() + ((grupo?.miembros?.length || 1) > 1 || abierto ? 900 : 2500);
+    proxima = Date.now() + (clubEnVivo() ? 15000 : (grupo?.miembros?.length || 1) > 1 || abierto ? 900 : 2500);
     refrescar();
   }, 250);
+  alCambiarLobby(() => { if (!document.hidden) refrescar(); });
   setInterval(() => { if (!document.hidden && abierto) cargarListas(); }, 8000);
 
   return {

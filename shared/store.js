@@ -188,12 +188,24 @@ const memoryStore = {
 };
 
 export function storeKind() {
+  if (proveedor) return 'cloudflare';
   if (REST_URL && REST_TOKEN) return 'upstash-http';
   if (REDIS_URL) return 'redis';
   return process.env.VERCEL ? 'ninguno' : 'memoria';
 }
 
+// En Cloudflare (worker/), cada pedido corre dentro de un Durable Object con su propio almacén:
+// el objeto registra acá cómo encontrarlo y getStore() lo usa en vez de Redis.
+let proveedor = null;
+export function usarAlmacen(fn) {
+  proveedor = fn;
+}
+
 export function getStore() {
+  if (proveedor) {
+    const s = proveedor();
+    if (s) return s;
+  }
   if (REST_URL && REST_TOKEN) return restStore;
   if (REDIS_URL) return redisStore;
   // En Vercel cada función puede correr en una máquina distinta: la memoria no sirve.

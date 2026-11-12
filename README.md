@@ -39,6 +39,26 @@ vercel.json            rutas del sitio
 dev-server.js          todo el sitio en tu compu (npm run dev)
 ```
 
+### Cloudflare (Workers + Durable Objects)
+
+El mismo código corre también en Cloudflare (`worker/`, `wrangler.json`), donde no hace falta Redis:
+
+- **Archivos** (páginas, modelos, imágenes): los sirve Cloudflare directo desde `dist/` (no cuentan como pedidos).
+- **Cada sala** es un Durable Object (`royale:ABCDE`, `truco:XYZ12`, `ajedrez:abc123`…) con la sala en memoria y su
+  propia base. Los jugadores se conectan por **WebSocket** y la sala les avisa cuando algo cambia; una alarma la
+  hace avanzar sola (bots, tiempos, tormenta). Si nadie hace nada, va más lento; las pestañas ocultas sueltan la conexión.
+- **El club** (cuentas, fichas, tienda, lobbys, muro, chats) es otro Durable Object; la lobby también va en vivo.
+- `worker/almacen.js` reemplaza a Redis con la misma interfaz: cada clave vive en el objeto que corresponde
+  (lo de una sala en su sala, el resto en el club), así los juegos no cambiaron.
+- En el navegador, `shared/public/conexion.js` abre el WebSocket solo si el servidor lo ofrece (header
+  `x-cadalado-ws`); si no (Vercel) o si se corta, se sigue consultando por HTTP como antes.
+
+```
+npm run cf:dev       todo el sitio en el motor local de Cloudflare (http://localhost:8788)
+npm run cf:deploy    publicar (necesita estar logueado: npx wrangler login)
+node scripts/migrar-upstash.mjs   pasar cuentas, fichas, chats… de Upstash al club (ver el archivo)
+```
+
 ### Cómo funciona el multijugador
 
 Vercel no tiene WebSockets: cada navegador consulta su partida cerca de una vez por segundo y manda

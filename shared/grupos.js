@@ -24,6 +24,8 @@ export function quien(u, body) {
 
 const claveDestino = (juego, code) => juego === 'ajedrez' ? `room:${code}` : juego === 'truco' ? `truco:${code.toUpperCase()}` : `sala:${juego}:${code.toUpperCase()}`;
 async function leer(id) { return id ? parse(await getStore().get(`grupo:${id}`)) : null; }
+// En Cloudflare, cuando una lobby cambia se les avisa al instante a sus miembros (por WebSocket).
+export const avisos = { alCambiar: null };
 async function guardar(g) {
   const s = getStore();
   g.miembros = g.miembros.filter((m) => Date.now() - m.visto < VIVO_MS);
@@ -43,6 +45,7 @@ async function guardar(g) {
     if (g.abierto) await s.hset('grupos:abiertos', g.id, JSON.stringify({ id: g.id, t: Date.now() }));
     else await s.hdel('grupos:abiertos', [g.id]);
   }
+  avisos.alCambiar?.(g);
   return g;
 }
 const vista = (g, yo) => g && {

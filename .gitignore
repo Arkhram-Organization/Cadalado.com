@@ -7,3 +7,4 @@ dist/
 
 worker/assets.generated.js
 .wrangler/
+.dev.vars

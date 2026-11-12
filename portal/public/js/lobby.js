@@ -7,7 +7,7 @@ import { lookParaDibujo, LOOK_BASE } from '/comun/look.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { GESTOS } from '/comun/gestos.js';
 import { frase } from '/comun/npcs.js';
-import { JUEGOS } from './datos.js';
+import { JUEGOS, salasAbiertas } from './datos.js';
 import { yo, esc, api, toast } from './comun.js';
 import { montarGrupo } from './grupo.js';
 import { lookDeNombre } from '/comun/avatar.js';
@@ -63,9 +63,11 @@ export async function montarLobby(raiz) {
   // ---------------- salas abiertas y cinta con el chat del club
   async function salas() {
     let total = 0;
+    const todas = await salasAbiertas();
     await Promise.all(JUEGOS.map(async (j) => {
       try {
-        const d = await (await fetch(j.lobby)).json();
+        const d = todas[j.id];
+        if (!d) return;
         const n = (d.salas || d.open || []).length; total += n;
         const el = entradas.querySelector(`[data-sala="${j.id}"]`);
         if (el) el.textContent = n ? `${n} ${n === 1 ? 'sala' : 'salas'}` : '';
@@ -81,7 +83,7 @@ export async function montarLobby(raiz) {
     $('[data-cinta]', raiz).innerHTML = `<div>${html}<i>✦</i>${html}<i>✦</i></div>`;
   }
   salas(); cinta();
-  setInterval(() => { if (!document.hidden) salas(); }, 20000);
+  setInterval(() => { if (!document.hidden) salas(); }, 30000);
 
   // ---------------- escenario 3D
   const canvas = $('[data-escena]', raiz);

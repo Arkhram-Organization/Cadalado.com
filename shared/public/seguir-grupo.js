@@ -1,6 +1,7 @@
 // Seguir a tu lobby desde cualquier página: si el líder entra a una sala (aunque la arme desde
 // adentro del juego), los demás de su lobby van solos a la misma sala. Lo carga cada juego y el portal.
 // /royale/sala/ABC → /royale/?sala=ABC: esa dirección siempre la sirve el hosting (el juego acomoda la URL solo)
+import { pedirClub, clubEnVivo, alCambiarLobby } from './club-vivo.js';
 const aIndice = (url) => String(url).replace(/^\/([a-z]{3,12})\/(sala|mesa)\/([A-Za-z0-9-]{3,24})\/?$/, '/$1/?$2=$3');
 const PID = 'cadalado.pid';
 const VISTO = 'cadalado.grupo.ir';
@@ -20,19 +21,17 @@ export function seguirGrupo() {
   let enGrupo = false, ultima = 0;
   async function mirar() {
     if (document.hidden) return;
-    if (Date.now() - ultima < (enGrupo ? 4000 : 20000)) return;
+    if (Date.now() - ultima < (clubEnVivo() ? 20000 : enGrupo ? 4000 : 20000)) return;
     ultima = Date.now();
     try {
-      const r = await fetch('/api/club/grupo?' + q, { cache: 'no-store' });
-      if (!r.ok) return;
-      const { grupo, now } = await r.json();
+      const { grupo, now } = await pedirClub('/api/club/grupo', { q: Object.fromEntries(new URLSearchParams(q)) });
       enGrupo = !!grupo && grupo.miembros.length >= 2;
       if (!enGrupo) return;
       const aca = enSala();
       if (grupo.soyLider) {
         // el líder entró a una sala: avisarle a la lobby
         if (aca && grupo.ir?.url !== aca) {
-          await fetch('/api/club/grupo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pid, nombre, accion: 'jugar', url: aca }) });
+          await pedirClub('/api/club/grupo', { b: { pid, nombre, accion: 'jugar', url: aca } });
         }
         return;
       }
@@ -60,4 +59,6 @@ export function seguirGrupo() {
   }
   mirar();
   setInterval(mirar, 1000);
+  // en vivo, el club avisa cuando la lobby cambia (por ejemplo, el líder armó una partida)
+  alCambiarLobby(() => { ultima = 0; mirar(); });
 }

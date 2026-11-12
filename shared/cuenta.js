@@ -68,7 +68,7 @@ export async function usuarioPorNombre(usuario) {
 
 // Frena intentos repetidos (por IP y minuto).
 async function limitar(request, accion, max = 15) {
-  const ip = (request.headers.get('x-forwarded-for') || 'local').split(',')[0].trim();
+  const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'local').split(',')[0].trim();
   const n = await getStore().incr(`rl:${accion}:${ip}:${Math.floor(Date.now() / 60_000)}`, 120);
   if (n > max) throw new ErrorCuenta('Demasiados intentos. Esperá un minuto.', 429);
 }

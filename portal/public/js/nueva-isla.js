@@ -1,4 +1,4 @@
-import {JUEGOS} from './datos.js';
+import {JUEGOS,salasAbiertas} from './datos.js';
 import {NPCS} from '/comun/npcs.js';
 import {montarElenco} from './elenco.js';
 import {montarMuro,montarSugerencias} from './muro.js';
@@ -14,8 +14,8 @@ document.querySelectorAll('[data-anim]').forEach(b=>b.onclick=()=>elenco.animar(
 // el casino de Dobro: la tarjeta grande y dorada que ocupa toda la fila
 const casinoGrande=j=>`<a class="game casino-oro" href="${j.url}"><div class="oro-luz"></div><div class="oro-chispas">${Array.from({length:14},(_,i)=>`<i style="--i:${i}"></i>`).join('')}</div><div class="game-art"><img src="${j.poster||j.captura}" alt="${j.nombre}" loading="lazy"><span class="tag oro">El juego de la casa</span></div><div class="game-body"><div class="oro-titulo"><small>Abierto toda la noche</small><h3>${j.nombre}</h3></div><p>${j.linea}</p><div class="oro-juegos">${j.datos[1][1].split(' · ').map(x=>`<span>${x}</span>`).join('')}</div><div class="game-meta"><span>${j.datos[2][1]}</span><span data-room="${j.id}"></span><span class="game-jugar">Jugar</span></div></div></a>`;
 $('#games').innerHTML=[...JUEGOS].sort((a,b)=>(b.id==='casino')-(a.id==='casino')).map(j=>j.id==='casino'?casinoGrande(j):`<a class="game" href="${j.url}"><div class="game-art"><img src="${j.captura}" alt="${j.nombre}" loading="lazy"><span class="tag ${j.id==='royale'?'lime':''}">${j.id==='royale'?'Nueva isla · 3D':j.id==='casino'?'Fichas de mentira':j.id==='carrera'?'Carrera 3D':'Multijugador'}</span></div><div class="game-body"><div class="game-top"><h3>${j.nombre}</h3></div><p>${j.linea}</p><div class="game-meta"><span>${j.datos[0][1]}</span><span data-room="${j.id}"></span><span class="game-jugar">Jugar</span></div></div></a>`).join('');
-async function cargar(){for(const j of JUEGOS){try{const r=await fetch(j.lobby);if(!r.ok)continue;const d=await r.json();const n=(d.salas||d.open||[]).length;const el=document.querySelector('[data-room="'+j.id+'"]');el.textContent=n?n+(n===1?' sala abierta':' salas abiertas'):'';el.classList.toggle('room-status',n>0);}catch{}}}
-cargar();setInterval(cargar,20000);
+async function cargar(){const todas=await salasAbiertas();for(const j of JUEGOS){try{const d=todas[j.id];if(!d)continue;const n=(d.salas||d.open||[]).length;const el=document.querySelector('[data-room="'+j.id+'"]');el.textContent=n?n+(n===1?' sala abierta':' salas abiertas'):'';el.classList.toggle('room-status',n>0);}catch{}}}
+cargar();setInterval(()=>{if(!document.hidden)cargar();},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)cargar();});
 // Muro de publicaciones (arriba) y sugerencias (abajo de todo).
 montarMuro($('[data-muro]'));

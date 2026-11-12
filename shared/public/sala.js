@@ -1,5 +1,6 @@
 // Cliente de salas de cadalado (memes, casino, carrera). Se sirve en /comun/sala.js.
-// Vercel no tiene WebSockets: la sala se consulta cada ~1 s y las acciones van por POST.
+// En Vercel la sala se consulta cada ~1 s y las acciones van por POST; en Cloudflare, por WebSocket (conexion.js).
+import { Conexion } from './conexion.js';
 // Entrar por /<juego>/?sala=CODIGO (o ?mesa=CODIGO) es lo mismo que /<juego>/sala/CODIGO.
 // La lobby manda a todos así porque esa dirección siempre la sirve el hosting; acá se acomoda la URL
 // antes de que el juego la lea.
@@ -99,6 +100,7 @@ export class Sala {
   }
 
   intervalo() {
+    if (this.vivo?.abierta) return 15000; // en vivo, solo una consulta de control cada tanto
     if (document.hidden) return 4000;
     return this.o.intervalo?.(this.estado) ?? 1000;
   }
@@ -135,20 +137,46 @@ export class Sala {
     const ping = Date.now() - (this.ultimoPing || 0) > 4000;
     if (ping) this.ultimoPing = Date.now();
     const q = { pid: pid(), cursor: this.cursor ?? '', h: this.h || '', ...(ping ? { ping: 1 } : {}) };
+    // con conexión en vivo, todo va por el WebSocket (si falla, se sigue por HTTP)
+    if (this.vivo?.abierta) {
+      try {
+        const { s, r } = await this.vivo.pedir(body ? 'POST' : 'GET', body ? { b: { ...q, ...body } } : { q });
+        return this.resultado(s, r || {}, n);
+      } catch {}
+    }
     const res = await fetch(body ? this.url : `${this.url}?${new URLSearchParams(q)}`, {
       method: body ? 'POST' : 'GET',
       cache: 'no-store',
       headers: body ? { 'content-type': 'application/json' } : undefined,
       body: body ? JSON.stringify({ ...q, ...body }) : undefined,
     });
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 404 && data.noExiste) {
+    if (res.headers.get('x-cadalado-ws') && !this.vivo && !this.cerrada) this.enVivo();
+    return this.resultado(res.status, await res.json().catch(() => ({})), n);
+  }
+
+  resultado(status, data, n) {
+    if (status === 404 && data.noExiste) {
       this.cerrar();
       this.o.onNoExiste?.();
       return null;
     }
-    if (res.status >= 500) throw new Error(data.error || 'Error del servidor');
+    if (status >= 500) throw new Error(data.error || 'Error del servidor');
     return Object.defineProperty(data, '_n', { value: n });
+  }
+
+  // En Cloudflare: la sala avisa sola cuando algo cambia (no hace falta preguntar cada segundo).
+  enVivo() {
+    this.vivo = new Conexion(`${this.url}/ws`, {
+      hola: () => ({ pid: pid(), cursor: this.cursor ?? '', h: this.h || '' }),
+      alCambiar: () => this.programar(this.intervalo()),
+    });
+    this.vivo.alAviso = (data, status) => {
+      if (this.resultado(status, data || {}) === null) return;
+      this.aplicar(data);
+      if (this.fallas) this.o.onConexion?.(true);
+      this.fallas = 0;
+    };
+    this.vivo.alPos = (pos) => this.alPos?.(pos);
   }
 
   async consultar() {
@@ -183,6 +211,7 @@ export class Sala {
 
   cerrar() {
     this.cerrada = true;
+    this.vivo?.cerrar();
     clearTimeout(this.timer);
     document.removeEventListener('visibilitychange', this.alVolver);
   }

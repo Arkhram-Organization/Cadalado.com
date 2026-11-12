@@ -125,3 +125,21 @@ export const NOVEDADES = [
   { etiqueta: 'Nuevo', titulo: 'Make it Meme', texto: '100 plantillas, textos donde quieras y votación anónima.', juego: 'memes' },
   { etiqueta: 'Club', titulo: 'Tu cuenta', texto: 'Historial de todos los juegos, amigos y chat. Desafiá desde el perfil.', enlace: '/club' },
 ];
+
+// Salas abiertas de todos los juegos: una sola consulta, compartida por toda la página (y guardada 15 s).
+// Si el servidor es viejo y no la tiene, se pide juego por juego como antes.
+let salasCache = null;
+export function salasAbiertas() {
+  if (salasCache && Date.now() - salasCache.t < 15000) return salasCache.p;
+  const p = fetch('/api/club/salas')
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+    .catch(async () => {
+      const out = {};
+      await Promise.all(JUEGOS.filter((j) => j.lobby).map(async (j) => {
+        try { out[j.id] = await (await fetch(j.lobby, { cache: 'no-store' })).json(); } catch {}
+      }));
+      return out;
+    });
+  salasCache = { t: Date.now(), p };
+  return p;
+}

@@ -139,6 +139,15 @@ export class Red {
   async relevo() {
     const faltan = this.sinConexion();
     if (!faltan.length || !this.ultimo || this.ocupado) return;
+    // con la sala en vivo (Cloudflare), la posición va por el WebSocket y la del resto llega sola
+    const vivo = this.sala?.vivo;
+    if (vivo?.abierta) {
+      this.sala.alPos = (pos) => {
+        for (const id of this.sinConexion()) if (pos?.[id]) this.alRecibir(id, decodificar(pos[id]));
+      };
+      vivo.enviarPos(this.ultimo);
+      return;
+    }
     this.ocupado = true;
     try {
       await fetch('/api/carrera/pos', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pid: pid(), code: this.code, s: this.ultimo }) });

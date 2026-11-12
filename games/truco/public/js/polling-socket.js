@@ -1,4 +1,6 @@
-// Reemplazo de WebSocket para Vercel (que no tiene WebSockets).
+import { Conexion } from '/comun/conexion.js';
+// Reemplazo de WebSocket para Vercel (que no tiene WebSockets). En Cloudflare, por debajo usa un WebSocket
+// de verdad (conexion.js): la sala avisa sola y se deja de consultar cada segundo.
 // Tiene la misma forma que un WebSocket (onopen, onmessage, onclose, send, close, readyState),
 // así main.js casi no cambia: por dentro consulta la sala cada ~1 segundo y manda las acciones por POST.
 // El servidor devuelve los mismos mensajes que mandaba el WebSocket ('state', 'chat', 'gaze', 'sena'…).
@@ -20,7 +22,16 @@ export class PollingSocket {
   }
 
   interval() {
+    if (this.vivo?.abierta) return 15000; // en vivo: solo una consulta de control cada tanto
     return document.hidden ? 4000 : 900;
+  }
+
+  enVivo() {
+    this.vivo = new Conexion(`${this.base}/ws`, {
+      hola: () => ({ pid: this.pid || '', cursor: this.cursor ?? '', h: this.h || '' }),
+      alCambiar: () => this.schedule(this.interval()),
+    });
+    this.vivo.alAviso = (data) => data && this.dispatch(data);
   }
 
   schedule(ms) {
@@ -44,12 +55,20 @@ export class PollingSocket {
       qs.set('ping', '1');
       this.lastPing = Date.now();
     }
+    if (this.vivo?.abierta) {
+      try {
+        const { s, r } = await this.vivo.pedir(method, method === 'GET' ? { q: Object.fromEntries(qs) } : { b: body });
+        if (s >= 500) throw new Error(r?.error || 'Error del servidor');
+        return r || { msgs: [] };
+      } catch {}
+    }
     const res = await fetch(method === 'GET' ? `${this.base}/poll?${qs}` : `${this.base}/poll`, {
       method,
       cache: 'no-store',
       headers: body ? { 'content-type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
+    if (res.headers.get('x-cadalado-ws') && !this.vivo && this.readyState === 1) this.enVivo();
     const data = await res.json().catch(() => ({ msgs: [] }));
     if (res.status >= 500) throw new Error(data.error || 'Error del servidor');
     return data;
@@ -59,7 +78,7 @@ export class PollingSocket {
     if (this.readyState !== 1) return;
     try {
       const data = await this.request('GET');
-      if (!this.pending) this.dispatch(data);
+      if (!this.pending || this.vivo?.abierta) this.dispatch(data);
       this.fails = 0;
     } catch {
       if (++this.fails >= 4) return this.fail();
@@ -93,6 +112,7 @@ export class PollingSocket {
 
   close() {
     this.readyState = 3;
+    this.vivo?.cerrar();
     clearTimeout(this.timer);
     document.removeEventListener('visibilitychange', this.onVisible);
   }

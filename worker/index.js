@@ -1,22 +1,49 @@
-import { handle as royale } from '../games/royale/api.js';
-import { handle as carrera } from '../games/carrera/api.js';
-import { handle as casino } from '../games/casino/api.js';
-import { handle as memes } from '../games/memes/api.js';
-import { handle as haxball } from '../games/haxball/api.js';
-import { handle as truco } from '../games/truco/api.js';
-import { handle as ajedrez } from '../games/chessort/api.js';
-import { handle as club } from '../shared/club-api.js';
-import assets from './assets.generated.js';
-const api=[['/api/royale/',royale],['/api/carrera/',carrera],['/api/casino/',casino],['/api/memes/',memes],['/api/haxball/',haxball],['/api/truco/',truco],['/ajedrez/api/',ajedrez],['/api/club/',club]];
-export default { async fetch(request,env) {
-  const url=new URL(request.url),path=url.pathname;
-  const match=api.find(([prefix])=>path.startsWith(prefix));
-  if(match) {try{return await match[1](request);}catch(e){console.error(e);return Response.json({error:'No se pudo completar la operación. Probá de nuevo.'},{status:500});}}
-  let file=path==='/'?'/index.html':path;
-  if(/^\/(royale|carrera|casino|memes|haxball|truco|ajedrez)(\/.*)?$/.test(path)&&!path.split('/').pop().includes('.')) file='/'+path.split('/')[1]+'/index.html';
-  if(!assets[file] && assets[file+'.html'])file+='.html';
-  const a=assets[file]||assets['/404.html'];
-  if(!a)return new Response('No encontrado',{status:404});
-  const data=Uint8Array.from(atob(a[1]),c=>c.charCodeAt(0));
-  return new Response(data,{status:assets[file]?200:404,headers:{'content-type':a[0],'cache-control':file.endsWith('.html')?'no-cache':'public, max-age=300','x-content-type-options':'nosniff'}});
-}};
+// cadalado en Cloudflare: el Worker recibe los pedidos, sirve los archivos del sitio (páginas, modelos,
+// imágenes: no pasan por acá salvo las rutas de abajo) y manda cada pedido de /api al Durable Object
+// que corresponde: el de la sala (si es de una sala) o el del club (todo lo demás).
+export { Objeto } from './objeto.js';
+
+const SALA = /^\/api\/(memes|casino|carrera|royale|haxball)\/salas\/([A-Za-z0-9-]{3,24})(?:\/|$)/;
+const TRUCO = /^\/api\/truco\/rooms\/([A-Za-z0-9]{5})(?:\/|$)/;
+const AJEDREZ = /^\/ajedrez\/api\/game\/([a-z0-9]{4,16})(?:\/|$)/;
+const POS = /^\/api\/(royale|haxball|carrera)\/pos$/;
+// páginas de sala: se sirve el juego y él acomoda la dirección
+const PAGINA_SALA = /^\/(royale|carrera|casino|memes|haxball|truco)\/(?:sala|mesa)\/[A-Za-z0-9-]+\/?$|^\/(ajedrez)\/(?:game\/[a-z0-9]+|local)\/?$/;
+const REDIRIGIR = { '/equipo': '/', '/creadores': '/' };
+
+async function objetoPara(request, path) {
+  let m;
+  if ((m = SALA.exec(path))) return `${m[1]}:${m[2].toUpperCase()}`;
+  if ((m = TRUCO.exec(path))) return `truco:${m[1].toUpperCase()}`;
+  if ((m = AJEDREZ.exec(path))) return `ajedrez:${m[1]}`;
+  if ((m = POS.exec(path))) {
+    // el plan B de posiciones va a la sala (el código viene en la consulta o en el cuerpo)
+    let code = new URL(request.url).searchParams.get('code');
+    if (!code && request.method === 'POST') code = (await request.clone().json().catch(() => ({}))).code;
+    if (code && /^[A-Za-z0-9-]{3,24}$/.test(code)) return `${m[1]}:${String(code).toUpperCase()}`;
+  }
+  return 'club';
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    if (path.startsWith('/api/') || path.startsWith('/ajedrez/api/')) {
+      const nombre = await objetoPara(request, path);
+      const stub = env.OBJETOS.get(env.OBJETOS.idFromName(nombre));
+      const pedido = new Request(request);
+      pedido.headers.set('x-objeto', nombre);
+      try {
+        return await stub.fetch(pedido);
+      } catch (e) {
+        console.error(e);
+        return Response.json({ error: 'No se pudo completar la operación. Probá de nuevo.' }, { status: 503 });
+      }
+    }
+    if (REDIRIGIR[path]) return Response.redirect(new URL(REDIRIGIR[path], url), 302);
+    const m = PAGINA_SALA.exec(path);
+    if (m) return env.ASSETS.fetch(new Request(new URL(`/${m[1] || m[2]}/`, url), request));
+    return env.ASSETS.fetch(request);
+  },
+};
