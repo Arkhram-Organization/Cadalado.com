@@ -9,7 +9,7 @@ import { dicho } from '../../../shared/public/dichos.js';
 
 const FIN_MS = 25_000;
 const MODOS = ['1v1', '2v2'];
-const ESCENARIOS = ['templo', 'azotea', 'volcan'];
+const ESCENARIOS = ['barrio', 'callejon', 'avenida', 'templo', 'azotea', 'volcan'];
 const ROSTER = NPCS.filter((n) => n.look?.modelo).map((n) => n.id);
 const tamEquipo = (r) => (r.modo === '2v2' ? 2 : 1);
 const luchadorValido = (id) => (ROSTER.includes(id) ? id : null);

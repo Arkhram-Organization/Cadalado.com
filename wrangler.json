@@ -16,6 +16,8 @@
       "/api/*",
       "/ajedrez/api/*",
       "/*/sala/*",
+      "/pelea/bots",
+      "/pelea/local",
       "/casino/mesa/*",
       "/ajedrez/game/*",
       "/ajedrez/local",

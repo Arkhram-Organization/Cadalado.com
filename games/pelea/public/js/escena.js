@@ -2,7 +2,8 @@
 // armas en la mano, poderes, chispas y los remates. Recibe una "vista" (ver combate.js) en cada cuadro.
 import * as THREE from '/comun/vendor/three.module.min.js';
 import { crearPersona } from '/comun/persona3d.js';
-import { POR_ID } from '/comun/npcs.js';
+import { POR_ID, rngNpc } from '/comun/npcs.js';
+import { dicho } from '/comun/dichos.js';
 import { ELEMENTOS, ATAQUES } from './motor.js';
 import { crearArma, crearPoder, crearParticulas, estallido, halo } from './objetos3d.js';
 import { construirEscenario } from './escenarios.js';
@@ -51,11 +52,12 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
   clave.shadow.mapSize.set(2048, 1024);
   Object.assign(clave.shadow.camera, { left: -12, right: 12, top: 6, bottom: -2, near: 1, far: 30 });
   escena.add(clave, clave.target);
+  if (esc.exposicion) renderer.toneMappingExposure = esc.exposicion;
   const borde = new THREE.DirectionalLight(esc.luzBorde, 1.6); borde.position.set(3, 4, -6); escena.add(borde);
 
   const luch = new Map(); // id → datos del dibujo
   const proy = new Map();
-  let ultimoEv = 0, reloj = 0, sacudida = 0, destello = 0, camX = 0, camDist = 10, camY = 1.9, remateFx = null;
+  let introT = 0, ultimoEv = 0, reloj = 0, sacudida = 0, destello = 0, camX = 0, camDist = 10, camY = 1.9, remateFx = null;
   const flash = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ color: '#fff', transparent: true, opacity: 0, depthTest: false, depthWrite: false }));
   flash.renderOrder = 999; flash.frustumCulled = false;
   camara.add(flash); flash.position.z = -.2; escena.add(camara);
@@ -67,7 +69,8 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
     lista.forEach((l, i) => {
       const base = POR_ID[l.npc]?.look || {};
       const look = { ...base, travesuras: {}, alBailar: null, alGesto: null, contagia: false };
-      const p = crearPersona(THREE, look, { sombras: true, nombre: carteles ? l.nombre : '', colorNombre: COLOR_EQ[l.eq], tamCartel: .42 });
+      const etiqueta = carteles && l.jugador && l.jugador !== 'bot' ? (l.jugador.length > 10 ? l.jugador.slice(0, 9) + '…' : l.jugador) : '';
+      const p = crearPersona(THREE, look, { sombras: true, nombre: etiqueta, colorNombre: COLOR_EQ[l.eq], tamCartel: .34, tamGlobo: .42 });
       p.grupo.position.set(l.eq ? 3 : -3, 0, 0);
       escena.add(p.grupo);
       const extra = new THREE.Group(); escena.add(extra);
@@ -77,7 +80,10 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
       const hielo = new THREE.Mesh(new THREE.BoxGeometry(1, 2.05, .9), new THREE.MeshStandardMaterial({ color: '#bfefff', transparent: true, opacity: .5, roughness: .05, metalness: .1, emissive: '#2a7fb0', emissiveIntensity: .4 }));
       hielo.visible = false; hielo.position.y = 1.02; extra.add(hielo);
       const aura = halo('#fff', 2.4, 0); aura.position.y = 1; extra.add(aura);
-      const L = { l, p, extra, escudo, hielo, aura, arma: null, armaTipo: '', armaElem: '', clave: '', atk: null, atkT: 0, t: 0, est: '', rotY: l.eq ? Math.PI / 2 : -Math.PI / 2, materiales: [], golpeFlash: 0, z: 0, listo: false, emitir: 0 };
+      // aro del color del equipo en el piso (se ve quién es quién en el 2v2)
+      const aro = new THREE.Mesh(new THREE.RingGeometry(.42, .52, 32), new THREE.MeshBasicMaterial({ color: COLOR_EQ[l.eq], transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false }));
+      aro.rotation.x = -Math.PI / 2; aro.position.y = .02; extra.add(aro);
+      const L = { l, p, extra, escudo, hielo, aura, aro, frasesT: 2 + Math.random() * 3, decirT: 0, arma: null, armaTipo: '', armaElem: '', clave: '', atk: null, atkT: 0, t: 0, est: '', rotY: l.eq ? Math.PI / 2 : -Math.PI / 2, materiales: [], golpeFlash: 0, z: 0, listo: false, emitir: 0 };
       L.z = (lista.filter((o, k) => k < i && o.eq === l.eq).length) * -.55;
       p.listo?.then(() => {
         // materiales propios (los del modelo son compartidos): así se pueden teñir al pegarle
@@ -155,8 +161,27 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
     p.animar('clip', f.est === 'congelado' ? 0 : dt);
   }
 
+  // ---------------- frases de cada personaje (las mismas en todas las pantallas: salen de una semilla)
+  let hablaHasta = 0;
+  function hablar(id, situacion, semilla, prob = 1, todos = false) {
+    const L = luch.get(id);
+    if (!L || !L.listo || reloj < L.decirT || (!todos && reloj < hablaHasta)) return;
+    const r = rngNpc((semilla * 2654435761 + id.length * 97 + id.charCodeAt(0)) >>> 0);
+    if (r() > prob) return;
+    const texto = dicho(L.l.npc, situacion, L.l.jugador && L.l.jugador !== 'bot' ? L.l.jugador : 'alguien', r);
+    if (!texto) return;
+    L.p.decir?.(texto, 3.2);
+    L.decirT = reloj + 6; hablaHasta = reloj + 3.4; // de a uno, así los globos no se pisan
+  }
+
   // ---------------- efectos de los avisos del motor
   function alEvento(ev, vista) {
+    if (ev.k === 'golpe' && ev.fuerte) { esc.vitorear?.(.6); hablar(ev.a, 'gana', ev.n, .35); hablar(ev.b, 'pierde', ev.n + 1, .2); }
+    if (ev.k === 'cae') hablar(ev.a, 'pierde', ev.n, .45);
+    if (ev.k === 'ko') { esc.vitorear?.(1.2); }
+    if (ev.k === 'remate') esc.vitorear?.(1.5);
+    if (ev.k === 'fin' && ev.ganador != null) for (const f of vista.luch) hablar(f.id, f.eq === ev.ganador ? 'gana' : 'pierde', ev.n + f.id.length, f.eq === ev.ganador ? 1 : .6, true);
+    if (ev.k === 'poder') hablar(ev.a, 'turno', ev.n, .12);
     const quien = (id) => vista.luch.find((f) => f.id === id);
     if (ev.k === 'golpe' || ev.k === 'bloqueo') {
       const E = ev.elem ? ELEMENTOS[ev.elem] : null;
@@ -307,6 +332,9 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
         L.rotY += d * Math.min(1, dt * 14); g.rotation.y = L.rotY;
       }
       animarLuchador(L, f, dt, vista);
+      // de vez en cuando, en plena pelea, tiran su frase de siempre
+      if (vista.fase === 'intro' && !L.saludo && L.listo && reloj - introT > .4 + L.l.eq * .9) { L.saludo = true; hablar(f.id, 'saludo', vista.ronda * 31 + L.l.eq, L.l.eq === 0 || luch.size <= 2 ? 1 : .5); }
+      if (vista.fase === 'pelea' && !f.ko) { L.frasesT -= dt; if (L.frasesT <= 0) { L.frasesT = 7 + ((f.id.charCodeAt(0) * 13 + Math.floor(vista.tiempo)) % 9); hablar(f.id, 'turno', Math.floor(vista.tiempo) * 7 + f.id.length, .45); } }
       // arma: aparece al usarla y se guarda después
       const usaArma = f.atk && f.atk.startsWith('arma_');
       if (L.arma) {
@@ -385,7 +413,7 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
     for (const f of fs) { min = Math.min(min, f.x); max = Math.max(max, f.x); }
     if (!fs.length) { min = -2; max = 2; }
     let cx = (min + max) / 2, dist = Math.max(7.2, Math.min(13.5, 5.2 + (max - min) * .85)), cy = 1.75;
-    if (vista.fase === 'intro') { dist += 2.5 - Math.min(2.5, (vista.anuncio ? (performance.now() % 1) : 0)); }
+    if (vista.fase === 'intro') { const k = Math.min(1, (reloj - introT) / 2.4); const e = 1 - (1 - k) ** 3; dist += (1 - e) * 7; cy += (1 - e) * 2.6; cx += (1 - e) * 4; }
     if (vista.remate) {
       const v = vista.luch.find((f) => f.id === vista.remate.a);
       if (v) { cx = v.x * .7 + cx * .3; dist = vista.remate.elem === 'tierra' ? 9 : vista.remate.elem === 'viento' ? 11 : 5.6; cy = vista.remate.elem === 'viento' ? 3 : 1.5; }
@@ -417,12 +445,13 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
   return {
     ponerLuchadores, actualizar, escena, camara, renderer,
     reiniciarRonda() {
-      ultimoEv = 0; remateFx = null;
+      ultimoEv = 0; remateFx = null; introT = reloj;
       for (const L of luch.values()) {
+        L.saludo = false; L.decirT = 0;
         L.p.grupo.visible = true; L.p.grupo.scale.set(1, 1, 1); L.p.grupo.rotation.set(0, L.rotY, 0); L.hielo.visible = false; L.clave = ''; L.est = ''; L.atk = null;
         for (const { m, color, emissive } of L.materiales) { m.color.copy(color); if (emissive) m.emissive.copy(emissive); }
         L.arma?.scale.setScalar(0);
-        for (const c of [...L.extra.children]) if (![L.escudo, L.hielo, L.aura].includes(c)) c.removeFromParent();
+        for (const c of [...L.extra.children]) if (![L.escudo, L.hielo, L.aura, L.aro].includes(c)) c.removeFromParent();
       }
       for (const P of proy.values()) P.grupo.removeFromParent();
       proy.clear();

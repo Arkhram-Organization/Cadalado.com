@@ -22,6 +22,7 @@ function nuevaRonda(c) {
   c.ronda += 1;
   c.poderes = sortearPoderes(c.luchadores, c.r);
   const nec = necesarias(c);
+  c.evVisto = 0; c.parada = 0; c.lento = 0;
   c.m = nuevoMundo(c.luchadores, c.poderes, { tiempo: c.tiempo || 9999, decisivo: [c.victorias[0] + 1 >= nec, c.victorias[1] + 1 >= nec] });
   c.fase = 'intro'; c.t = 0;
   const ultima = c.victorias[0] === nec - 1 && c.victorias[1] === nec - 1 && nec > 1;
@@ -42,7 +43,18 @@ export function pasoCombate(c, entradas) {
     if (c.t >= INTRO) { c.fase = 'pelea'; m.fase = 'pelea'; c.t = 0; }
     return;
   }
+  // impacto: el mundo se frena un instante (se siente el golpe); K.O.: cámara lenta
+  if (c.parada > 0) { c.parada -= PASO; return; }
+  if (c.lento > 0) { c.lento -= PASO; c.alterna = !c.alterna; if (c.alterna) return; }
   paso(m, c.fase === 'pelea' || c.fase === 'remate' ? entradas : new Map());
+  for (const e of m.ev) {
+    if (e.n <= (c.evVisto || 0)) continue;
+    c.evVisto = e.n;
+    if (e.k === 'golpe' && e.fuerte) c.parada = Math.max(c.parada || 0, .075);
+    else if (e.k === 'golpe') c.parada = Math.max(c.parada || 0, .03);
+    if (e.k === 'ko' && m.luch.filter((f) => !f.ko).every((f) => f.eq === m.luch.find((x) => x.id === e.a)?.eq ? false : true)) { c.parada = .2; c.lento = 1.6; }
+    if (e.k === 'remate') c.lento = 1;
+  }
   if (c.fase === 'pelea' && m.fase === 'remate') {
     c.fase = 'remate'; c.t = 0;
     anunciar(c, '¡REMATALO!', 'Súper (O) para el remate', 'rematalo');
@@ -82,7 +94,7 @@ export function codificar(c) {
   return 'M' + JSON.stringify([
     FASES.indexOf(c.fase), c.ronda, c.victorias, r2(m.tiempo), c.ganador,
     c.anuncio ? [c.anuncio.n, c.anuncio.texto, c.anuncio.sub, c.anuncio.tipo] : 0,
-    m.luch.map((f) => [f.id, r2(f.x), r2(f.y), r2(f.vida), Math.round(f.ene), ESTADOS.indexOf(f.est), f.atk ? LISTA_ATAQUES.indexOf(f.atk) : -1, r2(f.atk ? f.atkT : f.t), f.mira, LISTA_ELEMENTOS.indexOf(f.elem), LISTA_ARMAS.indexOf(f.arma), (f.quema > 0 ? 1 : 0) | (f.veneno > 0 ? 2 : 0) | (f.ko ? 4 : 0) | (f.invul > 0 ? 8 : 0), r2(f.vx), r2(f.vy)]),
+    m.luch.map((f) => [f.id, r2(f.x), r2(f.y), r2(f.vida), Math.round(f.ene), ESTADOS.indexOf(f.est), f.atk ? LISTA_ATAQUES.indexOf(f.atk) : -1, r2(f.atk ? f.atkT : f.t), f.mira, LISTA_ELEMENTOS.indexOf(f.elem), LISTA_ARMAS.indexOf(f.arma), (f.quema > 0 ? 1 : 0) | (f.veneno > 0 ? 2 : 0) | (f.ko ? 4 : 0) | (f.invul > 0 ? 8 : 0), r2(f.vx), r2(f.vy), f.combo]),
     m.proy.map((p) => [p.id, LISTA_ELEMENTOS.indexOf(p.elem), r2(p.x), r2(p.y), p.grande ? 1 : 0, p.vx > 0 ? 1 : -1, r2(p.vx), r2(p.vy)]),
     m.ev.slice(-10).map((e) => ({ ...e, t: undefined })),
     m.remate ? [m.remate.de, m.remate.a, m.remate.elem, r2(m.remate.t)] : 0,
@@ -96,7 +108,7 @@ export function decodificar(s) {
     return {
       fase: FASES[d[0]], ronda: d[1], victorias: d[2], tiempo: d[3], ganador: d[4],
       anuncio: d[5] ? { n: d[5][0], texto: d[5][1], sub: d[5][2], tipo: d[5][3] } : null,
-      luch: d[6].map((f) => ({ id: f[0], x: f[1], y: f[2], vida: f[3], ene: f[4], est: ESTADOS[f[5]], atk: f[6] >= 0 ? LISTA_ATAQUES[f[6]] : null, atkT: f[7], t: f[7], mira: f[8], elem: LISTA_ELEMENTOS[f[9]], arma: LISTA_ARMAS[f[10]], quema: f[11] & 1, veneno: f[11] & 2, ko: !!(f[11] & 4), invul: f[11] & 8, vx: f[12], vy: f[13] })),
+      luch: d[6].map((f) => ({ id: f[0], x: f[1], y: f[2], vida: f[3], ene: f[4], est: ESTADOS[f[5]], atk: f[6] >= 0 ? LISTA_ATAQUES[f[6]] : null, atkT: f[7], t: f[7], mira: f[8], elem: LISTA_ELEMENTOS[f[9]], arma: LISTA_ARMAS[f[10]], quema: f[11] & 1, veneno: f[11] & 2, ko: !!(f[11] & 4), invul: f[11] & 8, vx: f[12], vy: f[13], combo: f[14] || 0 })),
       proy: d[7].map((p) => ({ id: p[0], elem: LISTA_ELEMENTOS[p[1]], x: p[2], y: p[3], grande: !!p[4], dir: p[5], vx: p[6], vy: p[7] })),
       ev: d[8] || [],
       remate: d[9] ? { de: d[9][0], a: d[9][1], elem: d[9][2], t: d[9][3] } : null,

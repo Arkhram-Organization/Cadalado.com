@@ -16,6 +16,14 @@ const COLOR_JUEGO = '#ff4a3a';
 const cuenta = await marco({ juego: 'Piña Final', color: COLOR_JUEGO, volver: '/pelea/' });
 const ROSTER = NPCS.filter((n) => n.look?.modelo).map((n) => n.id);
 const foto = (id) => `/img/tienda/${id}.webp`;
+// Los luchadores salen solos de los personajes del club que tienen modelo 3D: si se suma uno nuevo, aparece acá.
+// Si todavía no tiene foto en la tienda, se dibuja su cara con el modelo.
+addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.dataset.npc || img.dataset.cara) return;
+  img.dataset.cara = '1';
+  import('/comun/caras3d.js').then(({ caraRedonda }) => caraRedonda({ ...POR_ID[img.dataset.npc]?.look }, 256)).then((c) => { img.src = c.toDataURL(); img.style.objectFit = 'contain'; }).catch(() => {});
+}, true);
 const nombreNpc = (id) => POR_ID[id]?.nombre || id;
 const azarDe = (a) => a[Math.floor(Math.random() * a.length)];
 const leer = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
@@ -189,12 +197,12 @@ function seleccion({ dos }) {
   if (!ROSTER.includes(p1)) p1 = null;
   let hover1 = p1 || ROSTER[0], hover2 = ROSTER[1];
   const pintar = () => {
-    const lado = (n, id, etiqueta) => `<div class="pf-lado p${n}"><img src="${foto(id)}" alt=""><b>${esc(nombreNpc(id))}</b><small>${etiqueta}</small></div>`;
+    const lado = (n, id, etiqueta) => `<div class="pf-lado p${n}"><img src="${foto(id)}" data-npc="${id}" alt=""><b>${esc(nombreNpc(id))}</b><small>${etiqueta}</small></div>`;
     app.innerHTML = `<div class="pf-sel">
       <h2>Elegí tu luchador</h2>
       ${lado(1, p1 || hover1, dos ? 'Jugador 1' : 'Vos')}
       <div class="pf-medio">
-        <div class="pf-grilla">${ROSTER.map((id) => `<button class="pf-cara ${(p1 || hover1) === id ? 'p1' : ''} ${dos && (p2 || (turno === 2 ? hover2 : null)) === id ? 'p2' : ''}" data-id="${id}"><img src="${foto(id)}" alt="" loading="lazy"><span>${esc(nombreNpc(id))}</span></button>`).join('')}
+        <div class="pf-grilla">${ROSTER.map((id) => `<button class="pf-cara ${(p1 || hover1) === id ? 'p1' : ''} ${dos && (p2 || (turno === 2 ? hover2 : null)) === id ? 'p2' : ''}" data-id="${id}"><img src="${foto(id)}" data-npc="${id}" alt="" loading="lazy"><span>${esc(nombreNpc(id))}</span></button>`).join('')}
           <button class="pf-cara azar" data-id="azar" title="Al azar">?</button></div>
         <div class="pf-opciones">
           ${seg('Modo', 'modo', conf.modo, [['1v1', '1 vs 1'], ['2v2', '2 vs 2']])}
@@ -206,7 +214,7 @@ function seleccion({ dos }) {
         <p class="pf-ayuda">${dos ? (turno === 1 && !p1 ? 'Elige el <b style="color:var(--rojo-eq)">Jugador 1</b>' : 'Elige el <b style="color:var(--azul-eq)">Jugador 2</b>') : 'Clic o Enter para elegir. Tu rival y los demás salen al azar.'}${conf.modo === '2v2' ? ' En 2v2, cada uno tiene un bot de compañero.' : ''}</p>
         <div class="pf-listo"><a class="btn btn-borde" href="/pelea/" data-ir>Volver</a>${p1 && (!dos || p2) ? '<button class="btn btn-lima btn-grande" data-pelear>¡A pelear!</button>' : ''}</div>
       </div>
-      ${dos ? lado(2, p2 || hover2, 'Jugador 2') : `<div class="pf-lado p2"><img src="${foto(hover2)}" alt="" style="filter:brightness(.25)"><b>???</b><small>Tu rival sale al azar</small></div>`}
+      ${dos ? lado(2, p2 || hover2, 'Jugador 2') : `<div class="pf-lado p2"><img src="${foto(hover2)}" data-npc="${hover2}" alt="" style="filter:brightness(.25)"><b>???</b><small>Tu rival sale al azar</small></div>`}
     </div>`;
     app.querySelectorAll('.pf-cara').forEach((b) => {
       b.onmouseenter = () => { if (b.dataset.id === 'azar') return; if (turno === 1 && !p1) hover1 = b.dataset.id; else if (dos) hover2 = b.dataset.id; actualizarLados(); };
@@ -272,6 +280,7 @@ function htmlPelea() {
     <button class="pf-boton-menu" data-menu>Pausa · Esc</button>
     <div class="pf-poderes" data-poderes></div>
     <div class="pf-anuncio" data-anuncio></div>
+    <div class="pf-combo izq" data-combo="0"></div><div class="pf-combo der" data-combo="1"></div>
     <div class="pf-pie" data-pie></div>
     <div class="pf-cargando" data-cargando>Preparando el ring…</div>
     <div class="pf-capa hidden" data-capa></div>
@@ -282,7 +291,7 @@ function crearHud(raiz, luch) {
   for (const eq of [0, 1]) {
     raiz.querySelector(`[data-eq="${eq}"]`).innerHTML = luch.filter((l) => l.eq === eq).map((l) => `
       <div class="pf-barra" data-l="${esc(l.id)}" style="--c:${COLOR_EQ[eq]}">
-        <div class="pf-foto"><img src="${foto(l.npc)}" alt=""></div>
+        <div class="pf-foto"><img src="${foto(l.npc)}" data-npc="${l.npc}" alt=""></div>
         <div class="pf-info"><div class="pf-nombre">${esc(l.nombre)}${l.jugador ? ` <small style="color:${COLOR_EQ[eq]}">${esc(l.jugador)}</small>` : ''}<small data-elem></small></div>
           <div class="pf-vida"><i class="rastro" style="width:100%"></i><i class="resto" style="width:100%"></i></div>
           <div class="pf-ene"><i></i></div></div>
@@ -331,6 +340,13 @@ function crearHud(raiz, luch) {
     }
     const dura = { ronda: 1700, peleen: 1000, ko: 1500, rematalo: 2800, remate: 3500, gana: 2200, campeon: 999999 }[a?.tipo] ?? 2000;
     caja.classList.toggle('sale', !a || performance.now() - anuncioT > dura);
+    // contador de combo: golpes seguidos que le está metiendo cada equipo al otro
+    for (const eq of [0, 1]) {
+      const n = Math.max(0, ...v.luch.filter((f) => f.eq !== eq).map((f) => f.combo || 0));
+      const el = raiz.querySelector(`[data-combo="${eq}"]`);
+      if (n >= 3) { if (el.dataset.n !== String(n)) { el.dataset.n = n; el.innerHTML = `<b>${n}</b> golpes`; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop', 'on'); } }
+      else if (el.classList.contains('on')) { el.classList.remove('on'); el.dataset.n = ''; }
+    }
     // poderes de cada lado (abajo)
     const pod = raiz.querySelector('[data-poderes]');
     const html = [0, 1].map((eq) => `<div>${v.luch.filter((f) => f.eq === eq).map((f) => { const E = ELEMENTOS[f.elem]; return `<span style="--e:${E.color}"><em>${E.emoji} ${E.nombre}</em> · ${ARMAS[f.arma].nombre}</span>`; }).join('')}</div>`).join('');
@@ -511,7 +527,7 @@ function abrirSala(code) {
     const host = est.host === est.yo;
     const tam = est.modo === '2v2' ? 2 : 1;
     const de = (eq) => est.jugadores.filter((j) => j.online && est.equipos[j.id] === eq);
-    const fila = (j) => `<li><img src="${foto(est.luchador[j.id] || ROSTER[0])}" alt="">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}${j.id === est.host ? ' ★' : ''}<em>${esc(nombreNpc(est.luchador[j.id]))}</em></li>`;
+    const fila = (j) => `<li><img src="${foto(est.luchador[j.id] || ROSTER[0])}" data-npc="${est.luchador[j.id] || ROSTER[0]}" alt="">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}${j.id === est.host ? ' ★' : ''}<em>${esc(nombreNpc(est.luchador[j.id]))}</em></li>`;
     const bots = (eq) => Math.max(0, tam - de(eq).length);
     const mio = est.luchador[est.yo];
     const fin = est.fase === 'fin';
@@ -526,7 +542,7 @@ function abrirSala(code) {
       </div>
       <p style="margin:0">Mirando: ${est.jugadores.filter((j) => j.online && est.equipos[j.id] === 'afuera').map((j) => esc(j.nombre)).join(', ') || 'nadie'} ${est.equipos[est.yo] !== 'afuera' ? '<button class="btn btn-chico btn-borde" data-eq="afuera">Solo mirar</button>' : ''}</p>
       <h3 style="margin:14px 0 0;font:900 18px 'Barlow Condensed',sans-serif;text-transform:uppercase">Tu luchador: <span style="color:var(--pf)">${esc(nombreNpc(mio))}</span></h3>
-      <div class="pf-mini">${ROSTER.map((id) => `<button class="pf-cara ${mio === id ? 'p1' : ''}" data-luch="${id}"><img src="${foto(id)}" alt="" loading="lazy"><span>${esc(nombreNpc(id))}</span></button>`).join('')}</div>
+      <div class="pf-mini">${ROSTER.map((id) => `<button class="pf-cara ${mio === id ? 'p1' : ''}" data-luch="${id}"><img src="${foto(id)}" data-npc="${id}" alt="" loading="lazy"><span>${esc(nombreNpc(id))}</span></button>`).join('')}</div>
       <div class="pf-opciones">
         ${seg('Modo', 'modo', est.modo, [['1v1', '1 vs 1'], ['2v2', '2 vs 2']])}
         ${seg('Rondas', 'mejorDe', est.mejorDe, [[1, '1'], [3, '3'], [5, '5']])}

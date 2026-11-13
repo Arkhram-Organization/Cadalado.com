@@ -2,8 +2,12 @@
 // Cada uno devuelve una función que se llama en cada cuadro (antorchas, neones, niebla).
 import * as THREE from '/comun/vendor/three.module.min.js';
 import { halo } from './objetos3d.js';
+import { barrioChino, callejon, avenida } from './calles.js';
 
 export const ESCENARIOS = [
+  { id: 'barrio', nombre: 'Barrio Chino', desc: 'Faroles, neones y sakura cayendo.', calle: true },
+  { id: 'callejon', nombre: 'El Callejón', desc: 'Lluvia, grafitis y un tacho prendido fuego.', calle: true },
+  { id: 'avenida', nombre: 'La Avenida', desc: 'Pantallas gigantes y una ronda de gente filmando.', calle: true },
   { id: 'templo', nombre: 'El Templo', desc: 'De noche, entre antorchas y un gong gigante.' },
   { id: 'azotea', nombre: 'La Azotea', desc: 'Arriba de un edificio, con la ciudad prendida.' },
   { id: 'volcan', nombre: 'El Volcán', desc: 'Sobre piedra caliente y ríos de lava.' },
@@ -76,6 +80,9 @@ function antorcha(escena, part, x, y, z, color = '#ff8a2a') {
 }
 
 export function construirEscenario(id, escena, part) {
+  if (id === 'barrio') return barrioChino(escena, part);
+  if (id === 'callejon') return callejon(escena, part);
+  if (id === 'avenida') return avenida(escena, part);
   const raiz = new THREE.Group(); escena.add(raiz);
   const anim = [];
   const add = (o) => { raiz.add(o); return o; };
