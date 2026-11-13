@@ -404,7 +404,7 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
     const promesas = [];
     for (const j of jugadores) {
       const base = POR_ID[j.npc]?.look || {};
-      const look = { ...base, travesuras: {}, alBailar: null, alGesto: null, contagia: false };
+      const look = { ...base, travesuras: {}, alBailar: null, alGesto: null }; // contagia queda: el WOOOP de Elidiprimio lo gritan todos
       const p = crearPersona(THREE, look, { sombras: true, tamGlobo: .5 });
       const pivote = new THREE.Group(); pivote.add(p.grupo); escena.add(pivote);
       // camiseta: un aro del color del equipo en el piso y el número
@@ -457,9 +457,13 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
     // poses hechas a mano encima: barrida (acostado hacia atrás) y estirada del arquero (de costado)
     const g = L.p.grupo;
     const objX = j.est === 'barrida' ? 1.15 : 0;
-    const objZ = j.est === 'vuela' ? (j.lado || 1) * 1.35 : j.est === 'elastica' ? -(j.lado || 1) * .45 : 0;
+    const objZ = j.est === 'vuela' ? (j.lado || 1) * 1.35 : j.est === 'elastica' ? -(j.lado || 1) * .42 * Math.sin(Math.min(1, j.t / .3) * Math.PI) : 0;
     // la ruleta es una vuelta entera; la bicicleta, las piernas pasando por arriba de la pelota (el cuerpo se mece)
-    g.rotation.y = j.est === 'ruleta' ? Math.min(1, j.t / .5) * Math.PI * 2 * (j.lado || 1) : j.est === 'bicicleta' ? Math.sin(j.t * 26) * .55 : g.rotation.y * Math.max(0, 1 - dt * 20);
+    // ruleta: una vuelta entera con aceleración suave; bicicleta: dos vaivenes del cuerpo (la pierna pasa por arriba)
+    const kr = Math.min(1, j.t / .5), suave = kr * kr * (3 - 2 * kr);
+    g.rotation.y = j.est === 'ruleta' ? suave * Math.PI * 2 * (j.lado || 1)
+      : j.est === 'bicicleta' ? Math.sin(Math.min(1, j.t / .5) * Math.PI * 4) * .38 * Math.sin(Math.min(1, j.t / .5) * Math.PI)
+      : g.rotation.y * Math.max(0, 1 - dt * 14);
     g.rotation.x += (objX - g.rotation.x) * Math.min(1, dt * 18);
     g.rotation.z += (objZ - g.rotation.z) * Math.min(1, dt * 14);
     g.position.y = j.est === 'barrida' ? -.35 : j.est === 'vuela' ? .45 + Math.sin(Math.min(1, j.t / .6) * Math.PI) * .5 : 0;

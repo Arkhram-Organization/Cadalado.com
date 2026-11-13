@@ -68,7 +68,7 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
     luch.clear();
     lista.forEach((l, i) => {
       const base = POR_ID[l.npc]?.look || {};
-      const look = { ...base, travesuras: {}, alBailar: null, alGesto: null, contagia: false };
+      const look = { ...base, travesuras: {}, alBailar: null, alGesto: null }; // contagia queda: el WOOOP de Elidiprimio lo gritan todos
       const etiqueta = carteles && l.jugador && l.jugador !== 'bot' ? (l.jugador.length > 10 ? l.jugador.slice(0, 9) + '…' : l.jugador) : '';
       const p = crearPersona(THREE, look, { sombras: true, nombre: etiqueta, colorNombre: COLOR_EQ[l.eq], tamCartel: .34, tamGlobo: .42 });
       p.grupo.position.set(l.eq ? 3 : -3, 0, 0);

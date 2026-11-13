@@ -164,6 +164,7 @@ export function paso(m, entradas = new Map()) {
     if (j.turbo > 0) j.turbo -= PASO;
     if (j.devolverT > 0) j.devolverT -= PASO;
     if (j.sinAgarrar > 0) j.sinAgarrar -= PASO;
+    if (j.pasa?.t > 0) j.pasa.t -= PASO;
     if (j.cdTruco > 0) j.cdTruco -= PASO;
     let inp;
     if (manejado.has(j.id)) inp = manejado.get(j.id);
@@ -450,6 +451,8 @@ function separar(m) {
   const js = m.jug.filter((j) => !['caido', 'vuela'].includes(j.est));
   for (let i = 0; i < js.length; i++) for (let k = i + 1; k < js.length; k++) {
     const a = js[i], b = js[k];
+    // después de un caño o un sombrero, el que hizo el truco pasa al rival sin chocarlo
+    if ((a.pasa?.t > 0 && a.pasa.id === b.id) || (b.pasa?.t > 0 && b.pasa.id === a.id)) continue;
     const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), min = R_JUG * 2;
     if (d >= min || d === 0) continue;
     const e = (min - d) / 2, nx = dx / d, nz = dz / d;
@@ -529,12 +532,15 @@ function truco(m, j, n, dx, dz) {
     // el rival se abre para un costado (le pasó entre las piernas) y yo no la toco hasta que pase
     const lado = Math.random() < .5 ? 1 : -1;
     delante.engano = .6; delante.enganoDir = { x: -Math.sin(j.ang) * lado, z: Math.cos(j.ang) * lado };
-    j.turbo = 1; j.esperaPase = 1.4; j.sinAgarrar = .22;
+    j.turbo = 1; j.esperaPase = 1.4; j.sinAgarrar = .22; j.pasa = { id: delante.id, t: .8 };
   } else if (T.id === 'sombrero') {
     j.est = 'sombrero'; exito = !!delante;
-    soltar(m, j); p.libreT = .2;
-    p.vx = Math.cos(j.ang) * 5.2; p.vz = Math.sin(j.ang) * 5.2; p.vy = 6;
-    j.turbo = 1; j.esperaPase = 1.4;
+    soltar(m, j);
+    // el que salta no la puede tocar mientras pasa por arriba
+    if (delante) { p.libreDe = delante.id; p.libreT = .75; } else p.libreT = .2;
+    p.vx = Math.cos(j.ang) * 6.2; p.vz = Math.sin(j.ang) * 6.2; p.vy = 7.2;
+    j.turbo = 1; j.esperaPase = 1.4; j.sinAgarrar = .45; // que suba antes de volver a agarrarla
+    if (delante) j.pasa = { id: delante.id, t: .8 }; // lo pasa por al lado, no se lo lleva puesto
   } else if (T.id === 'ruleta') { j.est = 'ruleta'; exito = !!delante; if (delante && Math.random() < .5) { delante.engano = .4; delante.enganoDir = { x: Math.cos(j.ang), z: Math.sin(j.ang) }; } }
   else if (T.id === 'elastica') { j.est = 'elastica'; exito = engañar(m, j, n, 2.4, .65, .55); if (exito) j.turbo = .6; }
   else if (T.id === 'taco') {
@@ -746,7 +752,8 @@ function pelota(m) {
     if (j.sinAgarrar > 0) continue;
     const d = dist(j, p);
     const arq = j.arquero && enArea(m, j, p);
-    const alcance = arq ? (j.est === 'vuela' ? 1.05 : .72) : .62;
+    // después de un truco o de un pase que te esperan, un poco más de alcance para volver a agarrarla (ayuda)
+    const alcance = arq ? (j.est === 'vuela' ? 1.05 : .72) : j.esperaPase > 0 ? .95 : .62;
     const alto = arq ? (j.est === 'vuela' ? 2.1 : 2.3) : .75;
     if (d < alcance && p.y < alto && d < md) {
       const rel = Math.hypot(p.vx - j.vx, p.vz - j.vz);

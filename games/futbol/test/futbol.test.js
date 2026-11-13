@@ -337,3 +337,94 @@ test('sala online: el empate por penales queda con ganador y en el historial', a
   assert.equal(f.ganador, 0);
   assert.deepEqual(f.penalesRes, [4, 3]);
 });
+
+// ---------------------------------------------------------------- todos los trucos, uno por uno
+// (el azar se fija para que cada truco "salga": así se prueba lo que hace, no la suerte)
+function conAzar(valor, fn) { const r = Math.random; Math.random = () => valor; try { return fn(); } finally { Math.random = r; } }
+function escenaTruco({ rivalX = 1.3, comp = null, yoX = 0, cerca = false } = {}) {
+  const m = partido();
+  const yo = buscar(m, '0-1'), rival = buscar(m, '1-1'), arq = buscar(m, '1-0'), c = buscar(m, '0-2');
+  despejar(m, ['0-1', '1-1', '1-0', '0-2']);
+  Object.assign(yo, { x: yoX, z: 0, ang: 0, vx: 0, vz: 0, est: 'quieto', t: 0, cdTruco: 0 });
+  Object.assign(rival, { x: yoX + rivalX, z: 0, ang: Math.PI, vx: 0, vz: 0, est: 'quieto', t: 0, ia: { prox: 1e9, inp: { x: 0, z: 0 } } });
+  Object.assign(arq, { x: m.L / 2 - .5, z: 0, est: 'quieto', t: 0, cd: 0 });
+  if (comp) Object.assign(c, { ...comp, vx: 0, vz: 0, est: 'quieto', t: 0 }); else Object.assign(c, { est: 'caido', t: -1000, x: -m.L / 2 + 2 });
+  m.pel.duenio = yo.id;
+  return { m, yo, rival, arq, c };
+}
+const truco = (m, n, dir = { x: 0, z: 0 }) => paso(m, new Map([['yo', { ...dir, truco: n }]]));
+const ev = (m, nombre) => m.ev.find((e) => e.k === 'truco' && e.truco === nombre);
+
+test('truco 1, bicicleta: engaña al que marca y salís más rápido', () => {
+  const { m, yo, rival } = escenaTruco();
+  conAzar(.1, () => truco(m, 1));
+  assert.ok(ev(m, 'bicicleta')?.exito);
+  assert.equal(yo.est, 'bicicleta');
+  assert.ok(rival.engano > 0, 'el rival se la comió');
+  assert.ok(yo.turbo > 0, 'sale con turbo');
+  correr(m, .6, new Map([['yo', { x: 1, z: 0 }]]));
+  assert.equal(m.pel.duenio, yo.id, 'sigue con la pelota');
+});
+
+test('truco 2, amague: el arquero se tira y los de cerca se frenan', () => {
+  const { m, yo, rival, arq } = escenaTruco({ yoX: 8 });
+  conAzar(.1, () => truco(m, 2));
+  assert.ok(ev(m, 'amague')?.exito);
+  assert.equal(arq.est, 'vuela', 'el arquero se tiró');
+  assert.ok(rival.engano > 0);
+  assert.equal(m.pel.duenio, yo.id, 'la pelota sigue siendo tuya');
+});
+
+test('truco 4, sombrero: la pelota pasa por arriba del rival y la volvés a agarrar', () => {
+  const { m, yo, rival } = escenaTruco();
+  truco(m, 4);
+  assert.ok(ev(m, 'sombrero'));
+  let alto = 0, recupero = false;
+  for (let t = 0; t < 2.5 && !recupero; t += PASO) { paso(m, new Map([['yo', { x: 1, z: 0 }]])); alto = Math.max(alto, m.pel.y); recupero = m.pel.duenio === yo.id && t > .3; }
+  assert.ok(alto > 1.2, `voló por arriba (${alto.toFixed(2)} m)`);
+  assert.ok(recupero, 'la volvió a agarrar');
+  assert.ok(m.pel.x > rival.x, 'del otro lado del rival');
+});
+
+test('truco 6, taco: le llega al compañero de atrás', () => {
+  const { m, c } = escenaTruco({ comp: { x: -5, z: 0 } });
+  truco(m, 6);
+  assert.ok(ev(m, 'taco')?.exito);
+  let recibio = false;
+  for (let t = 0; t < 2 && !recibio; t += PASO) { paso(m); recibio = m.pel.duenio === c.id; }
+  assert.ok(recibio);
+});
+
+test('truco 7, elástica: corte al costado que deja al rival', () => {
+  const { m, yo, rival } = escenaTruco();
+  conAzar(.1, () => truco(m, 7, { x: 0, z: 1 }));
+  assert.ok(ev(m, 'elastica')?.exito);
+  correr(m, .3);
+  assert.ok(Math.abs(yo.z) > .8, `se corrió al costado (${yo.z.toFixed(2)})`);
+  assert.ok(rival.engano > 0);
+  assert.equal(m.pel.duenio, yo.id);
+});
+
+test('truco 8, pared: se la das a un compañero y te la devuelve', () => {
+  const { m, yo, c } = escenaTruco({ rivalX: 20, comp: { x: 6, z: 2 } });
+  truco(m, 8);
+  assert.ok(ev(m, 'pared')?.exito);
+  let volvio = false, paso1 = false;
+  for (let t = 0; t < 4 && !volvio; t += PASO) { paso(m, new Map([['yo', { x: 1, z: 0 }]])); if (m.pel.duenio === c.id) paso1 = true; volvio = paso1 && m.pel.duenio === yo.id; }
+  assert.ok(paso1, 'el compañero la recibió');
+  assert.ok(volvio, 'y te la devolvió');
+});
+
+test('los trucos sin la pelota no hacen nada y tienen espera entre uno y otro', () => {
+  const { m, yo } = escenaTruco();
+  m.pel.duenio = null; m.pel.x = 5;
+  truco(m, 1);
+  assert.ok(!m.ev.some((e) => e.k === 'truco'), 'sin pelota no hay truco');
+  m.pel.duenio = yo.id;
+  paso(m, new Map([['yo', { x: 0, z: 0 }]]));
+  conAzar(.1, () => truco(m, 1));
+  const antes = m.ev.filter((e) => e.k === 'truco').length;
+  paso(m, new Map([['yo', { x: 0, z: 0 }]]));
+  truco(m, 7);
+  assert.equal(m.ev.filter((e) => e.k === 'truco').length, antes, 'hay que esperar entre trucos');
+});

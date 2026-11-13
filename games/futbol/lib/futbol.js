@@ -10,7 +10,8 @@ import { dicho } from '../../../shared/public/dichos.js';
 const FIN_MS = 25_000;
 const FORMATOS = [5, 6, 7, 8];
 const MINUTOS = [2, 4, 6, 8];
-const CANCHAS = ['barrio', 'terraza', 'lluvia'];
+// las mismas que games/futbol/public/js/escena.js (CANCHAS)
+const CANCHAS = ['barrio', 'terraza', 'lluvia', 'estadio', 'playa', 'potrero'];
 // los jugadores salen solos de los personajes del club con modelo 3D
 const ROSTER = NPCS.filter((n) => n.look?.modelo).map((n) => n.id);
 const azar = (a) => a[crypto.getRandomValues(new Uint32Array(1))[0] % a.length];
