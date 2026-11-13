@@ -8,7 +8,7 @@ import { limpiarLook } from './public/look.js';
 const TTL = 3 * 3600;
 const VIVO_MS = 40_000; // si no aparece en 40 s, se fue
 const MAX = 16; // hasta 16 por lobby (en la lobby se ven de a 4)
-const CONFIG_INICIAL = { royale:{bots:7}, carrera:{bots:5}, memes:{bots:2}, haxball:{bots:1,minutos:3,goles:3,estadio:'classic'}, casino:{tipo:'blackjack'} };
+const CONFIG_INICIAL = { royale:{bots:7}, carrera:{bots:5}, memes:{bots:2}, haxball:{bots:1,minutos:3,goles:3,estadio:'classic'}, casino:{tipo:'blackjack'}, pelea:{} };
 const err = (m, s = 400) => new ErrorCuenta(m, s);
 const parse = (s) => { try { return JSON.parse(s); } catch { return null; } };
 const codigo = () => Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');

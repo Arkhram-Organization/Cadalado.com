@@ -35,6 +35,10 @@
       "destination": "/api/juegos/haxball?ruta=:ruta*"
     },
     {
+      "source": "/api/pelea/:ruta*",
+      "destination": "/api/juegos/pelea?ruta=:ruta*"
+    },
+    {
       "source": "/api/memes/:ruta*",
       "destination": "/api/juegos/memes?ruta=:ruta*"
     },
@@ -53,6 +57,18 @@
     {
       "source": "/haxball/sala/:code",
       "destination": "/haxball/index"
+    },
+    {
+      "source": "/pelea/sala/:code",
+      "destination": "/pelea/index"
+    },
+    {
+      "source": "/pelea/bots",
+      "destination": "/pelea/index"
+    },
+    {
+      "source": "/pelea/local",
+      "destination": "/pelea/index"
     },
     {
       "source": "/memes/sala/:code",

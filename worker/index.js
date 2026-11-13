@@ -3,12 +3,12 @@
 // que corresponde: el de la sala (si es de una sala) o el del club (todo lo demás).
 export { Objeto } from './objeto.js';
 
-const SALA = /^\/api\/(memes|casino|carrera|royale|haxball)\/salas\/([A-Za-z0-9-]{3,24})(?:\/|$)/;
+const SALA = /^\/api\/(memes|casino|carrera|royale|haxball|pelea)\/salas\/([A-Za-z0-9-]{3,24})(?:\/|$)/;
 const TRUCO = /^\/api\/truco\/rooms\/([A-Za-z0-9]{5})(?:\/|$)/;
 const AJEDREZ = /^\/ajedrez\/api\/game\/([a-z0-9]{4,16})(?:\/|$)/;
-const POS = /^\/api\/(royale|haxball|carrera)\/pos$/;
+const POS = /^\/api\/(royale|haxball|carrera|pelea)\/pos$/;
 // páginas de sala: se sirve el juego y él acomoda la dirección
-const PAGINA_SALA = /^\/(royale|carrera|casino|memes|haxball|truco)\/(?:sala|mesa)\/[A-Za-z0-9-]+\/?$|^\/(ajedrez)\/(?:game\/[a-z0-9]+|local)\/?$/;
+const PAGINA_SALA = /^\/(royale|carrera|casino|memes|haxball|pelea|truco)\/(?:sala|mesa)\/[A-Za-z0-9-]+\/?$|^\/(ajedrez)\/(?:game\/[a-z0-9]+|local)\/?$|^\/(pelea)\/(?:bots|local)\/?$/;
 const REDIRIGIR = { '/equipo': '/', '/creadores': '/' };
 
 async function objetoPara(request, path) {
@@ -43,7 +43,7 @@ export default {
     }
     if (REDIRIGIR[path]) return Response.redirect(new URL(REDIRIGIR[path], url), 302);
     const m = PAGINA_SALA.exec(path);
-    if (m) return env.ASSETS.fetch(new Request(new URL(`/${m[1] || m[2]}/`, url), request));
+    if (m) return env.ASSETS.fetch(new Request(new URL(`/${m[1] || m[2] || m[3]}/`, url), request));
     return env.ASSETS.fetch(request);
   },
 };

@@ -18,6 +18,7 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 | Make it Meme | [`games/memes`](games/memes) | `cadalado.com/memes` |
 | Battle Shmitz (battle royale 3D) | [`games/royale`](games/royale) | `cadalado.com/royale` |
 | Haxball (fútbol 2D por equipos) | [`games/haxball`](games/haxball) | `cadalado.com/haxball` |
+| Piña Final (pelea 2D, 1v1 y 2v2) | [`games/pelea`](games/pelea) | `cadalado.com/pelea` |
 | Cuentas, historial, amigos y chats | [`shared`](shared) | `cadalado.com/club` |
 
 ```
@@ -82,6 +83,12 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
 - **Carrera:** las posiciones viajan **directo entre navegadores** (WebRTC, ~15 por segundo); el servidor solo
   los presenta y ordena las llegadas con su reloj. Si una red bloquea la conexión directa, se usa el servidor
   como plan B. Los bots y los obstáculos salen de una "semilla", así que todos ven lo mismo sin mandarse nada.
+- **Piña Final:** pelea 2D con los modelos 3D del club (todos los del elenco con modelo de Meshy). Contra bots
+  (1v1 o 2v2), 2 jugadores en la misma compu (teclado o joysticks) y salas online 1v1 o 2v2 con bots que completan.
+  En cada ronda a cada luchador le toca un **elemento** (fuego, hielo, rayo, veneno, ninja, tierra, viento) y un
+  **arma** (katana, hacha, nunchaku, martillo) al azar; el elemento define su poder, su súper y el remate final.
+  El motor (`public/js/motor.js` y `combate.js`) es puro y lo comparten la compu, el anfitrión online y los tests.
+  Online funciona como el haxball: el anfitrión simula y manda la pelea por WebRTC, cada uno manda sus teclas.
 - **Make it Meme:** las 100 plantillas son las más usadas de imgflip.com y se cargan desde ahí.
 
 ### Cuentas

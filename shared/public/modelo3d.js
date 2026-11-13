@@ -115,6 +115,8 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
   if (cartel) { cartel.position.y = 2.13; grupo.add(cartel); }
 
   let mixer = null, acciones = {}, actual = null, estadoActual = '', huesos = {}, alturaCadera = .95;
+  const subclips = new Map();
+  let todas = new Map(); // todas las animaciones (propias y de la biblioteca), por nombre
   let globo = null, globoHasta = 0, hablaHasta = 0, reloj = 0, transcurrido = 0, zzz = false;
   const trav = travieso(look);
   const listo = Promise.all([cargar(url), cargarBiblioteca()]).then(([g, lib]) => {
@@ -128,7 +130,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
     });
     cuerpo.add(m);
     mixer = new THREE.AnimationMixer(m);
-    const todas = new Map(lib); for (const a of g.animations) todas.set(a.name, a); // las propias primero
+    todas = new Map(lib); for (const a of g.animations) todas.set(a.name, a); // las propias primero
     for (const [estado, lista] of Object.entries(CLIPS)) {
       // la animación propia del personaje (look.clips) va primero; en los variados entran todas
       // (puede ser una lista: el personaje alterna entre sus propias animaciones, como los bailes de Ferchus)
@@ -199,6 +201,7 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
 
   let estadoClip = '';
   function poner(estado, fundido = .22) {
+    if (estado === 'clip') return; // suena una animación puntual (api.clip): no se pisa
     const lista = acciones[estado] || acciones.quieto;
     if (!lista) return;
     // al entrar a un estado se elige una variante; mientras dure se mantiene
@@ -217,6 +220,30 @@ export function crearPersonaModelo(THREE, look, opciones = {}, { sprite, liberar
     grupo, cabeza, altura: 2, listo,
     manos: { izquierda: manoI, derecha: manoD },
     expresar() {},
+    // Una animación puntual por nombre (la primera de la lista que exista), estirada para durar `dur` segundos.
+    // desde/hasta: qué parte del clip (0 a 1). congelar: queda quieta en `desde` (poses como agacharse).
+    // Mientras suena, animar('clip', dt) solo avanza el tiempo. Devuelve false si el modelo no la tiene.
+    clip(nombres, { dur = 0, desde = 0, hasta = 1, vez = true, fundido = .1, congelar = false, ida = false } = {}) {
+      if (!mixer) return false;
+      let c = (Array.isArray(nombres) ? nombres : [nombres]).map((n) => todas.get(n)).find(Boolean);
+      if (!c) return false;
+      // en bucle sobre un pedazo del clip (ida y vuelta, como respirar en guardia): se arma un sub-clip
+      if (!vez && !congelar && (desde > 0 || hasta < 1)) {
+        const clave = `${c.name}|${desde}|${hasta}`;
+        if (!subclips.has(clave)) subclips.set(clave, THREE.AnimationUtils.subclip(c, clave, Math.floor(desde * c.duration * 30), Math.max(Math.floor(desde * c.duration * 30) + 2, Math.ceil(hasta * c.duration * 30)), 30));
+        c = subclips.get(clave); desde = 0; hasta = 1;
+      }
+      const a = mixer.clipAction(c);
+      a.reset();
+      a.setLoop(vez ? THREE.LoopOnce : ida ? THREE.LoopPingPong : THREE.LoopRepeat, Infinity); a.clampWhenFinished = vez;
+      a.time = desde * c.duration;
+      a.timeScale = congelar ? 0 : dur ? ((hasta - desde) * c.duration) / dur : 1;
+      a.play();
+      if (actual && actual !== a) actual.crossFadeTo(a, fundido, false);
+      actual = a; estadoClip = 'clip';
+      return true;
+    },
+    tieneClip: (n) => todas.has(n),
     gesto(id) { trav.pedir(id); },
     decir(texto, seg = 4.5) {
       if (globo) { grupo.remove(globo); liberarSprite(globo); }
