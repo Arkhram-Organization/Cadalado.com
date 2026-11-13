@@ -1,6 +1,6 @@
 // Battle Shmitz: menú, sala y partida. El menú y la sala se ven arriba de la isla (el juego queda de fondo).
 import { Isla3D } from './escena3d.js';
-import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
+import { abrirAgregarBots, textoBots, botonAgregarBots, botsDeSala } from '/comun/elegir-npcs.js';
 import { OBJETOS, recoger } from './inventario.js';
 import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
 import { POR_ID } from '/comun/npcs.js';
@@ -23,7 +23,6 @@ const RAREZA_N = ['comun', 'poco_comun', 'rara', 'epica', 'legendaria'];
 const nombreItem = (tipo) => OBJETOS[tipo]?.nombre || ARMAS[tipo]?.nombre || CAJAS[tipo]?.nombre || MATERIALES[tipo]?.nombre || (tipo === 'cofre' ? 'Cofre' : '');
 const iconoItem = (tipo) => ICONOS[tipo] || (CAJAS[tipo] ? ICONOS.balas : ICONOS[MATERIALES[tipo] ? tipo : 'balas']);
 const imagenItem = (tipo) => ARMAS[tipo] ? `<img src="/royale/img/armas/${tipo}.webp" alt="${esc(ARMAS[tipo].nombre)}" draggable="false">` : OBJETOS[tipo] ? `<img src="/royale/img/objetos/${tipo}.webp" alt="${esc(OBJETOS[tipo].nombre)}" draggable="false">` : ICONOS[tipo] || '';
-const BOTS = [0, 3, 5, 7, 9, 11, 15];
 const cuenta = await marco({ juego: 'Battle Shmitz', color: COLOR, volver: '/royale/' });
 let limpiar = [];
 
@@ -88,7 +87,7 @@ function menu() {
       <section class="bs-panel" data-panel="jugar">
         <form data-crear class="bs-form">
           ${cuenta ? `<div class="bs-quien">Jugás como <b>${esc(cuenta.nombre)}</b></div>` : `<label class="bs-campo"><span>Tu nombre</span><input class="bs-entrada" name="nombre" maxlength="20" required value="${esc(nombreGuardado())}" placeholder="¿Cómo te llaman?"></label>`}
-          <div class="bs-campo"><span>Bots en la isla</span><div class="bs-chips" data-bots>${BOTS.map((n) => `<button type="button" data-n="${n}" class="${n === 9 ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+          <div class="bs-campo"><span>Bots en la isla</span><button class="bs-npcs" data-agregar-bots></button></div>
           <label class="bs-switch"><input type="checkbox" name="publica" checked><i></i><span>Partida pública <small>cualquiera puede entrar</small></span></label>
           <button class="bs-jugar"><b>Jugar</b><small>Armá la partida y subí al colectivo</small></button>
         </form>
@@ -107,22 +106,17 @@ function menu() {
     <aside class="bs-lugares"><h3>La isla</h3>${LUGARES.map((l) => `<div><b>${esc(l.nombre)}</b><small>${{ ciudad: 'La ciudad grande · el mejor botín', templo: 'Columnas y escondites', oficinas: 'Torres de oficinas y estacionamiento', barrio: 'Casitas con pileta', ruta: 'Bar y almacén de ruta', granja: 'Granero, silo y huerta', estadio: 'El estadio abandonado', puerto: 'Galpones, contenedores y muelles' }[l.estilo]}</small></div>`).join('')}</aside>
   </div>`;
   limpiar.push(fondoIsla(app.querySelector('[data-fondo]')));
-  let bots = 9;
   app.querySelectorAll('[data-tab]').forEach((b) => (b.onclick = () => {
     app.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b));
     app.querySelectorAll('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== b.dataset.tab));
   }));
-  app.querySelector('[data-bots]').onclick = (e) => {
-    const b = e.target.closest('[data-n]'); if (!b) return;
-    bots = Number(b.dataset.n);
-    app.querySelectorAll('[data-bots] button').forEach((x) => x.classList.toggle('on', x === b));
-  };
+  const botsMenu = botonAgregarBots(app.querySelector('[data-agregar-bots]'), { max: 20, azar: 9, color: '#ffb347' });
   app.querySelector('[data-crear]').onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     if (!cuenta) guardarNombre(f.get('nombre'));
     try {
-      const { code } = await api('/api/royale/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots, publica: f.get('publica') === 'on' } });
+      const { code } = await api('/api/royale/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: botsMenu.bots, npcs: botsMenu.npcs, publica: f.get('publica') === 'on' } });
       ir(`/royale/sala/${code}`);
     } catch (err) {
       toast(err.message, true);
@@ -481,14 +475,12 @@ function abrirSala(code) {
           <div class="bs-invitar"><code>${esc(location.host + location.pathname)}</code><button class="bs-boton" data-copiar>Copiar link</button></div>
           <div class="bs-gente">${online.map((j) => `<div class="${j.id === e.yo ? 'yo' : ''}"><span class="av">${avatarSvg(lookDeJugador(j, j.id, colorDe(j.id)))}</span><b>${esc(j.nombre)}</b><small>${j.id === e.host ? 'Arma la partida' : j.id === e.yo ? 'Vos' : 'Listo'}</small></div>`).join('')}
             ${e.botNpc.map((n, i) => `<div class="bot ${n === 'mati' ? 'dorado' : ''}"><span class="av">${avatarSvg({ ...POR_ID[n]?.look })}</span><b>${esc(e.botNombres[i])}</b><small>Bot</small></div>`).join('')}</div>
-          ${esHost ? `<div class="bs-campo"><span>Bots</span><div class="bs-chips" data-bots>${BOTS.map((n) => `<button type="button" data-n="${n}" class="${n === e.bots ? 'on' : ''}">${n}</button>`).join('')}</div></div>
-            <button type="button" class="bs-npcs" data-npcs>${textoNpcs(e.npcElegidos)}</button>
+          ${esHost ? `<button type="button" class="bs-npcs" data-npcs>${textoBots(e.bots)}</button>
             <button class="bs-jugar" data-largar><b>¡A la isla!</b><small>Arranca la cuenta regresiva</small></button>` : `<div class="bs-espera">Esperando que ${esc(anfitrion)} largue la partida…</div>`}
           <p class="bs-nota">Caés con una pistola y 48 balas. Buscá cofres dorados y armas de mayor rareza.</p>
         </div>`;
-        lob.querySelector('[data-bots]')?.addEventListener('click', (ev) => { const b = ev.target.closest('[data-n]'); if (b) sala.enviar({ t: 'bots', n: Number(b.dataset.n) }); });
         lob.querySelector('[data-largar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
-        lob.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: 15, color: '#ffb347', alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
+        lob.querySelector('[data-npcs]')?.addEventListener('click', () => abrirAgregarBots({ ...botsDeSala(est, 20), color: '#ffb347', alGuardar: ({ ids, azar }) => sala.enviar({ t: 'npcs', ids, azar }) }));
         lob.querySelector('[data-copiar]')?.addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.href); } catch {} toast('Link de la partida copiado'); });
       }
     }

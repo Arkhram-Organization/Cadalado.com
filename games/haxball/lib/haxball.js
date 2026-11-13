@@ -4,7 +4,7 @@ import { crearJuego, idPublico } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
-import { elegirNpcs, limpiarElegidos, POR_ID } from '../../../shared/public/npcs.js';
+import { elegirNpcs, limpiarElegidos, botsPedidos, POR_ID } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
 
 const CUENTA_MS = 3500;
@@ -91,8 +91,9 @@ export const haxball = crearJuego({
       case 'npcs': {
         // el anfitrión elige a mano qué personajes del club entran; los lugares que sobran se sortean
         if (!ctx.esHost || r.fase === 'partida' || r.fase === 'cuenta') return {};
-        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
-        if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+        const pedido = botsPedidos(msg, MAX_BOTS);
+        r.npcElegidos = pedido.elegidos;
+        r.bots = pedido.total ?? Math.max(r.bots, r.npcElegidos.length);
         r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
         return {};
       }

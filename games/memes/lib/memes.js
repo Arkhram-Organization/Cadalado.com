@@ -5,7 +5,7 @@ import { crearJuego, idPublico, mezclar, entero } from '../../../shared/salas.js
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { textosBot, nombresBots, votoBot, reaccionBot, MAX_BOTS } from './bots.js';
-import { POR_ID as NPC_POR_ID, limpiarElegidos } from '../../../shared/public/npcs.js';
+import { POR_ID as NPC_POR_ID, limpiarElegidos, botsPedidos } from '../../../shared/public/npcs.js';
 
 const POR_ID = new Map(PLANTILLAS.map((p) => [p.id, p]));
 const VOTO_MS = 10_000; // cada meme se vota durante este tiempo
@@ -44,7 +44,9 @@ function armarBots(r, n) {
   // primero los personajes del club que eligió el anfitrión; el resto se sortea
   const fijos = limpiarElegidos(r.npcElegidos, MAX_BOTS).map((id) => NPC_POR_ID[id].nombre);
   const resto = nombresBots(99).filter((x) => !fijos.some((f) => f.toLowerCase() === x.toLowerCase()));
-  const nombres = [...fijos, ...resto].slice(0, n);
+  // si se repite un personaje, el segundo es "Dobro 2", el tercero "Dobro 3"…
+  const vistos = {};
+  const nombres = [...fijos, ...resto].slice(0, n).map((x) => ((vistos[x] = (vistos[x] || 0) + 1) > 1 ? `${x} ${vistos[x]}` : x));
   r.botsSala = nombres.map((nombre, i) => ({ pid: `bot-${i}-${nombre.toLowerCase().replace(/[^a-z]/g, '')}`, nombre }));
 }
 
@@ -225,8 +227,9 @@ export const memes = crearJuego({
       }
       case 'npcs': {
         if (!ctx.esHost || !['lobby', 'final'].includes(r.fase)) return {};
-        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
-        armarBots(r, Math.max((r.botsSala || []).length, r.npcElegidos.length));
+        const pedido = botsPedidos(msg, MAX_BOTS);
+        r.npcElegidos = pedido.elegidos;
+        armarBots(r, pedido.total ?? Math.max((r.botsSala || []).length, r.npcElegidos.length));
         return {};
       }
       case 'siguiente':

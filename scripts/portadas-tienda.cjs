@@ -27,7 +27,6 @@ const P = [
   ['angie', 'Nacho y', 'ANGIE', 'g-saluda', 0.9, -0.2, 'corazones', ['#051634', '#1f5fd0', '#9cc8ff']],
   ['capitan', 'Capitán', 'MATE', 'g-festeja', 0.9, 0.2, 'rayos', ['#16191e', '#56616d', '#e2e8ee']],
   ['chapa', 'Chapa', 'MAX', 'g-saluda', 0.7, -0.2, 'codigo', ['#16191e', '#56616d', '#e2e8ee']],
-  ['colon', '¡Tierra a la', 'VISTA!', 'g-saluda', 1.0, 0.25, 'mar', ['#16191e', '#56616d', '#e2e8ee']],
   ['claude', 'Hecho por', 'CLAUDE', 'g-habla', 1.0, -0.2, 'rayos', ['#16191e', '#56616d', '#e2e8ee']],
 ];
 (async () => {

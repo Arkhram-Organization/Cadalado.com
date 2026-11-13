@@ -309,10 +309,11 @@ test('el anfitrión elige qué personajes entran y el resto se sortea', async ()
   // sin elegidos, el sorteo es el de siempre (mismo resultado con la misma semilla)
   assert.deepEqual(elegirNpcs(6, 1234), elegirNpcs(6, 1234, []));
   const lista = elegirNpcs(6, 1234, ['teo', 'marti', 'no-existe', 'teo']);
-  assert.deepEqual(lista.slice(0, 2), ['teo', 'marti'], 'los elegidos van primero');
+  assert.deepEqual(lista.slice(0, 3), ['teo', 'marti', 'teo'], 'los elegidos van primero (se pueden repetir)');
   assert.equal(lista.length, 6);
-  assert.equal(new Set(lista).size, 6, 'el resto no repite a los elegidos');
-  assert.deepEqual(limpiarElegidos(['teo', 7, 'x', 'teo', 'mati'], 5), ['teo', 'mati']);
+  assert.ok(lista.slice(3).every((x) => x !== 'teo' && x !== 'marti'), 'los sorteados no repiten a los elegidos');
+  assert.deepEqual(limpiarElegidos(['teo', 7, 'x', 'teo', 'mati'], 5), ['teo', 'teo', 'mati']);
+  assert.deepEqual(limpiarElegidos(['teo', 'teo', 'teo'], 2), ['teo', 'teo'], 'respeta el tope');
   assert.deepEqual(elegirNpcs(1, 5, ['teo', 'marti']), ['teo'], 'si hay menos lugares, entran los primeros');
 
   const A = 'npcsAnfitrion12345', B = 'npcsInvitado123456';
@@ -354,4 +355,21 @@ test('reiniciar: solo el anfitrión, y la sala vuelve a la configuración (no la
   await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'empezar' } });
   v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
   assert.notEqual(v.fase, 'lobby', 'y largar de nuevo');
+});
+
+test('Agregar bots: personajes repetidos + al azar, con el tope del juego', async () => {
+  const A = 'agregarBots1234567';
+  const { code } = (await req('POST', '/crear', { pid: A, nombre: 'Anfi', opciones: { bots: 0 } })).data;
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'npcs', ids: ['dobro', 'dobro', 'dobro', 'vicky'], azar: 2 } });
+  let v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.equal(v.bots, 6, '4 elegidos + 2 al azar');
+  assert.deepEqual(v.botNpc.slice(0, 4), ['dobro', 'dobro', 'dobro', 'vicky']);
+  assert.equal(v.maxBots, 16);
+  assert.ok(v.botNombres ? new Set(v.botNombres).size === 6 : true, 'nombres distintos para los repetidos');
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'npcs', ids: [], azar: 40 } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.equal(v.bots, 16, 'no pasa del tope (16 en Full Gays)');
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'npcs', ids: [], azar: 0 } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.equal(v.bots, 0, 'sin bots');
 });

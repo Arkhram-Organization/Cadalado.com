@@ -6,7 +6,7 @@ import { NPCS } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
 
 export const NOMBRES_BOT = ['Lior', 'Polshu', 'Familia Maica', 'Guivi', 'Glinsky', 'Milton Giménez', 'Julo', 'Maica', 'Mafi', 'Simja Tora', 'Faur', 'Dobro', 'Herma'];
-export const MAX_BOTS = 4;
+export const MAX_BOTS = 8;
 
 // Textos cortos (que entren en el meme). Muchos son chistes internos del grupo.
 // Una sola palabra o nombre: queda solo, como título del meme.
@@ -60,7 +60,7 @@ export const votoBot = () => [1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 5][entero(12)];
 const COMENTAN = ['Jajaja', 'Exponencial.', 'Flojo.', 'Este es de Julo seguro.', 'Queque.', 'Buenísimo.', 'Le pongo un 3 y gracias.', 'Esto en tres años lo hace una IA.', '¿Quién hizo este?', 'Mmm.'];
 const GANAN = ['Gané. Exponencial.', 'Lo sabía.', 'Talento natural.', 'Gracias, gracias.', 'Esto va a la tesina.'];
 const PIERDEN = ['Robo.', 'El mío era mejor.', 'Jurado comprado.', 'La próxima la gano.', 'Me faltó Dobro en el meme.'];
-const npcDeNombre = (n) => NPCS.find((x) => x.nombre.toLowerCase() === String(n).toLowerCase())?.id;
+const npcDeNombre = (n) => NPCS.find((x) => x.nombre.toLowerCase() === String(n).replace(/\s\d+$/, '').toLowerCase())?.id; // "Dobro 2" también es Dobro
 export function reaccionBot(nombre, situacion) {
   const npc = npcDeNombre(nombre);
   if (npc && Math.random() < 0.7) return dicho(npc, situacion === 'comenta' ? 'turno' : situacion);

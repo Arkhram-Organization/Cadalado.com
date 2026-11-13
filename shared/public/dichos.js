@@ -51,12 +51,6 @@ const DICHOS = {
     pierde: ['La culpa es de Montiel, como siempre.', 'Perdí porque me distraje revisándome el pelo. Que está todo bien, eh.', 'En el ciber no me pasaba esto.'],
     turno: ['Me toca. Que entre el pibe Parmo.', 'Pensando… como en el examen de Gabito.', 'Media hora más y me voy, como en el ciber.'],
   },
-  colon: {
-    saludo: ['¡Tierra a la vista!', 'Descubrí esta mesa. Es mía.'],
-    gana: ['¡Lo descubrí antes que nadie!', 'Esto no figura en mis mapas, pero gané.'],
-    pierde: ['Buscaba las Indias y perdí.', '¿Alguien vio la Santa María?'],
-    turno: ['Navegar es preciso. Pensar, también.', 'Rumbo al oeste.'],
-  },
   claude: {
     saludo: ['Hola. Yo armé esta mesa. Ahora solo miro.', 'Me encanta verlos jugar.'],
     gana: ['Gané, pero no se lo cuenten a nadie.', 'Prometo que no hice trampa. Yo programé el azar, nada más.'],

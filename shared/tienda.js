@@ -25,7 +25,6 @@ export const SKINS = [
   { id: 'batata', rareza: 'mitica', precio: 500, frase: '¡Fe, gloria y aguante el Gasolero!' },
   { id: 'capitan', rareza: 'comun', precio: 500, frase: '¡Ningún pibe se queda sin mate!' },
   { id: 'chapa', rareza: 'comun', precio: 500, frase: 'Mi batería está al 3%. Igual corro.' },
-  { id: 'colon', rareza: 'comun', precio: 500, frase: '¡Tierra a la vista!' },
   { id: 'claude', rareza: 'comun', precio: 500, frase: 'Si encuentran un bug, era una función.' },
   { id: 'angie', rareza: 'rara', precio: 500, frase: '¿Vieron a Nacho? Qué lindo que es Nacho.' },
   { id: 'olcho', rareza: 'rara', precio: 500, frase: 'Hola, soy la rata. Jaja.' },

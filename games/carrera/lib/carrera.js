@@ -6,7 +6,7 @@ import { crearJuego, idPublico, entero } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
-import { elegirNpcs, limpiarElegidos, POR_ID } from '../../../shared/public/npcs.js';
+import { elegirNpcs, limpiarElegidos, botsPedidos, POR_ID } from '../../../shared/public/npcs.js';
 import { rutaBot, rng, ordenLargada, LIMITE_S, COLORES, MAPAS } from '../public/js/pista.js';
 
 const CUENTA_MS = 5000;
@@ -14,7 +14,7 @@ const RONDA_MS = 13000; // pantalla de "clasificados" entre rondas
 const PODIO_MS = 22_000;
 const MINIMO_MS = 18_000; // nadie puede terminar un mapa más rápido que esto
 const CIERRE_MS = 2000; // cuando se llena el cupo, la ronda termina un toque después
-const MAX_BOTS = 11;
+const MAX_BOTS = 16; // bots que se pueden sumar (además de las personas)
 
 const nombreBot = (r, i) => {
   const id = r.botNpc[i];
@@ -170,16 +170,17 @@ export const carrera = crearJuego({
       case 'npcs': {
         // el anfitrión elige a mano qué personajes del club entran; los lugares que sobran se sortean
         if (!ctx.esHost || r.fase !== 'lobby') return {};
-        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
-        if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+        const pedido = botsPedidos(msg, MAX_BOTS);
+        r.npcElegidos = pedido.elegidos;
+        r.bots = pedido.total ?? Math.max(r.bots, r.npcElegidos.length);
         r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras, r.npcElegidos);
         return {};
       }
       case 'empezar': {
         if (!ctx.esHost) return { error: 'Larga la carrera quien armó la sala' };
         if (r.fase !== 'lobby' && r.fase !== 'podio') return {};
-        r.participantes = Object.keys(r.jugadores).filter((p) => ctx.online.has(p) || p === pid).slice(0, 16);
-        const nBots = Math.min(r.bots, Math.max(0, 16 - r.participantes.length));
+        r.participantes = Object.keys(r.jugadores).filter((p) => ctx.online.has(p) || p === pid).slice(0, 24);
+        const nBots = Math.min(r.bots, Math.max(0, 24 - r.participantes.length));
         if (r.botNpc.length !== r.bots) r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras, r.npcElegidos);
         r.botsVivos = Array.from({ length: nBots }, (_, i) => i);
         r.vivos = [...r.participantes];
@@ -267,6 +268,7 @@ export const carrera = crearJuego({
       bots: r.bots,
       botNpc: r.botNpc,
       npcElegidos: r.npcElegidos || [],
+      maxBots: MAX_BOTS,
       botsVivos: r.botsVivos,
       participantes: r.participantes.map(id),
       vivos: r.vivos.map(id),

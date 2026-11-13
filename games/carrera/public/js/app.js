@@ -6,7 +6,7 @@ import { avatarSvg } from '/comun/avatar.js';
 import { GESTOS } from '/comun/gestos.js';
 import { ruedaGestos } from '/comun/rueda-gestos.js';
 import { Escena } from './escena.js';
-import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
+import { abrirAgregarBots, textoBots, botonAgregarBots, botsDeSala } from '/comun/elegir-npcs.js';
 import { Show } from './show.js';
 import { fondoMenu } from '/comun/fondo-menu.js';
 import { Jugador, ENFRIAR_GOLPE } from './fisica.js';
@@ -71,7 +71,7 @@ function menu() {
       <h2>Armar una partida</h2>
       <form data-crear style="display:grid;gap:12px">
         ${cuenta ? '' : `<label><span class="etq">Tu nombre</span><input class="entrada" name="nombre" maxlength="20" required value="${esc(nombreGuardado())}" placeholder="¿Cómo te llaman?"></label>`}
-        <label><span class="etq">Bots para completar (son los personajes de cadalado)</span><select class="entrada" name="bots">${[0, 3, 5, 7, 9, 11].map((n) => `<option ${n === 7 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label><span class="etq">Bots para completar (son los personajes de cadalado)</span><button class="btn btn-borde" data-agregar-bots style="width:100%"></button></label>
         <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="publica" checked style="accent-color:${COLOR};width:18px;height:18px"> Pública (cualquiera puede entrar)</label>
         <button class="btn btn-lima btn-grande">Crear partida</button>
       </form>
@@ -83,12 +83,13 @@ function menu() {
       <div class="salas" data-salas><div class="vacio">Buscando…</div></div>
     </section>
   </div>`;
+  const botsMenu = botonAgregarBots(app.querySelector('[data-agregar-bots]'), { max: 16, azar: 7 });
   app.querySelector('[data-crear]').onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     if (!cuenta) guardarNombre(f.get('nombre'));
     try {
-      const { code } = await api('/api/carrera/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: Number(f.get('bots')), publica: f.get('publica') === 'on' } });
+      const { code } = await api('/api/carrera/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: botsMenu.bots, npcs: botsMenu.npcs, publica: f.get('publica') === 'on' } });
       ir(`/carrera/sala/${code}`);
     } catch (err) {
       toast(err.message, true);
@@ -348,14 +349,12 @@ function abrirSala(code) {
           ${e.botNpc.map((n, i) => `<div class="${n === 'mati' ? 'dorado' : ''}"><i style="background:${POR_ID[n]?.look.ropa.remera || '#888'}"></i>${esc(nombreBot(i))}<small>${n === 'mati' ? '¡raro!' : 'bot'}</small></div>`).join('')}</div>
         <span class="etq">Tu personaje · elegí un color</span>
         <div class="colores">${COLORES.map((c, i) => `<button style="background:${c}" class="${i === mio ? 'on' : ''}" data-color="${i}" aria-label="Color ${i + 1}"></button>`).join('')}</div>
-        ${esHost ? `<div style="display:flex;gap:8px;align-items:center"><select class="entrada" data-bots style="width:auto">${[0, 3, 5, 7, 9, 11].map((n) => `<option ${n === e.bots ? 'selected' : ''} value="${n}">${n} bots</option>`).join('')}</select>
-          <button class="btn btn-lima btn-grande" data-largar style="flex:1">¡Largar!</button></div>
-          <button class="btn btn-chico btn-borde" data-npcs style="width:100%;margin-top:8px">${textoNpcs(e.npcElegidos)}</button>` : ''}
+        ${esHost ? `<div style="display:flex;gap:8px;align-items:center"><button class="btn btn-borde" data-npcs>${textoBots(e.bots)}</button>
+          <button class="btn btn-lima btn-grande" data-largar style="flex:1">¡Largar!</button></div>` : ''}
         <div class="teclas"><span><kbd>WASD</kbd> mover</span><span><kbd>Espacio</kbd> saltar x2</span><span><kbd>Shift</kbd> tirarse</span><span><kbd>E</kbd> golpear</span></div>`;
       lob.querySelectorAll('[data-color]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'skin', color: Number(b.dataset.color) })));
-      lob.querySelector('[data-bots]')?.addEventListener('change', (ev) => sala.enviar({ t: 'bots', n: Number(ev.target.value) }));
       lob.querySelector('[data-largar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
-      lob.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: 11, alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
+      lob.querySelector('[data-npcs]')?.addEventListener('click', () => abrirAgregarBots({ ...botsDeSala(est, 16), alGuardar: ({ ids, azar }) => sala.enviar({ t: 'npcs', ids, azar }) }));
     } else if (e.fase === 'ronda') {
       // entre rondas: quiénes clasificaron
       const firma = `ronda-${e.carreras}-${e.ronda}`;

@@ -77,7 +77,7 @@ test('tienda: se compra una skin en venta con las fichas del casino y no se pued
   assert.deepEqual(r.data.mias, [barata.id]);
   r = await a('POST', '/tienda/comprar', { pid, skin: barata.id });
   assert.equal(r.data.saldo, 8_000 - barata.precio, 'comprarla otra vez no cobra');
-  const fuera = ['capitan', 'chapa', 'colon', 'claude', 'angie', 'olcho', 'sandra'].find((id) => !venta.includes(id));
+  const fuera = ['capitan', 'chapa', 'claude', 'angie', 'olcho', 'sandra'].find((id) => !venta.includes(id));
   r = await a('POST', '/tienda/comprar', { pid, skin: fuera });
   assert.equal(r.status, 400, 'lo que no está en venta hoy no se compra');
   assert.equal((await a('GET', `/tienda?pid=${pid}`)).data.saldo, 8_000 - barata.precio);

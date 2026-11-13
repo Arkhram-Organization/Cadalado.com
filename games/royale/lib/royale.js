@@ -5,7 +5,7 @@ import { crearJuego, idPublico } from '../../../shared/salas.js';
 import { registrarPartida } from '../../../shared/cuenta.js';
 import { premiar, avisoPremios } from '../../../shared/premios.js';
 import { getStore } from '../../../shared/store.js';
-import { elegirNpcs, limpiarElegidos, POR_ID } from '../../../shared/public/npcs.js';
+import { elegirNpcs, limpiarElegidos, botsPedidos, POR_ID } from '../../../shared/public/npcs.js';
 import { dicho } from '../../../shared/public/dichos.js';
 import { DURACION_MAX, LADO, TAM, T, BALDOSA, CAJAS, MATERIALES, generarMapa } from '../public/js/mundo.js';
 import { COSTO_PIEZA, VIDA_PIEZA, validarPieza } from '../public/js/construccion.js';
@@ -13,7 +13,7 @@ import { COSTO_PIEZA, VIDA_PIEZA, validarPieza } from '../public/js/construccion
 const CUENTA_MS = 4000;
 const FIN_MS = 20_000;
 const MAX_JUGADORES = 24;
-const MAX_BOTS = 15;
+const MAX_BOTS = 20;
 
 const nombreBot = (r, i) => {
   const id = r.botNpc[i];
@@ -98,8 +98,9 @@ export const royale = crearJuego({
       case 'npcs': {
         // el anfitrión elige a mano qué personajes del club entran; los lugares que sobran se sortean
         if (!ctx.esHost || r.fase !== 'lobby') return {};
-        r.npcElegidos = limpiarElegidos(msg.ids, MAX_BOTS);
-        if (r.npcElegidos.length > r.bots) r.bots = r.npcElegidos.length;
+        const pedido = botsPedidos(msg, MAX_BOTS);
+        r.npcElegidos = pedido.elegidos;
+        r.bots = pedido.total ?? Math.max(r.bots, r.npcElegidos.length);
         r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
         return {};
       }
@@ -321,6 +322,7 @@ export const royale = crearJuego({
       bots: r.bots,
       botNpc: r.botNpc,
       npcElegidos: r.npcElegidos || [],
+      maxBots: MAX_BOTS,
       botNombres: r.botNpc.map((_, i) => nombreBot(r, i)),
       participantes: r.participantes.map(id),
       vivos: r.vivos,

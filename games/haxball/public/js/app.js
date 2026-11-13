@@ -2,7 +2,7 @@
 // de cada personaje (sacada de su modelo 3D). Modos: entrenamiento, local 1v1 en la misma pantalla y online.
 // Online: el anfitrión simula y manda la cancha por WebRTC; cada uno manda sus teclas; los goles los cuenta el servidor.
 import { Sala, marco, api, pid, esc, toast, sonar, recordar, nombreGuardado, guardarNombre, lookGuardado } from '/comun/sala.js';
-import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
+import { abrirAgregarBots, textoBots, botonAgregarBots, botsDeSala } from '/comun/elegir-npcs.js';
 import { POR_ID } from '/comun/npcs.js';
 import { lookDeJugador } from '/comun/avatar.js';
 import { lookParaDibujo } from '/comun/look.js';
@@ -51,7 +51,7 @@ function menu() {
         <a class="hx-modo" href="/haxball/entrenar" data-ir><b>Entrenamiento</b><span>Practicá solo en la cancha, con todos los estadios.</span><small>WASD y patada con Espacio, Shift izq o Ctrl izq</small></a>
         <a class="hx-modo" href="/haxball/local" data-ir><b>Local 1 contra 1</b><span>Enfrentate 1v1 contra un amigo en la misma compu, sin internet.</span><small>Rojo: WASD + Espacio · Azul: flechitas + Enter, Shift der o Ctrl der</small></a>
         <form class="hx-modo" data-crear><b>Sala online</b><span>Creá una sala y compartí el link. Los bots del club completan los equipos.</span>
-          <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label style="display:flex;gap:6px;align-items:center;font-size:13px">Bots <input class="entrada" type="number" name="bots" min="0" max="19" step="1" value="1" inputmode="numeric" style="width:74px"></label>
+          <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-chico btn-borde" data-agregar-bots></button>
           <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" name="publica" checked style="accent-color:${COLOR_JUEGO}"> Pública</label>
           <button class="btn btn-lima">Crear sala de Haxball</button></span></form>
       </div>
@@ -66,12 +66,13 @@ function menu() {
   limpiar.push(fondoMenu(app.querySelector('.menu'), { dibujar: partidoDeFondo }));
   const nombre = () => app.querySelector('[data-nombre]')?.value.trim();
   app.querySelector('[data-nombre]')?.addEventListener('change', () => guardarNombre(nombre()));
+  const botsMenu = botonAgregarBots(app.querySelector('[data-agregar-bots]'), { max: 19, azar: 1, color: COLOR_JUEGO });
   app.querySelector('[data-crear]').onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     if (!cuenta) guardarNombre(nombre());
     try {
-      const { code } = await api('/api/haxball/crear', { pid: pid(), nombre: nombre(), opciones: { bots: Math.max(0, Math.min(19, Math.round(+f.get('bots') || 0))), publica: f.get('publica') === 'on' } });
+      const { code } = await api('/api/haxball/crear', { pid: pid(), nombre: nombre(), opciones: { bots: botsMenu.bots, npcs: botsMenu.npcs, publica: f.get('publica') === 'on' } });
       ir(`/haxball/sala/${code}`);
     } catch (err) { toast(err.message, true); }
   };
@@ -530,7 +531,7 @@ function abrirSala(code) {
       <div class="hx-afuera">Mirando: ${de('afuera').map((id) => esc(nombreDe(id))).join(', ') || 'nadie'} ${est.equipos[est.yo] !== 'afuera' ? '<button class="btn btn-chico btn-borde" data-eq="afuera">Mirar</button>' : ''}</div>
       ${bots.length ? `<p class="hx-bots">Bots del club: ${bots.map((b) => esc(nombreDe(b))).join(', ')} (completan el equipo con menos gente)</p>` : ''}
       ${modificadores({ minutos: est.minutos, goles: est.golesMax, estadio: est.estadio }, host)}
-      ${host ? `<div class="hx-botsel"><span>Bots</span><span class="hx-cant"><button type="button" data-bots-d="-1" aria-label="Un bot menos">&minus;</button><b>${est.bots}</b><button type="button" data-bots-d="1" aria-label="Un bot más">+</button></span><button type="button" class="btn btn-chico btn-borde" data-npcs>${textoNpcs(est.npcElegidos)}</button></div>` : ''}
+      ${host ? `<div class="hx-botsel"><button type="button" class="btn btn-chico btn-borde" data-npcs>${textoBots(est.bots)}</button></div>` : ''}
       ${host ? `<button class="btn btn-lima btn-grande hx-iniciar" data-empezar>${fase === 'fin' ? 'Revancha' : '¡Iniciar partido!'}</button>` : '<p class="hx-espera">Esperando que el anfitrión dé el pitazo inicial…</p>'}
       <p class="hx-vs"><i class="hx-pt rojo"></i> ${n.rojo} vs <i class="hx-pt azul"></i> ${n.azul}</p>`;
     const p = $('[data-panel]');
@@ -541,11 +542,7 @@ function abrirSala(code) {
     if(fase==='fin'&&ganadores.length)limpiarFestejo=festejo(p.querySelector('.hx-festejo'),ganadores.map(id=>({look:lookDe(id)})));
     p.querySelector('[data-copiar]').onclick = () => { navigator.clipboard?.writeText(location.href); toast('Link copiado'); };
     p.querySelectorAll('[data-eq]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'equipo', e: b.dataset.eq })));
-    p.querySelectorAll('[data-bots-d]').forEach((b) => (b.onclick = () => {
-      const n = Math.max(0, Math.min(est.maxBots || 19, est.bots + Number(b.dataset.botsD)));
-      if (n !== est.bots) sala.enviar({ t: 'config', bots: n });
-    }));
-    p.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: est.maxBots || 19, color: COLOR_JUEGO, alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
+    p.querySelector('[data-npcs]')?.addEventListener('click', () => abrirAgregarBots({ ...botsDeSala(est, 19), color: COLOR_JUEGO, alGuardar: ({ ids, azar }) => sala.enviar({ t: 'npcs', ids, azar }) }));
     if (host) engancharModificadores(p, (c) => sala.enviar({ t: 'config', ...c }));
     p.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
   }

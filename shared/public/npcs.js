@@ -92,19 +92,6 @@ export const NPCS = [
     frases: ['Soy el volcho.', 'Soy el volcho, che.', '¿Quién? El volcho.', 'Acá está el volcho.', 'El volcho no pierde.'],
   },
   {
-    id: 'colon',
-    nombre: 'Cristóbal Colón',
-    look: { estilo: 'meshy', piel: '#efcfb2', pelo: { estilo: 'largo', color: '#e8e4dc' }, ojos: '#4a5e7a', cuerpo: 'normal', sombrero: '#2b2018', ropa: { remera: '#7a1f2b', pantalon: '#2b2018' }, genero: 'h' },
-    frases: [
-      '¡Tierra a la vista!',
-      'Yo buscaba las Indias y terminé acá.',
-      'Esto no figura en mis mapas.',
-      'Navegar es preciso. Correr, no tanto.',
-      '¿Alguien vio la Santa María?',
-      'Descubrí esta pista. Es mía.',
-    ],
-  },
-  {
     id: 'claude',
     nombre: 'Claude',
     look: { estilo: 'meshy', piel: '#d97757', pelo: { estilo: 'calvo', color: '#d97757' }, ojos: '#2b1a12', cuerpo: 'normal', ropa: { remera: '#c4623f', pantalon: '#a84f30' }, genero: 'h', liso: true },
@@ -445,11 +432,17 @@ export function rngNpc(semilla) {
   };
 }
 
-// Los que el anfitrión eligió a mano para la partida: ids válidos y sin repetir.
+// Los que el anfitrión eligió a mano para la partida: ids válidos (se pueden repetir) hasta el tope.
 export function limpiarElegidos(ids, max = 24) {
   const lista = [];
-  for (const id of Array.isArray(ids) ? ids : []) if (typeof id === 'string' && POR_ID[id] && !lista.includes(id) && lista.length < max) lista.push(id);
+  for (const id of Array.isArray(ids) ? ids : []) if (typeof id === 'string' && POR_ID[id] && lista.length < max) lista.push(id);
   return lista;
+}
+// Lo que manda "Agregar bots": personajes elegidos (con repetidos) + cuántos al azar → { elegidos, total }
+export function botsPedidos(msg, max) {
+  const elegidos = limpiarElegidos(msg?.ids, max);
+  const azar = Number.isInteger(Number(msg?.azar)) ? Math.max(0, Math.min(max - elegidos.length, Number(msg.azar))) : null;
+  return { elegidos, total: azar === null ? null : elegidos.length + azar };
 }
 
 // Qué personajes son los bots de una partida: primero los elegidos a mano y el resto se sortea.

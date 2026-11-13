@@ -1,5 +1,5 @@
 import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
-import { abrirElegirNpcs, textoNpcs } from '/comun/elegir-npcs.js';
+import { abrirAgregarBots, textoBots, botonAgregarBots, botsDeSala } from '/comun/elegir-npcs.js';
 import { avatarSvg, lookDeId, lookDeNombre, lookDeJugador } from '/comun/avatar.js';
 import { PLANTILLAS } from './plantillas.js';
 import { fondoMenu } from '/comun/fondo-menu.js';
@@ -78,7 +78,7 @@ function menu() {
       <form data-crear style="display:grid;gap:12px">
         ${cuenta ? '' : `<label><span class="etq">Tu nombre</span><input class="entrada" name="nombre" maxlength="20" required value="${esc(nombreGuardado())}" placeholder="¿Cómo te llaman?"></label>`}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <label><span class="etq">Bots</span><select class="entrada" name="bots"><option>0</option><option selected>2</option><option>3</option><option>4</option></select></label>
+          <label><span class="etq">Bots</span><button class="btn btn-borde" data-agregar-bots style="width:100%"></button></label>
           <label><span class="etq">Rondas</span><select class="entrada" name="rondas"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
         </div>
         <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" name="publica" checked style="accent-color:${COLOR};width:18px;height:18px"> Sala pública (aparece en la lista)</label>
@@ -92,13 +92,14 @@ function menu() {
       <div class="salas" data-salas><div class="vacio">Buscando…</div></div>
     </section>
   </div>`;
+  const botsMenu = botonAgregarBots(app.querySelector('[data-agregar-bots]'), { max: 8, azar: 2 });
   app.querySelector('[data-crear]').onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     if (!cuenta) guardarNombre(f.get('nombre'));
     e.target.querySelector('button').disabled = true;
     try {
-      const { code } = await api('/api/memes/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: Number(f.get('bots')), rondas: f.get('rondas'), publica: f.get('publica') === 'on' } });
+      const { code } = await api('/api/memes/crear', { pid: pid(), nombre: f.get('nombre'), opciones: { bots: botsMenu.bots, npcs: botsMenu.npcs, rondas: f.get('rondas'), publica: f.get('publica') === 'on' } });
       ir(`/memes/sala/${code}`);
     } catch (err) {
       toast(err.message, true);
@@ -273,7 +274,7 @@ function abrirSala(code) {
         <h2>¿Quiénes juegan?</h2>
         <p>Mandá el link de la sala. Cuando estén todos, ${esHost ? 'tocá empezar' : 'el que armó la sala empieza'}.</p>
         <div class="fila-form" style="max-width:520px;margin:0 auto"><input class="entrada mono" readonly value="${esc(link)}"><button class="btn" data-copiar2>Copiar</button></div>
-        ${esHost ? `<div class="fila-bots"><span class="etq">Bots que memean</span>${[0, 1, 2, 3, 4].map((k) => `<button class="btn btn-chico ${k === (est.bots || []).length ? 'btn-lima' : ''}" data-bots="${k}">${k}</button>`).join('')}<button class="btn btn-chico" data-npcs>${textoNpcs(est.npcElegidos)}</button></div>` : ''}
+        ${esHost ? `<div class="fila-bots"><span class="etq">Bots que memean</span><button class="btn btn-chico btn-lima" data-npcs>${textoBots((est.bots || []).length)}</button></div>` : ''}
         <div style="margin-top:18px">${esHost ? `<button class="btn btn-lima btn-grande" data-empezar ${n < 2 ? 'disabled' : ''}>Empezar (${n} ${n === 1 ? 'jugador' : 'jugadores'})</button>` : `<span class="chip">${n} conectados · esperando que empiece</span>`}</div>
         <div class="reglas">
           <div><b>1 · Plantilla</b>Te toca una al azar. Si no te convence, pedí otra.</div>
@@ -282,8 +283,7 @@ function abrirSala(code) {
         </div></div>`;
       c.querySelector('[data-copiar2]').onclick = () => app.querySelector('[data-copiar]').click();
       c.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
-      c.querySelectorAll('[data-bots]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'bots', n: Number(b.dataset.bots) })));
-      c.querySelector('[data-npcs]')?.addEventListener('click', () => abrirElegirNpcs({ elegidos: est.npcElegidos || [], max: est.maxBots || 4, alGuardar: (ids) => sala.enviar({ t: 'npcs', ids }) }));
+      c.querySelector('[data-npcs]')?.addEventListener('click', () => abrirAgregarBots({ ids: est.npcElegidos || [], azar: Math.max(0, (est.bots || []).length - (est.npcElegidos || []).length), max: est.maxBots || 8, alGuardar: ({ ids, azar }) => sala.enviar({ t: 'npcs', ids, azar }) }));
       return;
     }
 

@@ -23,7 +23,7 @@ export const lookDeJugador = (j, id, color) => (j?.look ? lookParaDibujo(j.look)
 
 // Look de un bot por su nombre (NPC del club o personaje extra de los memes).
 export function lookDeNombre(nombre) {
-  const n = String(nombre || '').trim();
+  const n = String(nombre || '').trim().replace(/\s\d+$/, ''); // un bot repetido ("Dobro 2") es el mismo personaje
   const npc = Object.values(POR_ID).find((x) => x.nombre.toLowerCase() === n.toLowerCase());
   if (npc) return { ...npc.look }; // el smoking de Dobro es solo para el casino
   return LOOKS_EXTRA[n] || lookDeId(n, '#9be15d');
