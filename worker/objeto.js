@@ -52,6 +52,8 @@ const sinHora = (r) => JSON.stringify(r, (k, v) => (k === 'now' || k === 'server
 export class Objeto extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    // las claves del panel de Cloudflare (secretos o variables) también quedan a mano para el código común
+    for (const k of ['ADMIN_CLAVE', 'CLUB_ADMINS']) if (env[k] && !process.env[k]) process.env[k] = String(env[k]);
     this.local = new AlmacenLocal(ctx.storage);
     this.nombre = null;
     this.firmasGrupo = new Map();
