@@ -207,3 +207,21 @@ test('sala online: equipos, luchador, bots que completan y resultado', async () 
   await accion(A, { t: 'config', modo: '1v1' });
   assert.equal((await ver(A)).modo, '1v1', 'antes de la revancha se puede cambiar el modo');
 });
+
+test('los bots aprenden: al que tira poderes de lejos lo leen y se lo avisan', () => {
+  const ls = [{ id: 'yo', eq: 0 }, { id: 'bot', eq: 1, bot: true }];
+  const m = nuevoMundo(ls, { yo: { elem: 'fuego', arma: 'katana' }, bot: { elem: 'hielo', arma: 'hacha' } });
+  m.fase = 'pelea';
+  const yo = m.luch[0], bot = m.luch[1];
+  for (let i = 0; i < 14; i++) {
+    yo.x = -5; bot.x = 5; bot.vida = 100; yo.cdPoder = 0; yo.est = 'quieto'; yo.atk = null; bot.est = 'quieto'; bot.atk = null; bot.stun = 0;
+    paso(m, new Map([['yo', { x: 0, y: 0, poder: true }]]));
+    for (let t = 0; t < .6; t += PASO) paso(m, new Map([['yo', { x: 0, y: 0 }]]));
+  }
+  assert.ok(m.lee.yo.zonas.lejos.poder >= 10, 'anotó los poderes de lejos');
+  assert.ok(m.lee.yo.avisos.poder, 'avisó que lo leyó');
+  // ahora, de lejos, el bot salta para meterse (en vez de quedarse tirando)
+  let salto = 0;
+  for (let i = 0; i < 400; i++) { yo.x = -5; bot.x = 4.5; bot.y = 0; bot.est = 'quieto'; bot.atk = null; bot.ia = null; const e = pensarBot(m, bot, 2); if (e.y < 0) salto++; }
+  assert.ok(salto > 100, `salta para meterse (${salto})`);
+});

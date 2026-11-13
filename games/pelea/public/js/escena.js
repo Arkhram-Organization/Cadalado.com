@@ -179,6 +179,7 @@ export function crearEscena(lienzo, { escenario = 'templo', calidad = 1 } = {}) 
     if (ev.k === 'golpe' && ev.fuerte) { esc.vitorear?.(.6); hablar(ev.a, 'gana', ev.n, .35); hablar(ev.b, 'pierde', ev.n + 1, .2); }
     if (ev.k === 'cae') hablar(ev.a, 'pierde', ev.n, .45);
     if (ev.k === 'ko') { esc.vitorear?.(1.2); }
+    if (ev.k === 'lectura' && ev.a) hablar(ev.a, 'gana', ev.n, 1, true);
     if (ev.k === 'remate') esc.vitorear?.(1.5);
     if (ev.k === 'fin' && ev.ganador != null) for (const f of vista.luch) hablar(f.id, f.eq === ev.ganador ? 'gana' : 'pierde', ev.n + f.id.length, f.eq === ev.ganador ? 1 : .6, true);
     if (ev.k === 'poder') hablar(ev.a, 'turno', ev.n, .12);

@@ -95,6 +95,14 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
   estiran y cambio de jugador. Cámara de transmisión o en tercera persona (C). Contra bots, 2 jugadores en la misma
   compu y salas online rojo contra azul (cada persona maneja un jugador; el arquero y los que faltan son bots).
   Reutiliza de Piña Final las partículas y el barrio (`/pelea/js/calles.js`, `/pelea/js/objetos3d.js`).
+  Trucos con las teclas 1 a 8 (bicicleta, amague, caño, sombrero, ruleta, taco, elástica y pared; con joystick, LT +
+  botones). Cada persona elige su puesto (arquero, defensa, medio, delantero o aleatorio): `armarEquipo` en el motor
+  reparte los lugares, y online usa una semilla común para que todas las compus armen lo mismo. Seis canchas:
+  Barrio Chino, Terraza, Noche de lluvia, Estadio, Playa y Potrero.
+- **Bots que aprenden (Piña Final y La Canchita):** durante el partido anotan cómo jugás (en la pelea: qué hacés a
+  cada distancia, cuánto saltás o te cubrís; en el fútbol: a qué palo pateás, para qué lado gambeteás, qué trucos
+  repetís) y se acomodan: gancho al que salta, barrida al que se cubre, el arquero se tira a tu palo, te cortan la
+  gambeta y se comen menos el truco que repetís. Cuando te leen, aparece un aviso.
 - **Make it Meme:** las 100 plantillas son las más usadas de imgflip.com y se cargan desde ahí.
 
 ### Cuentas

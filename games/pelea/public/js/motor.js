@@ -64,7 +64,7 @@ export function sortearPoderes(luchadores, r = Math.random) {
 }
 
 // luchadores: [{ id, eq: 0|1 }]; poderes: { id: { elem, arma } }; decisivo: [eq0, eq1] si ganar esta ronda le da la pelea.
-export function nuevoMundo(luchadores, poderes, { tiempo = 90, decisivo = [false, false] } = {}) {
+export function nuevoMundo(luchadores, poderes, { tiempo = 90, decisivo = [false, false], lee = {} } = {}) {
   const porEq = [0, 0];
   const luch = luchadores.map((l) => {
     const k = porEq[l.eq]++;
@@ -74,10 +74,11 @@ export function nuevoMundo(luchadores, poderes, { tiempo = 90, decisivo = [false
       est: 'quieto', t: 0, atk: null, atkT: 0, golpeados: [], conecto: false,
       stun: 0, invul: 0, combo: 0, comboT: 0, cdPoder: 0, quema: 0, veneno: 0,
       ko: false, elem: poderes[l.id]?.elem || 'fuego', arma: poderes[l.id]?.arma || 'katana',
-      prev: {}, buf: null, golpesDados: 0, danoRecibido: 0,
+      prev: {}, buf: null, golpesDados: 0, danoRecibido: 0, humano: !l.bot,
     };
   });
-  return { t: 0, fase: 'intro', tiempo, luch, proy: [], ev: [], evN: 0, pN: 0, decisivo, ganador: null, remate: null, remateT: 0, porTiempo: false };
+  // lee: lo que los bots aprendieron de cada persona (sigue de una ronda a la otra)
+  return { t: 0, fase: 'intro', tiempo, luch, proy: [], ev: [], evN: 0, pN: 0, decisivo, ganador: null, remate: null, remateT: 0, porTiempo: false, lee };
 }
 
 function evento(m, e) {
@@ -101,6 +102,51 @@ function empezar(m, f, id) {
   f.atk = id; f.atkT = 0; f.golpeados = []; f.conecto = false; f.est = 'ataque'; f.lanzo = false;
   if (f.y <= 0) f.vx = 0;
   evento(m, { k: 'ataque', a: f.id, atk: id });
+}
+
+// ---------------------------------------------------------------- aprendizaje: los bots leen cómo peleás
+// Por cada persona: qué hace según la distancia, cuánto salta, cuánto se cubre y qué tira después de cada cosa.
+const zona = (d) => (d < 1.7 ? 'cerca' : d < 3.6 ? 'medio' : 'lejos');
+const ACCION = (atk) => (atk?.startsWith('arma_') ? 'arma' : ['pina1', 'pina2', 'pina3'].includes(atk) ? 'pina' : atk);
+function lectura(m, id) {
+  return (m.lee[id] ??= { total: 0, zonas: { cerca: {}, medio: {}, lejos: {} }, salto: 0, guardia: 0, agacha: 0, despues: {}, ultimo: null, avisos: {} });
+}
+function aprender(m, f, accion) {
+  if (!f.humano) return;
+  const L = lectura(m, f.id);
+  const r = enemigoCercano(m, f);
+  const z = zona(r ? Math.abs(r.x - f.x) : 5);
+  L.total++;
+  L.zonas[z][accion] = (L.zonas[z][accion] || 0) + 1;
+  if (accion === 'salto') L.salto++;
+  if (accion === 'guardia') L.guardia++;
+  if (L.ultimo) { const d = (L.despues[L.ultimo] ??= {}); d[accion] = (d[accion] || 0) + 1; }
+  L.ultimo = accion;
+  // cuando un patrón ya es claro, el bot que pelea con vos lo dice (una vez por patrón)
+  const avisar = (clave, texto) => {
+    if (L.avisos[clave] || L.total < 10) return;
+    L.avisos[clave] = true;
+    const bot = m.luch.find((o) => o.eq !== f.eq && !o.humano && !o.ko);
+    evento(m, { k: 'lectura', a: bot?.id || null, b: f.id, texto });
+  };
+  const lejos = L.zonas.lejos, n = Object.values(lejos).reduce((a, b) => a + b, 0);
+  if (n >= 4 && (lejos.poder || 0) / n > .55) avisar('poder', 'Te leyó: de lejos siempre tirás el poder');
+  if (L.salto / L.total > .3) avisar('salto', 'Te leyó: saltás mucho, te espera con el gancho');
+  if (L.guardia / L.total > .3) avisar('guardia', 'Te leyó: te cubrís todo el tiempo, va a barrerte');
+  const cerca = L.zonas.cerca, nc = Object.values(cerca).reduce((a, b) => a + b, 0);
+  if (nc >= 6 && (cerca.barrida || 0) / nc > .35) avisar('barrida', 'Te leyó: abusás de la barrida');
+  if (nc >= 8 && (cerca.pina || 0) / nc > .6) avisar('pina', 'Te leyó: todo piñas, ahora se cubre y te contesta');
+}
+// lo más probable que haga esa persona a esta distancia (y cuánto confía el bot en eso)
+function predecir(m, rival, d, dificultad) {
+  const L = m.lee[rival.id];
+  if (!L) return null;
+  const tabla = { ...L.zonas[zona(d)] };
+  if (L.ultimo && L.despues[L.ultimo]) for (const [k, v] of Object.entries(L.despues[L.ultimo])) tabla[k] = (tabla[k] || 0) + v * .7;
+  const total = Object.values(tabla).reduce((a, b) => a + b, 0);
+  if (!total) return null;
+  const [accion, n] = Object.entries(tabla).sort((a, b) => b[1] - a[1])[0];
+  return { accion, p: n / total, conf: Math.min(1, L.total / 14) * [.45, .8, 1][dificultad], L };
 }
 
 // ---------------------------------------------------------------- un paso de 1/60 s
@@ -160,7 +206,7 @@ function controlar(m, f, inp) {
     const def = ATAQUES[f.atk];
     f.atkT += PASO;
     // combos: la piña encadena con la siguiente; si pegó, se puede cortar con el poder
-    if (fresco === 'pina' && def.sigue && f.atkT >= def.ini + def.act * .5) { f.buf = null; empezar(m, f, def.sigue); return; }
+    if (fresco === 'pina' && def.sigue && f.atkT >= def.ini + def.act * .5) { f.buf = null; aprender(m, f, 'pina'); empezar(m, f, def.sigue); return; }
     if (fresco === 'poder' && f.conecto && !def.arma && f.cdPoder <= 0 && f.y <= 0 && f.atkT >= def.ini + def.act) { f.buf = null; empezar(m, f, 'poder'); return; }
     if ((f.atk === 'poder' || f.atk === 'super') && !f.lanzo && f.atkT >= def.ini) { f.lanzo = true; tirarPoder(m, f, f.atk === 'super'); }
     if (f.atkT >= def.ini + def.act + def.rec) { f.atk = null; cambiar(f, f.y > 0 ? 'salto' : 'quieto'); }
@@ -182,13 +228,13 @@ function controlar(m, f, inp) {
     else if (fresco === 'arma') golpe = 'arma_' + f.arma;
     else if (fresco === 'poder' && f.cdPoder <= 0) golpe = 'poder';
     else if (fresco === 'super' && f.ene >= 100) golpe = 'super';
-    if (golpe) { f.buf = null; if (golpe === 'super') f.ene = 0; empezar(m, f, golpe); return; }
+    if (golpe) { f.buf = null; if (golpe === 'super') f.ene = 0; aprender(m, f, ACCION(golpe)); empezar(m, f, golpe); return; }
   }
-  if (inp.guardia) { cambiar(f, abajo ? 'guardia_baja' : 'guardia'); f.vx = 0; return; }
+  if (inp.guardia) { if (!f.est.startsWith('guardia')) aprender(m, f, 'guardia'); cambiar(f, abajo ? 'guardia_baja' : 'guardia'); f.vx = 0; return; }
   if (abajo) { cambiar(f, 'agacha'); f.vx = 0; return; }
   if (arriba) {
     f.vy = SALTO; f.y = .001; f.vx = Math.abs(inp.x) > .3 ? signo(inp.x) * 3.6 : 0;
-    cambiar(f, 'salto'); evento(m, { k: 'salto', a: f.id });
+    cambiar(f, 'salto'); evento(m, { k: 'salto', a: f.id }); aprender(m, f, 'salto');
     return;
   }
   const adelante = inp.x * f.mira;
@@ -428,19 +474,30 @@ export function pensarBot(m, f, dificultad = 1, r = Math.random) {
   const rival = enemigoCercano(m, f);
   if (!rival || rival.ko) { ia.mantener = { x: 0, y: 0 }; return ia.mantener; }
   const dx = rival.x - f.x, dist = Math.abs(dx), dir = signo(dx);
-  const cubre = [.2, .45, .72][dificultad] ?? .45;
+  const pred = rival.humano ? predecir(m, rival, dist, dificultad) : null;
+  const lee = pred?.conf || 0;
+  // le leyó los saltos: gancho al que viene por el aire
+  if (rival.y > .4 && rival.vy < 2 && dist < 2 && pred && pred.L.salto / pred.L.total > .2 && r() < .25 + lee * .6) return { x: 0, y: 1, pina: true };
+  let cubre = [.2, .45, .72][dificultad] ?? .45;
+  if (pred && ['pina', 'patada', 'arma', 'gancho'].includes(pred.accion)) cubre += lee * .25;
   // se viene un golpe: cubrirse (agachado si es una barrida)
   const peligro = rival.atk && ATAQUES[rival.atk].act && dist < (ATAQUES[rival.atk].alc || 1) + .6 && rival.atkT < ATAQUES[rival.atk].ini + ATAQUES[rival.atk].act;
   const poderCerca = m.proy.find((p) => p.eq !== f.eq && Math.abs(p.x - f.x) < 3.6 && signo(f.x - p.x) === signo(p.vx));
   if ((peligro || poderCerca) && r() < cubre) {
     if (poderCerca && r() < .35 && f.y <= 0) { ia.prox = m.t + .25; ia.mantener = { x: 0, y: 0 }; return { x: dir, y: -1 }; }
-    ia.mantener = { x: 0, y: peligro && rival.atk === 'barrida' ? 1 : 0, guardia: true };
+    // si sabe que abusás de la barrida, se cubre agachado
+    const barre = rival.atk === 'barrida' || (pred?.accion === 'barrida' && r() < lee);
+    ia.mantener = { x: 0, y: peligro && barre ? 1 : 0, guardia: true };
     ia.prox = m.t + .32;
     return ia.mantener;
   }
   ia.mantener = { x: 0, y: 0 };
   if (f.ene >= 100 && r() < .5) return { x: 0, y: 0, super: true };
+  // al que se cubre todo el tiempo, barrida (la guardia parada no la para)
+  if (pred && pred.L.guardia / pred.L.total > .25 && dist < 1.5 && r() < lee * .55) return { x: 0, y: 1, patada: true };
   if (dist > 3.2) {
+    // al que tira poderes de lejos: se le mete saltando
+    if (pred?.accion === 'poder' && r() < lee * .6) return { x: dir, y: -1 };
     if (f.cdPoder <= 0 && r() < [.25, .4, .5][dificultad]) return { x: 0, y: 0, poder: true };
     if (r() < .1) return { x: dir, y: -1 };
     ia.mantener = { x: dir, y: 0 };

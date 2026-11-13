@@ -15,7 +15,8 @@ const CANCHAS = ['barrio', 'terraza', 'lluvia'];
 const ROSTER = NPCS.filter((n) => n.look?.modelo).map((n) => n.id);
 const azar = (a) => a[crypto.getRandomValues(new Uint32Array(1))[0] % a.length];
 const NOMBRE = { rojo: 'Rojo', azul: 'Azul' };
-const cupo = (r) => r.formato - 1; // el arquero siempre es un bot
+const cupo = (r) => r.formato; // si nadie elige arco, ataja un bot (o, con el equipo lleno, una persona al azar)
+const ROLES = ['aleatorio', 'arquero', 'defensa', 'medio', 'delantero'];
 const de = (r, eq, online) => Object.keys(r.jugadores).filter((p) => r.equipos[p] === eq && (!online || online.has(p)));
 
 export const futbol = crearJuego({
@@ -29,7 +30,7 @@ export const futbol = crearJuego({
       dificultad: [0, 1, 2].includes(Number(opts.dificultad)) ? Number(opts.dificultad) : 1,
       cancha: CANCHAS.includes(opts.cancha) ? opts.cancha : azar(CANCHAS),
       personajeInicial: ROSTER.includes(opts.personaje) ? opts.personaje : null,
-      equipos: {}, personaje: {}, participantes: [], bots: { rojo: [], azul: [] },
+      equipos: {}, personaje: {}, rol: {}, participantes: [], bots: { rojo: [], azul: [] },
       partidoN: 0, marcador: [0, 0], ganador: null, goles: [], fin: 0,
     };
   },
@@ -48,12 +49,23 @@ export const futbol = crearJuego({
         if (r.fase === 'partido' && r.participantes.includes(pid)) return { error: 'Esperá a que termine el partido' };
         if (msg.e !== 'afuera' && de(r, msg.e, ctx.online).filter((p) => p !== pid).length >= cupo(r)) return { error: 'Ese equipo está lleno' };
         r.equipos[pid] = msg.e;
+        // si en el equipo nuevo ya hay arquero, pasa a aleatorio
+        if (r.rol[pid] === 'arquero' && de(r, msg.e, ctx.online).some((p) => p !== pid && r.rol[p] === 'arquero')) r.rol[pid] = 'aleatorio';
         return {};
       }
       case 'personaje': {
         if (!ROSTER.includes(msg.id)) return { error: 'Ese personaje no existe' };
         if (r.fase === 'partido' && r.participantes.includes(pid)) return { error: 'Esperá a que termine el partido' };
         r.personaje[pid] = msg.id;
+        return {};
+      }
+      case 'rol': {
+        // el puesto que quiere cada uno (arquero, defensa, medio, delantero o aleatorio)
+        if (!ROLES.includes(msg.rol)) return { error: 'Ese puesto no existe' };
+        if (r.fase === 'partido' && r.participantes.includes(pid)) return { error: 'Esperá a que termine el partido' };
+        const eq = r.equipos[pid];
+        if (msg.rol === 'arquero' && eq !== 'afuera' && de(r, eq, ctx.online).some((p) => p !== pid && r.rol[p] === 'arquero')) return { error: 'Ya hay alguien al arco en tu equipo' };
+        r.rol[pid] = msg.rol;
         return {};
       }
       case 'config': {
@@ -126,6 +138,7 @@ export const futbol = crearJuego({
       fase: r.fase, formato: r.formato, minutos: r.minutos, golesMax: r.golesMax, dificultad: r.dificultad, cancha: r.cancha,
       equipos: Object.fromEntries(Object.entries(r.equipos).map(([p, e]) => [idPublico(p), e])),
       personaje: Object.fromEntries(Object.entries(r.personaje).map(([p, l]) => [idPublico(p), l])),
+      rol: Object.fromEntries(Object.entries(r.rol || {}).map(([p, l]) => [idPublico(p), l])),
       participantes: r.participantes.map(idPublico), bots: r.bots, partidoN: r.partidoN, marcador: r.marcador, ganador: r.ganador,
     };
   },

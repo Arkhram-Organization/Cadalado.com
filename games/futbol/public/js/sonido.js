@@ -43,6 +43,8 @@ const SONIDOS = {
   silbato: (a) => silbido(a, 0, .45),
   final: (a) => { silbido(a, 0, .35); silbido(a, .5, .35); silbido(a, 1, .9); ruido(a, { dur: 2.5, vol: .5, f: 700, q: .3, at: 1, ataque: .3 }); },
   gol: (a) => { ruido(a, { dur: 3.5, vol: .9, f: 650, q: .3, ataque: .25 }); ruido(a, { dur: 3, vol: .5, f: 1400, q: .5, ataque: .4 }); for (let i = 0; i < 3; i++) tono(a, { f: 466, dur: .35, vol: .12, forma: 'sawtooth', at: .3 + i * .45 }); },
+  ole: (a) => { ruido(a, { dur: 1.4, vol: .7, f: 520, q: .6, ataque: .15 }); tono(a, { f: 330, f2: 440, dur: .9, vol: .06, forma: 'sawtooth', at: .05 }); },
+  truco: (a) => ruido(a, { dur: .18, vol: .25, f: 1200, f2: 2600, q: 1.5 }),
   trueno: (a) => ruido(a, { dur: 2.5, vol: .7, f: 120, tipo: 'lowpass', at: .3, ataque: .1 }),
   cursor: (a) => tono(a, { f: 600, dur: .05, vol: .08, forma: 'square' }),
   elegir: (a) => { tono(a, { f: 400, f2: 900, dur: .2, vol: .15, forma: 'triangle' }); },

@@ -158,3 +158,102 @@ test('sala online: equipos con cupo, personaje, bots que completan y resultado',
   assert.equal(e.ganador, 0);
   assert.deepEqual(e.marcador, [3, 2]);
 });
+
+// ---------------------------------------------------------------- puestos, trucos y aprendizaje
+import { armarEquipo, TRUCOS } from '../public/js/motor.js';
+
+test('armarEquipo respeta los puestos pedidos y el resto sale al azar', () => {
+  const personas = [{ id: 'a', npc: 'julo', rol: 'arquero' }, { id: 'b', npc: 'faur', rol: 'delantero' }, { id: 'c', npc: 'mati', rol: 'delantero' }];
+  const lista = armarEquipo(5, 0, personas, ['olcho', 'dobro']);
+  assert.equal(lista.length, 5);
+  assert.equal(lista.find((j) => j.arquero).id, 'a', 'el que pidió arco ataja');
+  assert.equal(lista.find((j) => j.id === 'b').rol, 'delantero');
+  assert.equal(lista.find((j) => j.id === 'c').rol, 'delantero');
+  assert.deepEqual(new Set(lista.filter((j) => !j.arquero).map((j) => j.slot)).size, 4, 'cada uno en un lugar distinto');
+  // sin nadie al arco, ataja un bot
+  const otra = armarEquipo(6, 1, [{ id: 'x', npc: 'julo', rol: 'aleatorio' }], ['a', 'b', 'c', 'd', 'e']);
+  assert.ok(otra.find((j) => j.arquero).bot);
+  assert.equal(otra.length, 6);
+});
+
+test('el arquero manejado por una persona se estira con la barrida', () => {
+  const lista = [...armarEquipo(5, 0, [{ id: 'yo', npc: 'julo', rol: 'arquero' }], ['a', 'b', 'c', 'd']), ...armarEquipo(5, 1, [], ['e', 'f', 'g', 'h', 'i'])];
+  const m = nuevoPartido({ formato: 5, jugadores: lista, humanos: [{ hid: 'h', eq: 0, pid: 'yo', cambia: true }] });
+  correr(m, 1.6);
+  assert.equal(m.cambia.h, false, 'el arquero no cambia de jugador');
+  paso(m, new Map([['h', { x: 0, z: 1, barrida: true }]]));
+  assert.equal(buscar(m, 'yo').est, 'vuela');
+});
+
+test('hay 8 trucos y el caño pasa la pelota entre las piernas', () => {
+  assert.equal(TRUCOS.length, 8);
+  const m = partido();
+  const yo = buscar(m, '0-1'), rival = buscar(m, '1-1');
+  despejar(m, ['0-1', '1-1']);
+  Object.assign(rival, { x: 1.3, z: 0, est: 'quieto', t: 0, vx: 0, vz: 0, ia: { prox: 1e9, inp: { x: 0, z: 0 } } });
+  Object.assign(yo, { x: 0, z: 0, ang: 0, vx: 0, vz: 0 }); m.pel.duenio = yo.id;
+  paso(m, new Map([['yo', { x: 0, z: 0, truco: 3 }]]));
+  assert.ok(m.ev.some((e) => e.k === 'truco' && e.truco === 'cano' && e.exito));
+  let recupero = false;
+  for (let t = 0; t < 1.5 && !recupero; t += PASO) { paso(m, new Map([['yo', { x: 1, z: 0 }]])); recupero = m.pel.duenio === yo.id; }
+  assert.ok(recupero, 'la volvió a agarrar del otro lado');
+  assert.ok(yo.x > rival.x, 'pasó al rival');
+});
+
+test('la ruleta esquiva el quite', () => {
+  const m = partido();
+  const yo = buscar(m, '0-1'), rival = buscar(m, '1-1');
+  despejar(m, ['0-1', '1-1']);
+  Object.assign(yo, { x: 0, z: 0, ang: 0 }); m.pel.duenio = yo.id;
+  Object.assign(rival, { x: 1, z: 0, est: 'quieto', t: 0, cd: 0, ia: { prox: 1e9, inp: { x: 0, z: 0 } } });
+  paso(m, new Map([['yo', { x: 0, z: 0, truco: 5 }]]));
+  assert.equal(yo.est, 'ruleta');
+  for (let i = 0; i < 20; i++) { rival.cd = 0; paso(m, new Map([['yo', { x: 0, z: 0, truco: 5 }]])); }
+  assert.equal(m.pel.duenio, yo.id);
+});
+
+test('los bots aprenden a qué palo pateás y avisan que te leyeron', () => {
+  const m = partido();
+  const yo = buscar(m, '0-1');
+  for (let i = 0; i < 7; i++) {
+    despejar(m, ['0-1']);
+    m.fase = 'juego';
+    Object.assign(yo, { x: m.L / 2 - 9, z: 0, ang: 0, est: 'quieto', t: 0 }); m.pel.duenio = yo.id;
+    paso(m, new Map([['yo', { x: 0, z: 1, tiro: true }]]));
+    correr(m, .3, new Map([['yo', { x: 0, z: 1, tiro: true }]]));
+    paso(m, new Map([['yo', { x: 0, z: 1 }]]));
+    correr(m, .1);
+  }
+  const lee = m.lee.yo;
+  assert.ok(lee.palo[1] >= 5, 'anotó el palo');
+  assert.ok(lee.avisos.palo, 'avisó que lo leyeron');
+  // el arquero se corre para ese palo cuando lo vuelve a tener cerca
+  despejar(m, ['0-1', '1-0']);
+  m.fase = 'juego';
+  const arq = buscar(m, '1-0');
+  Object.assign(arq, { est: 'quieto', t: 0, x: m.L / 2 - 1, z: 0 });
+  Object.assign(yo, { x: m.L / 2 - 10, z: 0, ang: 0 }); m.pel.duenio = yo.id;
+  correr(m, 1.5, new Map([['yo', { x: 0, z: 0 }]]));
+  assert.ok(Math.abs(arq.z) > .2, 'el arquero se corrió');
+});
+
+test('la entrada con truco viaja por la red', () => {
+  assert.deepEqual(decodificarEntrada(codificarEntrada({ x: 1, z: 0, truco: 4 })), { x: 1, z: 0, truco: 4 });
+});
+
+test('sala online: cada uno elige su puesto y no puede haber dos al arco', async () => {
+  const A = 'pidRolesHost00001', B = 'pidRolesInv000002';
+  const { code } = await req('POST', '/crear', { pid: A, nombre: 'Ana', opciones: { formato: 5 } });
+  const accion = (pid, msg) => req('POST', `/salas/${code}`, { pid, ping: 1, msg });
+  const ver = async (pid) => (await req('GET', `/salas/${code}?pid=${pid}&ping=1`)).estado;
+  await accion(A, { t: 'join', nombre: 'Ana' });
+  await accion(B, { t: 'join', nombre: 'Beto' });
+  await accion(B, { t: 'equipo', e: 'rojo' });
+  await accion(A, { t: 'rol', rol: 'arquero' });
+  assert.ok((await accion(B, { t: 'rol', rol: 'arquero' })).error, 'el segundo arquero del mismo equipo no puede');
+  await accion(B, { t: 'rol', rol: 'delantero' });
+  const e = await ver(A);
+  assert.equal(e.rol[e.yo], 'arquero');
+  assert.ok(Object.values(e.rol).includes('delantero'));
+  assert.ok((await accion(A, { t: 'rol', rol: 'tribuna' })).error);
+});

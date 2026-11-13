@@ -2,10 +2,10 @@
 // Modos: contra bots, 2 jugadores en la misma compu y salas online (rojo contra azul, los bots completan).
 // Online: el anfitrión simula el partido y lo manda por WebRTC; cada uno manda sus teclas (como el haxball).
 import { Sala, marco, api, pid, esc, toast, recordar, nombreGuardado, guardarNombre } from '/comun/sala.js';
-import { NPCS, POR_ID } from '/comun/npcs.js';
+import { NPCS, POR_ID, rngNpc } from '/comun/npcs.js';
 import { Red } from '/comun/red.js';
 import { crearEscena, CANCHAS, COLOR_EQ } from './escena.js';
-import { nuevoPartido, paso, PASO, codificar, decodificar, codificarEntrada, decodificarEntrada } from './motor.js';
+import { nuevoPartido, paso, PASO, codificar, decodificar, codificarEntrada, decodificarEntrada, armarEquipo, TRUCOS, ROLES } from './motor.js';
 import { sfx, tribuna, relator } from './sonido.js';
 
 const app = document.querySelector('#app');
@@ -45,10 +45,12 @@ function ruteo() {
 
 // ---------------------------------------------------------------- controles
 const TECLAS = {
-  solo: { izq: ['KeyA', 'ArrowLeft'], der: ['KeyD', 'ArrowRight'], arriba: ['KeyW', 'ArrowUp'], abajo: ['KeyS', 'ArrowDown'], pase: ['KeyJ', 'KeyZ'], tiro: ['KeyK', 'KeyX'], barrida: ['KeyL', 'KeyC'], cambiar: ['Space', 'KeyQ'], sprint: ['ShiftLeft', 'ShiftRight'] },
-  j1: { izq: ['KeyA'], der: ['KeyD'], arriba: ['KeyW'], abajo: ['KeyS'], pase: ['KeyF'], tiro: ['KeyG'], barrida: ['KeyH'], cambiar: ['KeyR'], sprint: ['ShiftLeft'] },
-  j2: { izq: ['ArrowLeft'], der: ['ArrowRight'], arriba: ['ArrowUp'], abajo: ['ArrowDown'], pase: ['KeyJ', 'Numpad1'], tiro: ['KeyK', 'Numpad2'], barrida: ['KeyL', 'Numpad3'], cambiar: ['KeyU', 'Numpad0'], sprint: ['ShiftRight', 'NumpadEnter'] },
+  solo: { izq: ['KeyA', 'ArrowLeft'], der: ['KeyD', 'ArrowRight'], arriba: ['KeyW', 'ArrowUp'], abajo: ['KeyS', 'ArrowDown'], pase: ['KeyJ', 'KeyZ'], tiro: ['KeyK', 'KeyX'], barrida: ['KeyL', 'KeyC'], cambiar: ['Space', 'KeyQ'], sprint: ['ShiftLeft', 'ShiftRight'], trucos: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => [`Digit${n}`, `Numpad${n}`]) },
+  j1: { izq: ['KeyA'], der: ['KeyD'], arriba: ['KeyW'], abajo: ['KeyS'], pase: ['KeyF'], tiro: ['KeyG'], barrida: ['KeyH'], cambiar: ['KeyR'], sprint: ['ShiftLeft'], trucos: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => [`Digit${n}`]) },
+  j2: { izq: ['ArrowLeft'], der: ['ArrowRight'], arriba: ['ArrowUp'], abajo: ['ArrowDown'], pase: ['KeyJ', 'Numpad1'], tiro: ['KeyK', 'Numpad2'], barrida: ['KeyL', 'Numpad3'], cambiar: ['KeyU', 'Numpad0'], sprint: ['ShiftRight', 'NumpadEnter'], trucos: ['Numpad4', 'Numpad5', 'Numpad6', 'Numpad7', 'Numpad8', 'Numpad9', 'NumpadDivide', 'NumpadMultiply'].map((k) => [k]) },
 };
+// en la ayuda: qué tecla es cada truco según el perfil
+const teclaTruco = (perfil, i) => ({ solo: String(i + 1), j1: String(i + 1), j2: ['Num4', 'Num5', 'Num6', 'Num7', 'Num8', 'Num9', 'Num/', 'Num*'][i] })[perfil];
 const ACCIONES = ['pase', 'tiro', 'barrida', 'cambiar', 'sprint'];
 function teclado() {
   const t = new Set();
@@ -66,9 +68,18 @@ function teclado() {
       const k = TECLAS[perfil];
       const e = { x: (algun(k.der) ? 1 : 0) - (algun(k.izq) ? 1 : 0), y: (algun(k.abajo) ? 1 : 0) - (algun(k.arriba) ? 1 : 0) };
       for (const b of ACCIONES) e[b] = algun(k[b]);
+      const nt = k.trucos.findIndex((teclas) => algun(teclas));
+      if (nt >= 0) e.truco = nt + 1;
       const g = mando !== null ? navigator.getGamepads?.()[mando] : null;
       if (g) {
         const b = (n) => !!g.buttons[n]?.pressed;
+        // joystick: con LT apretado, los botones y la cruz hacen los trucos
+        if (b(6)) {
+          const t = [0, 1, 2, 3].findIndex(b) >= 0 ? [0, 1, 2, 3].findIndex(b) + 1 : [12, 15, 13, 14].findIndex(b) >= 0 ? [12, 15, 13, 14].findIndex(b) + 5 : 0;
+          if (t) e.truco = t;
+          if (Math.abs(g.axes[0]) > .25) e.x = g.axes[0]; if (Math.abs(g.axes[1]) > .25) e.y = g.axes[1];
+          return e;
+        }
         if (Math.abs(g.axes[0]) > .25) e.x = g.axes[0]; if (Math.abs(g.axes[1]) > .25) e.y = g.axes[1];
         e.x += (b(15) ? 1 : 0) - (b(14) ? 1 : 0); e.y += (b(13) ? 1 : 0) - (b(12) ? 1 : 0);
         e.pase ||= b(0); e.tiro ||= b(2); e.barrida ||= b(1); e.cambiar ||= b(4); e.sprint ||= b(7) || b(5); e.camara = b(3);
@@ -82,7 +93,7 @@ function tactil(raiz) {
   const e = { x: 0, y: 0 };
   raiz.insertAdjacentHTML('beforeend', `<div class="fu-tactil"><div class="fu-joy"><i></i></div><div class="fu-btns">
     <button data-b="cambiar">Cambio</button><button data-b="barrida">Barrida</button><button data-b="sprint">Correr</button>
-    <button data-b="pase">Pase</button><button data-b="tiro">Tiro</button></div></div>`);
+    <button data-b="pase">Pase</button><button data-b="tiro">Tiro</button><button data-truco>Truco</button></div></div>`);
   const joy = raiz.querySelector('.fu-joy');
   const mover = (ev) => {
     const r = joy.getBoundingClientRect();
@@ -93,22 +104,28 @@ function tactil(raiz) {
   joy.addEventListener('pointerdown', (ev) => { joy.setPointerCapture(ev.pointerId); mover(ev); });
   joy.addEventListener('pointermove', (ev) => ev.buttons && mover(ev));
   joy.addEventListener('pointerup', () => { e.x = e.y = 0; joy.querySelector('i').style.transform = ''; });
+  let cual = 0;
+  const bt = raiz.querySelector('[data-truco]');
+  bt.addEventListener('pointerdown', (ev) => { ev.preventDefault(); e.truco = [1, 3, 5, 7][cual++ % 4]; bt.classList.add('on'); });
+  for (const n of ['pointerup', 'pointerleave', 'pointercancel']) bt.addEventListener(n, () => { e.truco = 0; bt.classList.remove('on'); });
   raiz.querySelectorAll('[data-b]').forEach((b) => {
     b.addEventListener('pointerdown', (ev) => { ev.preventDefault(); e[b.dataset.b] = true; b.classList.add('on'); });
     for (const n of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(n, () => { e[b.dataset.b] = false; b.classList.remove('on'); });
   });
   return e;
 }
-const sumar = (a, b) => { const s = { x: Math.max(-1, Math.min(1, a.x + b.x)), y: Math.max(-1, Math.min(1, a.y + b.y)) }; for (const k of ACCIONES) s[k] = !!(a[k] || b[k]); s.camara = a.camara; return s; };
+const sumar = (a, b) => { const s = { x: Math.max(-1, Math.min(1, a.x + b.x)), y: Math.max(-1, Math.min(1, a.y + b.y)) }; for (const k of ACCIONES) s[k] = !!(a[k] || b[k]); s.camara = a.camara; s.truco = a.truco || b.truco; return s; };
 // las teclas son de la pantalla: se pasan a la cancha según la cámara
 function aCancha(inp, escena, eq) {
   let x = inp.x, z = inp.y;
   if (escena.modo === 'tercera') { const s = eq ? -1 : 1; x = -inp.y * s; z = inp.x * s; }
   const out = { x, z };
   for (const k of ACCIONES) if (inp[k]) out[k] = true;
+  if (inp.truco) out.truco = inp.truco;
   return out;
 }
-const AYUDA = '<kbd>WASD</kbd> moverse · <kbd>Shift</kbd> correr · <kbd>J</kbd> pase (sin pelota: quitar) · <kbd>K</kbd> tiro (mantené para cargar) · <kbd>L</kbd> barrida / pase largo · <kbd>Espacio</kbd> cambiar · <kbd>C</kbd> cámara · <kbd>Esc</kbd> pausa';
+const AYUDA = '<kbd>WASD</kbd> moverse · <kbd>Shift</kbd> correr · <kbd>J</kbd> pase (sin pelota: quitar) · <kbd>K</kbd> tiro (mantené para cargar) · <kbd>L</kbd> barrida / pase largo · <kbd>Espacio</kbd> cambiar · <kbd>1</kbd>-<kbd>8</kbd> trucos · <kbd>H</kbd> lista de trucos · <kbd>C</kbd> cámara · <kbd>Esc</kbd> pausa';
+const listaTrucos = (perfil = 'solo', corto = false) => TRUCOS.map((t, i) => `<span><kbd>${teclaTruco(perfil, i)}</kbd> <b>${t.nombre}</b>${corto ? '' : `<small>${t.desc}</small>`}</span>`).join('');
 
 // ---------------------------------------------------------------- menú
 function menu() {
@@ -143,7 +160,11 @@ function menu() {
         <span><kbd>L</kbd></span><span>Barrida · con la pelota, pase largo por arriba</span>
         <span><kbd>Espacio</kbd></span><span>Cambiar al compañero más cerca de la pelota</span>
         <span><kbd>C</kbd></span><span>Cámara: transmisión o tercera persona</span>
+        <span><kbd>1</kbd>-<kbd>8</kbd></span><span>Trucos con la pelota (abajo la lista). Con joystick: LT + botones</span>
       </div>
+      <h2 style="margin-top:22px">Trucos</h2>
+      <div class="fu-lista">${listaTrucos()}</div>
+      <p class="pf-ayuda" style="text-align:left">Los rivales aprenden cómo jugás en el partido: si siempre pateás al mismo palo o repetís el mismo truco, se lo terminan comiendo menos.</p>
     </section>
   </div>`;
   const nombre = () => app.querySelector('[data-nombre]')?.value.trim();
@@ -174,7 +195,7 @@ function menu() {
 const seg = (nombre, op, valor, opciones, deshab = false) => `<div class="pf-grupo"><span>${nombre}</span><div class="pf-seg" data-op="${op}">${opciones.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(v) === String(valor) ? 'on' : ''}" ${deshab ? 'disabled' : ''}>${t}</button>`).join('')}</div></div>`;
 function armado({ dos }) {
   document.title = (dos ? '2 jugadores' : 'Contra bots') + ' · La Canchita';
-  const conf = { formato: Number(leer('futbol.formato', 5)), minutos: Number(leer('futbol.minutos', 4)), dif: Number(leer('futbol.dif', 1)), cancha: leer('futbol.cancha', 'barrio') };
+  const conf = { formato: Number(leer('futbol.formato', 5)), minutos: Number(leer('futbol.minutos', 4)), dif: Number(leer('futbol.dif', 1)), cancha: leer('futbol.cancha', 'barrio'), rol: leer('futbol.rol', 'aleatorio'), rol2: leer('futbol.rol2', 'aleatorio') };
   let p1 = ROSTER.includes(leer('futbol.personaje', '')) ? leer('futbol.personaje', '') : null, p2 = null;
   const pintar = () => {
     const turno = dos && p1 && !p2 ? 2 : 1;
@@ -188,6 +209,8 @@ function armado({ dos }) {
           ${seg('Minutos', 'minutos', conf.minutos, [[2, '2'], [4, '4'], [6, '6'], [8, '8']])}
           ${dos ? '' : seg('Rivales', 'dif', conf.dif, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil']])}
           ${seg('Cancha', 'cancha', conf.cancha, CANCHAS.map((c) => [c.id, c.nombre]))}
+          ${seg(dos ? 'Puesto J1' : 'Tu puesto', 'rol', conf.rol, ROLES)}
+          ${dos ? seg('Puesto J2', 'rol2', conf.rol2, ROLES) : ''}
         </div>
         <p class="pf-ayuda">${dos ? 'Cada uno maneja su equipo y cambia de jugador con R (J1) o U (J2).' : 'Tu equipo y el rival se completan con personajes del club al azar.'}</p>
         <div class="pf-listo"><a class="btn btn-borde" href="/futbol/" data-ir>Volver</a>${p1 && (!dos || p2) ? '<button class="btn btn-lima btn-grande" data-jugar>¡A la cancha!</button>' : ''}</div>
@@ -201,22 +224,17 @@ function armado({ dos }) {
       pintar();
     }));
     app.querySelectorAll('[data-op]').forEach((s) => s.querySelectorAll('button').forEach((b) => (b.onclick = () => {
-      const op = s.dataset.op; conf[op] = op === 'cancha' ? b.dataset.v : Number(b.dataset.v);
+      const op = s.dataset.op; conf[op] = ['cancha', 'rol', 'rol2'].includes(op) ? b.dataset.v : Number(b.dataset.v);
       guardar('futbol.' + op, b.dataset.v); sfx('cursor'); pintar();
     })));
     app.querySelector('[data-jugar]')?.addEventListener('click', () => {
       const usados = new Set([p1, p2].filter(Boolean));
       const otro = () => { const libres = ROSTER.filter((x) => !usados.has(x)); const id = azarDe(libres.length ? libres : ROSTER); usados.add(id); return id; };
-      const jugadores = [];
-      for (const eq of [0, 1]) {
-        jugadores.push({ id: `${eq}-0`, eq, npc: otro(), arquero: true });
-        for (let k = 1; k < conf.formato; k++) {
-          const humano = k === 1 && (eq === 0 || dos);
-          jugadores.push({ id: `${eq}-${k}`, eq, npc: humano ? (eq === 0 ? p1 : p2) : otro() });
-        }
-      }
-      const humanos = [{ hid: 'p1', eq: 0, pid: '0-1', cambia: true, perfil: dos ? 'j1' : 'solo', mando: 0 }];
-      if (dos) humanos.push({ hid: 'p2', eq: 1, pid: '1-1', cambia: true, perfil: 'j2', mando: 1 });
+      // cada equipo se arma con el puesto que eligió cada uno; el resto, al azar
+      const personas = [[{ id: 'yo1', npc: p1, rol: conf.rol }], dos ? [{ id: 'yo2', npc: p2, rol: conf.rol2 }] : []];
+      const jugadores = [0, 1].flatMap((eq) => armarEquipo(conf.formato, eq, personas[eq], Array.from({ length: conf.formato - personas[eq].length }, otro)));
+      const humanos = [{ hid: 'p1', eq: 0, pid: 'yo1', cambia: true, perfil: dos ? 'j1' : 'solo', mando: 0 }];
+      if (dos) humanos.push({ hid: 'p2', eq: 1, pid: 'yo2', cambia: true, perfil: 'j2', mando: 1 });
       limpiar.forEach((f) => f()); limpiar = [];
       jugar({ conf, jugadores, humanos, dos, alVolver: () => { limpiar.forEach((f) => f()); limpiar = []; document.body.classList.remove('en-cancha'); armado({ dos }); } });
     });
@@ -231,6 +249,8 @@ function htmlCancha() {
     <div class="fu-marcador"><span class="eq" style="--c:${COLOR_EQ[0]}">ROJO</span><b data-g0>0</b><i>-</i><b data-g1>0</b><span class="eq" style="--c:${COLOR_EQ[1]}">AZUL</span><time data-reloj>04:00</time></div>
     <div class="fu-gol" data-gol></div>
     <div class="fu-aviso" data-aviso></div>
+    <div class="pf-lee" data-lee></div>
+    <div class="fu-trucos" data-trucos></div>
     <div class="fu-yo" data-yo><b data-yo-nombre></b><div class="fu-barra aire"><i data-aire></i></div><div class="fu-barra carga"><i data-carga></i></div></div>
     <canvas class="fu-radar" data-radar width="200" height="112"></canvas>
     <button class="pf-boton-menu fu-boton" data-menu>Pausa · Esc</button>
@@ -248,12 +268,12 @@ function crearHud(raiz, jugadores) {
   return (v, mios) => {
     $('[data-g0]').textContent = v.marcador[0]; $('[data-g1]').textContent = v.marcador[1];
     $('[data-reloj]').textContent = mmss(v.tiempo);
-    // tu jugador: nombre, aire y carga del remate
+    // tu jugador: nombre (y puesto), aire y carga del remate
     const miId = Object.entries(v.mando || {}).find(([h]) => mios.includes(h))?.[1];
     const yo = v.jug.find((j) => j.id === miId);
     $('[data-yo]').classList.toggle('hidden', !yo);
     if (yo) {
-      $('[data-yo-nombre]').textContent = nombre(yo.id);
+      $('[data-yo-nombre]').textContent = `${nombre(yo.id)} · ${(ROLES.find(([r]) => r === yo.rol) || ['', ''])[1] || (yo.arquero ? 'Arquero' : '')}`;
       $('[data-yo-nombre]').style.color = COLOR_EQ[yo.eq];
       $('[data-aire]').style.width = Math.round((yo.energia ?? 1) * 100) + '%';
       $('[data-carga]').style.width = Math.round((yo.carga || 0) * 100) + '%';
@@ -278,8 +298,10 @@ function crearHud(raiz, jugadores) {
         $('[data-gol]').innerHTML = `<b style="--c:${COLOR_EQ[e.eq]}">¡GOOOL!</b><small>${e.contra ? `En contra de ${esc(quien)}` : quien ? `de ${esc(quien)}` : ''}${e.asistencia ? ` · asistencia de ${esc(nombre(e.asistencia))}` : ''}</small><span>${e.marcador[0]} - ${e.marcador[1]}</span>`;
         $('[data-gol]').classList.add('on'); golT = performance.now();
         relator(e.contra ? `¡Gol en contra de ${quien}!` : `¡Gooool de ${quien}!`);
-      } else if (['palo', 'atajada', 'cabezazo', 'volea'].includes(e.k)) {
-        const txt = { palo: '¡PALO!', atajada: e.rebote ? '¡DA REBOTE!' : '¡QUÉ ATAJADA!', cabezazo: '¡CABEZAZO!', volea: '¡DE VOLEA!' }[e.k];
+      } else if (e.k === 'lectura' && mios.includes(e.hid)) {
+        const el = $('[data-lee]'); el.innerHTML = `🧠 ${esc(e.texto)}`; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+      } else if (['palo', 'atajada', 'cabezazo', 'volea', 'esquiva'].includes(e.k) || (e.k === 'truco' && e.exito)) {
+        const txt = e.k === 'truco' ? `¡${e.nombre.toUpperCase()}!` : { palo: '¡PALO!', atajada: e.rebote ? '¡DA REBOTE!' : '¡QUÉ ATAJADA!', cabezazo: '¡CABEZAZO!', volea: '¡DE VOLEA!', esquiva: '¡QUÉ RULETA!' }[e.k];
         $('[data-aviso]').textContent = txt; $('[data-aviso]').classList.remove('on'); void $('[data-aviso]').offsetWidth; $('[data-aviso]').classList.add('on'); avisoT = performance.now();
       } else if (e.k === 'final') {
         relator(v.ganador === null ? '¡Terminó! Empate.' : `¡Terminó! Ganó el ${NOMBRE_EQ[v.ganador]}.`);
@@ -298,6 +320,9 @@ async function jugar({ conf, jugadores, humanos, dos, alVolver }) {
   const escena = crearEscena($('.pf-lienzo'), { cancha: conf.cancha });
   if (dos) escena.ponerCamara('tv'); else escena.ponerCamara(leer('futbol.camara', 'tv'));
   const tec = teclado(), toque = tactil($('.pf'));
+  const trucos = $('[data-trucos]');
+  trucos.innerHTML = `<b>Trucos</b>${dos ? '<small>J1: 1-8 · J2: Num4-9 / *</small>' : ''}${listaTrucos(dos ? 'j1' : 'solo', true)}<small>H: ocultar</small>`;
+  trucos.classList.toggle('hidden', leer('futbol.verTrucos', 'si') === 'no');
   $('[data-pie]').innerHTML = dos ? 'J1 (Rojo): <kbd>WASD</kbd> <kbd>F</kbd> pase <kbd>G</kbd> tiro <kbd>H</kbd> barrida <kbd>R</kbd> cambio <kbd>Shift izq</kbd> correr &nbsp;|&nbsp; J2 (Azul): flechas <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>U</kbd> <kbd>Shift der</kbd>' : AYUDA;
   let m = null, pausa = false, raf = 0, viva = true, finMostrado = false;
   const nuevo = () => { m = nuevoPartido({ formato: conf.formato, jugadores, humanos, minutos: conf.minutos, dificultad: conf.dif ?? 1 }); finMostrado = false; };
@@ -330,6 +355,7 @@ async function jugar({ conf, jugadores, humanos, dos, alVolver }) {
   const tecla = (e) => {
     if (e.code === 'Escape' && !document.querySelector('.cj-capa, .en-capa')) { e.preventDefault(); e.stopPropagation(); pausa ? (capa.classList.add('hidden'), (pausa = false)) : menuPausa(); }
     if (e.code === 'KeyC' && !dos && !pausa) guardar('futbol.camara', escena.cambiarCamara());
+    if (e.code === 'KeyH' && !dos) { const v = trucos.classList.toggle('hidden'); guardar('futbol.verTrucos', v ? 'no' : 'si'); }
   };
   addEventListener('keydown', tecla, true);
   limpiar.push(() => removeEventListener('keydown', tecla, true));
@@ -426,12 +452,13 @@ function abrirSala(code) {
   // los jugadores del partido: igual en todas las compus (arquero bot, personas y bots que completan)
   function armarJugadores() {
     const lista = [], humanos = [];
+    // misma semilla en todas las compus: los puestos al azar salen iguales para todos
+    const semilla = (est.partidoN * 7919 + [...code].reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) >>> 0;
+    const r = rngNpc(semilla);
     for (const [eq, nom] of [[0, 'rojo'], [1, 'azul']]) {
-      const personas = est.participantes.filter((p) => est.equipos[p] === nom);
-      const bots = est.bots[nom] || [];
-      lista.push({ id: `${eq}-arq`, eq, npc: bots[0] || ROSTER[0], arquero: true });
-      for (const p of personas) { lista.push({ id: p, eq, npc: est.personaje[p] || ROSTER[0], jugador: nombreDe(p) }); humanos.push({ hid: p, eq, pid: p, cambia: personas.length === 1 }); }
-      bots.slice(1).forEach((npc, k) => lista.push({ id: `${eq}-b${k}`, eq, npc }));
+      const personas = est.participantes.filter((p) => est.equipos[p] === nom).map((p) => ({ id: p, npc: est.personaje[p] || ROSTER[0], rol: est.rol?.[p] || 'aleatorio', jugador: nombreDe(p) }));
+      lista.push(...armarEquipo(est.formato, eq, personas, est.bots[nom] || [], r));
+      for (const p of personas) humanos.push({ hid: p.id, eq, pid: p.id, cambia: personas.length === 1 });
     }
     return { lista, humanos };
   }
@@ -449,23 +476,28 @@ function abrirSala(code) {
     await escena.armar(m, lista).catch(() => {});
     $('[data-cargando]').classList.add('hidden');
     hud = crearHud(app, lista);
+    $('[data-trucos]').innerHTML = `<b>Trucos</b>${listaTrucos('solo', true)}<small>H: ocultar</small>`;
+    $('[data-trucos]').classList.toggle('hidden', leer('futbol.verTrucos', 'si') === 'no');
     tribuna(true);
   }
 
   function pintarPanel() {
     if (!est) return;
     const capa = $('[data-capa]'); capa.classList.remove('hidden');
-    const host = est.host === est.yo, n = est.formato, cupo = n - 1;
+    const host = est.host === est.yo, n = est.formato, cupo = n;
+    const rolDe = (id) => (ROLES.find(([r]) => r === (est.rol?.[id] || 'aleatorio')) || ROLES[0])[1];
     const de = (eq) => est.jugadores.filter((j) => j.online && est.equipos[j.id] === eq);
-    const fila = (j) => `<li><img src="${foto(est.personaje[j.id] || ROSTER[0])}" data-npc="${est.personaje[j.id] || ROSTER[0]}" alt="">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}${j.id === est.host ? ' ★' : ''}<em>${esc(nombreNpc(est.personaje[j.id]))}</em></li>`;
+    const fila = (j) => `<li><img src="${foto(est.personaje[j.id] || ROSTER[0])}" data-npc="${est.personaje[j.id] || ROSTER[0]}" alt="">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}${j.id === est.host ? ' ★' : ''}<em>${esc(rolDe(j.id))} · ${esc(nombreNpc(est.personaje[j.id]))}</em></li>`;
     const mio = est.personaje[est.yo], fin = est.fase === 'fin';
     const html = `<div class="pf-caja">
       ${fin ? `<div class="pf-festejo"><b>${est.ganador === null ? '¡Empate!' : `¡Ganó el ${NOMBRE_EQ[est.ganador]}!`}</b><span>${est.marcador[0]} a ${est.marcador[1]}</span></div>` : ''}
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h2 style="margin-right:auto">Canchita ${code}</h2><button class="btn btn-chico" data-copiar>Copiar link</button><a class="btn btn-chico btn-borde" href="/futbol/" data-ir>Salir</a></div>
-      <div class="pf-equipos">${['rojo', 'azul'].map((eq, k) => `<div class="pf-eq" style="--c:${COLOR_EQ[k]}"><h3>Equipo ${NOMBRE_EQ[k]} <small>${de(eq).length}/${cupo} + arquero</small></h3><ul>${de(eq).map(fila).join('')}${de(eq).length < cupo ? `<li><span style="color:#8d9483">+ ${cupo - de(eq).length} bots del club y el arquero</span></li>` : '<li><span style="color:#8d9483">+ arquero bot</span></li>'}</ul>${est.equipos[est.yo] === eq ? '<small style="color:#c5f04a;font-weight:700">Estás acá</small>' : `<button class="btn btn-chico" data-eq="${eq}">Pasarme acá</button>`}</div>`).join('')}</div>
+      <div class="pf-equipos">${['rojo', 'azul'].map((eq, k) => `<div class="pf-eq" style="--c:${COLOR_EQ[k]}"><h3>Equipo ${NOMBRE_EQ[k]} <small>${de(eq).length}/${cupo}</small></h3><ul>${de(eq).map(fila).join('')}${de(eq).length < cupo ? `<li><span style="color:#8d9483">+ ${cupo - de(eq).length} bots del club${de(eq).some((j) => est.rol?.[j.id] === 'arquero') ? '' : ' (uno al arco)'}</span></li>` : ''}</ul>${est.equipos[est.yo] === eq ? '<small style="color:#c5f04a;font-weight:700">Estás acá</small>' : `<button class="btn btn-chico" data-eq="${eq}">Pasarme acá</button>`}</div>`).join('')}</div>
       <p style="margin:0">Mirando: ${est.jugadores.filter((j) => j.online && est.equipos[j.id] === 'afuera').map((j) => esc(j.nombre)).join(', ') || 'nadie'} ${est.equipos[est.yo] !== 'afuera' ? '<button class="btn btn-chico btn-borde" data-eq="afuera">Solo mirar</button>' : ''}</p>
       <h3 style="margin:14px 0 0;font:900 18px 'Barlow Condensed',sans-serif;text-transform:uppercase">Tu jugador: <span style="color:${COLOR_JUEGO}">${esc(nombreNpc(mio))}</span></h3>
       <div class="pf-mini">${ROSTER.map((id) => `<button class="pf-cara ${mio === id ? 'p1' : ''}" data-pj="${id}"><img src="${foto(id)}" data-npc="${id}" alt="" loading="lazy"><span>${esc(nombreNpc(id))}</span></button>`).join('')}</div>
+      <div class="pf-opciones">${seg('Tu puesto', 'rol', est.rol?.[est.yo] || 'aleatorio', ROLES)}</div>
+      <p class="pf-ayuda">Elegí tu puesto: si nadie va al arco, ataja un bot. Los lugares que quedan se completan al azar.</p>
       <div class="pf-opciones">
         ${seg('Formato', 'formato', est.formato, [[5, 'F5'], [6, 'F6'], [7, 'F7'], [8, 'F8']], !host)}
         ${seg('Minutos', 'minutos', est.minutos, [[2, '2'], [4, '4'], [6, '6'], [8, '8']], !host)}
@@ -480,7 +512,10 @@ function abrirSala(code) {
     capa.querySelector('[data-copiar]').onclick = () => { navigator.clipboard?.writeText(location.href); toast('Link copiado'); };
     capa.querySelectorAll('[data-eq]').forEach((b) => (b.onclick = () => sala.enviar({ t: 'equipo', e: b.dataset.eq })));
     capa.querySelectorAll('[data-pj]').forEach((b) => (b.onclick = () => { guardar('futbol.personaje', b.dataset.pj); sfx('elegir'); sala.enviar({ t: 'personaje', id: b.dataset.pj }); }));
-    capa.querySelectorAll('[data-op]').forEach((s) => s.querySelectorAll('button').forEach((b) => (b.onclick = () => sala.enviar({ t: 'config', [s.dataset.op]: s.dataset.op === 'cancha' ? b.dataset.v : Number(b.dataset.v) }))));
+    capa.querySelectorAll('[data-op]').forEach((s) => s.querySelectorAll('button').forEach((b) => (b.onclick = () => {
+      if (s.dataset.op === 'rol') { guardar('futbol.rol', b.dataset.v); return sala.enviar({ t: 'rol', rol: b.dataset.v }); }
+      sala.enviar({ t: 'config', [s.dataset.op]: s.dataset.op === 'cancha' ? b.dataset.v : Number(b.dataset.v) });
+    })));
     capa.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
   }
 
@@ -519,6 +554,7 @@ function abrirSala(code) {
   raf = requestAnimationFrame(cuadro);
   const tecla = (e) => {
     if (e.code === 'KeyC' && est?.fase === 'partido' && escena && !e.target.closest?.('input')) guardar('futbol.camara', escena.cambiarCamara());
+    if (e.code === 'KeyH' && est?.fase === 'partido' && !e.target.closest?.('input')) { const v = $('[data-trucos]').classList.toggle('hidden'); guardar('futbol.verTrucos', v ? 'no' : 'si'); }
     if (e.code === 'Escape' && est?.fase === 'partido' && !document.querySelector('.cj-capa, .en-capa')) {
       e.preventDefault(); e.stopPropagation();
       const cp = $('[data-capa]');

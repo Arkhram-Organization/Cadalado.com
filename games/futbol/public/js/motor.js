@@ -17,7 +17,45 @@ const FORMACIONES = {
   8: [[.42, -.66], [.4, 0], [.42, .66], [.88, -.5], [.88, .5], [1.3, -.3], [1.3, .3]],
 };
 export const R_PEL = .11, R_JUG = .36, G = 20;
-export const ESTADOS = ['quieto', 'corre', 'patea', 'pase', 'barrida', 'caido', 'levanta', 'vuela', 'ataja', 'festeja', 'triste', 'cabezazo'];
+export const ESTADOS = ['quieto', 'corre', 'patea', 'pase', 'barrida', 'caido', 'levanta', 'vuela', 'ataja', 'festeja', 'triste', 'cabezazo', 'bicicleta', 'amague', 'ruleta', 'taco', 'elastica', 'sombrero', 'cano'];
+// Trucos con la pelota (teclas 1 a 8). Son fáciles: se aprietan y salen; si sirven o no depende de dónde estén los rivales.
+export const TRUCOS = [
+  { id: 'bicicleta', nombre: 'Bicicleta', desc: 'Engaña al que te marca y salís rápido' },
+  { id: 'amague', nombre: 'Amague de tiro', desc: 'El arquero se tira y los de cerca se frenan' },
+  { id: 'cano', nombre: 'Caño', desc: 'Entre las piernas del que tenés enfrente' },
+  { id: 'sombrero', nombre: 'Sombrero', desc: 'La pelota por arriba del rival' },
+  { id: 'ruleta', nombre: 'Ruleta', desc: 'Giro que esquiva quites y barridas' },
+  { id: 'taco', nombre: 'Taco', desc: 'Pase de taco al compañero de atrás' },
+  { id: 'elastica', nombre: 'Elástica', desc: 'Corte rápido para un costado' },
+  { id: 'pared', nombre: 'Pared', desc: 'Se la das a un compañero y te la devuelve' },
+];
+export const ROLES = [['aleatorio', 'Aleatorio'], ['arquero', 'Arquero'], ['defensa', 'Defensa'], ['medio', 'Medio'], ['delantero', 'Delantero']];
+// puesto de cada lugar de la formación (mismo orden que FORMACIONES)
+const PUESTOS = { 5: ['defensa', 'defensa', 'delantero', 'delantero'], 6: ['defensa', 'defensa', 'medio', 'delantero', 'delantero'], 7: ['defensa', 'defensa', 'defensa', 'medio', 'medio', 'delantero'], 8: ['defensa', 'defensa', 'defensa', 'medio', 'medio', 'delantero', 'delantero'] };
+
+// Arma un equipo respetando el puesto que pidió cada persona (el resto, al azar).
+// personas: [{ id, npc, rol, ... }], bots: [npc] → lista con { arquero, slot, rol }
+export function armarEquipo(formato, eq, personas, bots, r = Math.random) {
+  const puestos = PUESTOS[formato] || PUESTOS[5];
+  const gente = personas.map((p) => ({ ...p, rol: ROLES.some(([id]) => id === p.rol) ? p.rol : 'aleatorio' }));
+  let arquero = gente.find((p) => p.rol === 'arquero') || null;
+  const resto = gente.filter((p) => p !== arquero).map((p) => ({ ...p, rol: p.rol === 'arquero' ? 'aleatorio' : p.rol }));
+  const robots = bots.map((npc, k) => ({ id: `${eq}-b${k}`, npc, bot: true, rol: 'aleatorio' }));
+  if (!arquero) arquero = robots.length ? robots.shift() : resto.splice(Math.floor(r() * resto.length), 1)[0];
+  const lista = [{ ...arquero, eq, arquero: true, slot: -1, rol: 'arquero' }];
+  const libres = puestos.map((rol, i) => ({ rol, i }));
+  const poner = (p) => {
+    if (!libres.length) return;
+    let k = p.rol === 'aleatorio' ? -1 : libres.findIndex((x) => x.rol === p.rol);
+    if (k < 0) k = Math.floor(r() * libres.length);
+    const x = libres.splice(k, 1)[0];
+    lista.push({ ...p, eq, arquero: false, slot: x.i, rol: x.rol });
+  };
+  resto.filter((p) => p.rol !== 'aleatorio').forEach(poner);
+  resto.filter((p) => p.rol === 'aleatorio').forEach(poner);
+  robots.forEach(poner);
+  return lista;
+}
 export const BOTONES = ['pase', 'tiro', 'barrida', 'cambiar', 'sprint'];
 const NADA = { x: 0, z: 0 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -32,14 +70,16 @@ export function nuevoPartido({ formato = 5, jugadores, humanos = [], minutos = 4
     jug: [], pel: { x: 0, y: R_PEL, z: 0, vx: 0, vy: 0, vz: 0, duenio: null, ultimo: null, penultimo: null, libreDe: null, libreT: 0 },
     marcador: [0, 0], fase: 'saque', faseT: 0, saca: Math.random() < .5 ? 0 : 1,
     tiempo: minutos ? minutos * 60 : Infinity, golesMax, ganador: null,
-    ev: [], evN: 0, mando: {}, cambia: {}, goles: [],
+    ev: [], evN: 0, mando: {}, cambia: {}, goles: [], lee: {}, hidDe: {},
   };
   const cuenta = [0, 0];
   for (const j of jugadores) {
     const k = cuenta[j.eq]++;
-    m.jug.push({ id: j.id, eq: j.eq, s: j.eq ? -1 : 1, slot: k - 1, arquero: k === 0, x: 0, z: 0, vx: 0, vz: 0, ang: j.eq ? Math.PI : 0, est: 'quieto', t: 0, carga: 0, cargando: false, energia: 1, cd: 0, prev: {}, ia: null, goles: 0 });
+    const arquero = j.arquero ?? k === 0;
+    m.jug.push({ id: j.id, eq: j.eq, s: j.eq ? -1 : 1, slot: j.slot ?? k - 1, rol: j.rol || (arquero ? 'arquero' : 'aleatorio'), arquero, x: 0, z: 0, vx: 0, vz: 0, ang: j.eq ? Math.PI : 0, est: 'quieto', t: 0, carga: 0, cargando: false, energia: 1, cd: 0, cdTruco: 0, turbo: 0, engano: 0, prev: {}, ia: null, goles: 0 });
   }
-  for (const h of humanos) { m.mando[h.hid] = h.pid; m.cambia[h.hid] = !!h.cambia; }
+  // el que ataja no cambia de jugador
+  for (const h of humanos) { m.mando[h.hid] = h.pid; m.cambia[h.hid] = !!h.cambia && !buscar(m, h.pid)?.arquero; }
   acomodar(m);
   return m;
 }
@@ -89,6 +129,7 @@ export function paso(m, entradas = new Map()) {
   }
   // quién maneja a quién (los humanos pueden ir cambiando de jugador)
   const manejado = new Map();
+  m.hidDe = {};
   for (const [hid, pid] of Object.entries(m.mando)) {
     const inp = entradas.get(hid) || NADA;
     const j = buscar(m, pid);
@@ -97,13 +138,19 @@ export function paso(m, entradas = new Map()) {
     j.prevCambiar = !!inp.cambiar;
     if (m.cambia[hid]) cambioAutomatico(m, hid);
     manejado.set(m.mando[hid], inp);
+    m.hidDe[m.mando[hid]] = hid;
   }
   for (const j of m.jug) {
     j.humano = manejado.has(j.id); // el que maneja una persona patea con su puntería, no con la de un bot
     j.t += PASO;
     if (j.cd > 0) j.cd -= PASO;
+    if (j.turbo > 0) j.turbo -= PASO;
+    if (j.devolverT > 0) j.devolverT -= PASO;
+    if (j.sinAgarrar > 0) j.sinAgarrar -= PASO;
+    if (j.cdTruco > 0) j.cdTruco -= PASO;
     let inp;
     if (manejado.has(j.id)) inp = manejado.get(j.id);
+    else if (j.engano > 0) { j.engano -= PASO; inp = { x: j.enganoDir.x, z: j.enganoDir.z }; } // se comió el truco: va para el otro lado
     else if (j.arquero) inp = pensarArquero(m, j);
     else inp = pensarBot(m, j);
     controlar(m, j, m.fase === 'juego' ? inp : quietoEnSaque(m, j));
@@ -151,6 +198,16 @@ function controlar(m, j, inp) {
     if (j.t > .62) { j.est = 'levanta'; j.t = 0; }
     return;
   }
+  if (['bicicleta', 'amague', 'ruleta', 'taco', 'elastica', 'sombrero', 'cano'].includes(j.est)) {
+    // durante el truco: se sigue moviendo (la ruleta y la elástica, para el costado)
+    const dur = { bicicleta: .5, amague: .32, ruleta: .5, taco: .3, elastica: .3, sombrero: .3, cano: .25 }[j.est];
+    const lx = Math.cos(j.ang + Math.PI / 2) * (j.lado || 1), lz = Math.sin(j.ang + Math.PI / 2) * (j.lado || 1);
+    if (j.est === 'ruleta') { j.x += (lx * 2.2 + Math.cos(j.ang) * 1.5) * PASO; j.z += (lz * 2.2 + Math.sin(j.ang) * 1.5) * PASO; limitar(m, j); }
+    else if (j.est === 'elastica') { j.x += lx * 5 * PASO; j.z += lz * 5 * PASO; limitar(m, j); }
+    else integrar(m, j, Math.cos(j.ang) * .4, Math.sin(j.ang) * .4, false, 4);
+    if (j.t >= dur) { j.est = 'quieto'; j.t = 0; }
+    return;
+  }
   if (j.est === 'vuela') { // estirada del arquero
     j.x += j.vx * PASO; j.z += j.vz * PASO; j.vx *= .97; j.vz *= .97; limitar(m, j);
     if (j.t > .75) { j.est = 'levanta'; j.t = 0; j.vx = j.vz = 0; }
@@ -167,6 +224,14 @@ function controlar(m, j, inp) {
   if (l > 1) { dx /= l; dz /= l; }
   integrar(m, j, dx, dz, !!inp.sprint);
 
+  // trucos (teclas 1 a 8)
+  if (inp.truco && inp.truco !== prev.truco && tengo && j.cdTruco <= 0 && !j.cargando) { truco(m, j, inp.truco, dx, dz); return; }
+  // dribleando con un rival enfrente: anoto para qué lado se va (los bots lo aprenden)
+  if (tengo && j.humano && Math.floor(m.t * 2) !== Math.floor((m.t - PASO) * 2)) {
+    const rival = m.jug.find((e) => e.eq !== j.eq && !e.arquero && dist(e, j) < 3.2 && ((e.x - j.x) * Math.cos(j.ang) + (e.z - j.z) * Math.sin(j.ang)) > 0);
+    const lateral = -Math.sin(j.ang) * dx + Math.cos(j.ang) * dz;
+    if (rival && Math.abs(lateral) > .35) aprender(m, j, 'gambeta', Math.sign(lateral));
+  }
   // patear: mantener para cargar, soltar para rematar
   if (tengo) {
     if (inp.tiro) { j.cargando = true; j.carga = Math.min(1, j.carga + PASO / .85); }
@@ -178,6 +243,12 @@ function controlar(m, j, inp) {
     j.cargando = false; j.carga = 0;
     if (apreto('pase')) quitar(m, j);
     if (apreto('tiro')) volea(m, j);
+    // el arquero manejado por una persona se estira con la barrida
+    if (apreto('barrida') && j.cd <= 0 && j.arquero) {
+      const lado = Math.abs(dz) > .2 ? Math.sign(dz) : (m.pel.z > j.z ? 1 : -1);
+      j.est = 'vuela'; j.t = 0; j.cd = 1; j.vz = lado * 7; j.vx = dx * 3; j.lado = lado;
+      evento(m, { k: 'estirada', a: j.id, lado }); return;
+    }
     if (apreto('barrida') && j.cd <= 0 && !j.arquero) { j.est = 'barrida'; j.t = 0; j.cd = 1.2; j.barrio = false; evento(m, { k: 'barrida', a: j.id }); }
   }
 }
@@ -185,14 +256,15 @@ function controlar(m, j, inp) {
 function integrar(m, j, dx, dz, sprint, freno = 9) {
   const tengo = m.pel.duenio === j.id;
   const corre = sprint && j.energia > .05 && (dx || dz);
-  const vmax = (j.arquero ? 5.4 : 5.8) * (corre ? 1.38 : 1) * (tengo ? .9 : 1) * (j.cargando ? .7 : 1) * (.92 + m.dificultad * .04 * (j.humano ? 0 : 1));
+  const vmax = (j.arquero ? 5.4 : 5.8) * (corre ? 1.38 : 1) * (j.turbo > 0 ? 1.3 : 1) * (tengo ? .9 : 1) * (j.cargando ? .7 : 1) * (.92 + m.dificultad * .04 * (j.humano ? 0 : 1));
   const k = Math.min(1, PASO * (dx || dz ? 7 : freno));
   j.vx += (dx * vmax - j.vx) * k; j.vz += (dz * vmax - j.vz) * k;
   j.x += j.vx * PASO; j.z += j.vz * PASO;
   j.energia = clamp(j.energia + (corre ? -PASO * .22 : PASO * .1), 0, 1);
   const v = Math.hypot(j.vx, j.vz);
-  if (v > .4) j.ang += angDif(j.ang, Math.atan2(j.vz, j.vx)) * Math.min(1, PASO * (tengo ? 9 : 13));
-  if (!['caido', 'levanta', 'ataja', 'festeja', 'triste'].includes(j.est)) j.est = v > .6 ? 'corre' : 'quieto';
+  // cargando el remate se mantiene la mirada (apretar al costado elige el palo, no da vuelta al jugador)
+  if (v > .4 && !j.cargando) j.ang += angDif(j.ang, Math.atan2(j.vz, j.vx)) * Math.min(1, PASO * (tengo ? 9 : 13));
+  if (!['caido', 'levanta', 'ataja', 'festeja', 'triste', 'bicicleta', 'amague', 'ruleta', 'taco', 'elastica', 'sombrero', 'cano'].includes(j.est)) j.est = v > .6 ? 'corre' : 'quieto';
   j.velocidad = v;
   limitar(m, j);
 }
@@ -210,6 +282,105 @@ function separar(m) {
     const e = (min - d) / 2, nx = dx / d, nz = dz / d;
     a.x -= nx * e; a.z -= nz * e; b.x += nx * e; b.z += nz * e;
   }
+}
+
+// ---------------------------------------------------------------- aprendizaje: los bots leen cómo jugás
+// Por cada persona se anota a qué palo patea, para qué lado gambetea, cuánto pasa y qué trucos repite.
+// Con más datos ("confianza") los bots se acomodan: el arquero se tira a tu palo, te cortan la gambeta, etc.
+function lectura(m, hid) {
+  return (m.lee[hid] ??= { palo: [0, 0], gambeta: [0, 0], pases: 0, tiros: 0, trucos: {}, avisos: {} });
+}
+export function confianza(n, dif = 1) { return Math.min(1, n / 10) * [.5, .8, 1][dif]; }
+function aprender(m, j, que, dato) {
+  const hid = m.hidDe[j.id];
+  if (!hid) return;
+  const L = lectura(m, hid);
+  if (que === 'palo') { L.palo[dato > 0 ? 1 : 0]++; L.tiros++; }
+  else if (que === 'gambeta') L.gambeta[dato > 0 ? 1 : 0]++;
+  else if (que === 'pase') L.pases++;
+  else if (que === 'truco') L.trucos[dato] = (L.trucos[dato] || 0) + 1;
+  // cuando ya te tienen leído, se avisa (una vez por cosa)
+  const avisar = (clave, texto) => { if (!L.avisos[clave]) { L.avisos[clave] = true; evento(m, { k: 'lectura', hid, texto }); } };
+  const [pi, pd] = L.palo, [gi, gd] = L.gambeta;
+  if (pi + pd >= 5 && Math.max(pi, pd) / (pi + pd) > .7) avisar('palo', `El arquero ya sabe que pateás al palo ${pd > pi ? 'izquierdo' : 'derecho'}`);
+  if (gi + gd >= 8 && Math.max(gi, gd) / (gi + gd) > .7) avisar('gambeta', `Te leyeron la gambeta: siempre salís para la ${gd > gi ? 'izquierda' : 'derecha'}`);
+  for (const [t, n] of Object.entries(L.trucos)) if (n >= 5) avisar('truco' + t, `Ya no se comen tanto la ${TRUCOS[t - 1]?.nombre.toLowerCase()}`);
+  if (L.pases >= 12 && L.pases > L.tiros * 4) avisar('pases', 'Te marcan los pases: probá patear más');
+}
+// lado preferido (de -1 a 1) y cuánto confían en eso
+function preferencia([a, b]) { const n = a + b; return n ? { lado: (b - a) / n, n } : { lado: 0, n: 0 }; }
+
+// los rivales cerca que se pueden comer el truco (si lo repetís mucho, se lo comen menos)
+function engañar(m, j, nTruco, radio, prob, cuanto = .7) {
+  const hid = m.hidDe[j.id];
+  const repetido = hid ? (lectura(m, hid).trucos[nTruco] || 0) : 0;
+  const k = Math.max(.3, 1 - repetido / 12);
+  let alguno = false;
+  for (const e of m.jug) {
+    if (e.eq === j.eq || e.arquero || dist(e, j) > radio) continue;
+    if (Math.random() < prob * k) {
+      alguno = true;
+      e.engano = cuanto;
+      const a = Math.atan2(e.z - j.z, e.x - j.x) + (Math.random() < .5 ? 1 : -1) * 1.2;
+      e.enganoDir = { x: Math.cos(a), z: Math.sin(a) };
+      e.vx *= .3; e.vz *= .3;
+    }
+  }
+  return alguno;
+}
+function truco(m, j, n, dx, dz) {
+  const T = TRUCOS[n - 1];
+  if (!T) return;
+  const p = m.pel;
+  const lateral = -Math.sin(j.ang) * dx + Math.cos(j.ang) * dz;
+  j.lado = Math.abs(lateral) > .2 ? Math.sign(lateral) : (Math.random() < .5 ? -1 : 1);
+  j.t = 0; j.cdTruco = .8;
+  aprender(m, j, 'truco', n);
+  const delante = m.jug.filter((e) => e.eq !== j.eq && !e.arquero && dist(e, j) < 2 && ((e.x - j.x) * Math.cos(j.ang) + (e.z - j.z) * Math.sin(j.ang)) > -.2).sort((a, b) => dist(a, j) - dist(b, j))[0];
+  let exito = false;
+  if (T.id === 'bicicleta') { j.est = 'bicicleta'; exito = engañar(m, j, n, 3, .75, .8); if (exito) j.turbo = .9; }
+  else if (T.id === 'amague') {
+    j.est = 'amague';
+    exito = engañar(m, j, n, 2.8, .7, .6);
+    // el arquero, si estás cerca del arco, se tira para un lado
+    const arq = m.jug.find((e) => e.eq !== j.eq && e.arquero);
+    if (arq && dist(j, arq) < 16 && arq.est !== 'vuela' && Math.random() < .7 * Math.max(.3, 1 - (lectura(m, m.hidDe[j.id] || '-').trucos[n] || 0) / 12)) {
+      arq.est = 'vuela'; arq.t = 0; arq.cd = 1.4; arq.lado = Math.random() < .5 ? -1 : 1; arq.vz = arq.lado * 6; arq.vx = 0; exito = true;
+      evento(m, { k: 'estirada', a: arq.id, lado: arq.lado });
+    }
+  } else if (T.id === 'cano' && delante) {
+    // la pelota pasa entre las piernas: el rival no la puede tocar hasta que yo la alcance
+    j.est = 'cano'; exito = true;
+    soltar(m, j); p.libreDe = delante.id; p.libreT = .9;
+    p.vx = Math.cos(j.ang) * 6.5; p.vz = Math.sin(j.ang) * 6.5; p.vy = 0;
+    // el rival se abre para un costado (le pasó entre las piernas) y yo no la toco hasta que pase
+    const lado = Math.random() < .5 ? 1 : -1;
+    delante.engano = .6; delante.enganoDir = { x: -Math.sin(j.ang) * lado, z: Math.cos(j.ang) * lado };
+    j.turbo = 1; j.esperaPase = 1.4; j.sinAgarrar = .22;
+  } else if (T.id === 'sombrero') {
+    j.est = 'sombrero'; exito = !!delante;
+    soltar(m, j); p.libreT = .2;
+    p.vx = Math.cos(j.ang) * 5.2; p.vz = Math.sin(j.ang) * 5.2; p.vy = 6;
+    j.turbo = 1; j.esperaPase = 1.4;
+  } else if (T.id === 'ruleta') { j.est = 'ruleta'; exito = !!delante; if (delante && Math.random() < .5) { delante.engano = .4; delante.enganoDir = { x: Math.cos(j.ang), z: Math.sin(j.ang) }; } }
+  else if (T.id === 'elastica') { j.est = 'elastica'; exito = engañar(m, j, n, 2.4, .65, .55); if (exito) j.turbo = .6; }
+  else if (T.id === 'taco') {
+    // pase de taco al compañero que esté atrás
+    const atras = m.jug.filter((o) => o.eq === j.eq && o.id !== j.id && !o.arquero && ((o.x - j.x) * Math.cos(j.ang) + (o.z - j.z) * Math.sin(j.ang)) < 0).sort((a, b) => dist(a, j) - dist(b, j))[0];
+    j.est = 'taco'; exito = !!atras;
+    const ang = atras ? Math.atan2(atras.z - j.z, atras.x - j.x) : j.ang + Math.PI;
+    const d = atras ? dist(atras, j) : 6;
+    soltar(m, j);
+    p.vx = Math.cos(ang) * clamp(d * 1.3 + 4, 7, 18); p.vz = Math.sin(ang) * clamp(d * 1.3 + 4, 7, 18); p.vy = .3;
+    if (atras) atras.esperaPase = 1;
+  } else if (T.id === 'pared') {
+    // pase al compañero más cercano adelante, que te la devuelve apenas la recibe
+    const comp = m.jug.filter((o) => o.eq === j.eq && o.id !== j.id && !o.arquero && dist(o, j) < 14).sort((a, b) => dist(a, j) - dist(b, j))[0];
+    if (!comp) return;
+    pasar(m, j, comp.x - j.x, comp.z - j.z, false);
+    comp.devolverA = j.id; comp.devolverT = 2; j.turbo = 1.2; exito = true;
+  } else { j.est = 'quieto'; return; }
+  evento(m, { k: 'truco', a: j.id, truco: T.id, nombre: T.nombre, exito });
 }
 
 // ---------------------------------------------------------------- acciones con la pelota
@@ -232,6 +403,7 @@ function rematar(m, j, carga, dx, dz) {
     // el humano apunta adentro de los palos (con poco error); los bots erran más según la dificultad
     const err = (Math.random() - .5) * (j.humano ? .28 : 1.25 - m.dificultad * .3) * m.arco;
     const objetivoZ = clamp(lado * m.arco * (j.humano ? .32 : .41) + err, -m.arco, m.arco);
+    if (j.humano) aprender(m, j, 'palo', objetivoZ * j.s);
     ang = Math.atan2(objetivoZ - j.z, arco.x - j.x);
   }
   const vel = 12 + 17 * carga;
@@ -277,6 +449,7 @@ function pasar(m, j, dx, dz, alto) {
   p.x = j.x + Math.cos(j.ang) * .5; p.z = j.z + Math.sin(j.ang) * .5;
   j.est = 'pase'; j.t = 0; j.ang = ang;
   if (mejor) mejor.esperaPase = .9;
+  if (j.humano) aprender(m, j, 'pase');
   evento(m, { k: 'pase', a: j.id, b: mejor?.id || null, alto: !!(alto || d > 20) });
 }
 
@@ -287,6 +460,7 @@ function quitar(m, j) {
   const p = m.pel;
   const rival = p.duenio && buscar(m, p.duenio);
   if (!rival || rival.eq === j.eq || dist(j, rival) > 1.25) return;
+  if (rival.est === 'ruleta') { evento(m, { k: 'esquiva', a: rival.id, b: j.id }); return; } // la ruleta lo esquiva
   const prob = .42 + (j.humano ? .1 : m.dificultad * .07) - (rival.arquero ? .3 : 0);
   if (Math.random() < prob) {
     soltar(m, rival); p.libreDe = rival.id; p.libreT = .5;
@@ -319,6 +493,7 @@ function barrer(m, j) {
   j.barrio = true;
   const rival = p.duenio && buscar(m, p.duenio);
   if (rival && rival.eq === j.eq) return;
+  if (rival && rival.est === 'ruleta') { evento(m, { k: 'esquiva', a: rival.id, b: j.id }); return; }
   if (rival) { rival.est = 'caido'; rival.t = 0; rival.vx = rival.vz = 0; evento(m, { k: 'cae', a: rival.id, por: j.id }); }
   soltar(m, j);
   p.vx = Math.cos(j.ang) * 6 + (Math.random() - .5) * 2; p.vz = Math.sin(j.ang) * 6 + (Math.random() - .5) * 2; p.vy = .8;
@@ -385,6 +560,7 @@ function pelota(m) {
   for (const j of m.jug) {
     if (['caido', 'levanta', 'festeja', 'triste'].includes(j.est)) continue;
     if (p.libreDe === j.id && p.libreT > 0) continue;
+    if (j.sinAgarrar > 0) continue;
     const d = dist(j, p);
     const arq = j.arquero && enArea(m, j, p);
     const alcance = arq ? (j.est === 'vuela' ? 1.05 : .72) : .62;
@@ -494,7 +670,9 @@ function pensarArquero(m, j) {
       const dz = zLlega - j.z;
       if (Math.abs(dz) > .7) {
         j.est = 'vuela'; j.t = 0; j.cd = 1.2;
-        const reflejo = (.5 + m.dificultad * .1) * (.8 + Math.random() * .4);
+        let reflejo = (.5 + m.dificultad * .1) * (.8 + Math.random() * .4);
+        const pateo = p.ultimo && m.hidDe[p.ultimo];
+        if (pateo) { const pref = preferencia(lectura(m, pateo).palo); if (Math.sign(-pref.lado * j.s) === Math.sign(dz)) reflejo *= 1 + .45 * confianza(pref.n, m.dificultad); }
         j.vz = clamp(dz / Math.max(.18, tLlega), -8.5, 8.5) * reflejo; j.vx = 0;
         j.ang = j.s > 0 ? 0 : Math.PI;
         evento(m, { k: 'estirada', a: j.id, lado: Math.sign(dz) });
@@ -505,11 +683,17 @@ function pensarArquero(m, j) {
   // pelota suelta cerca del arco y nadie del otro equipo más cerca: salir a buscarla
   const enemigoCerca = Math.min(...m.jug.filter((e) => e.eq !== j.eq).map((e) => dist(e, p)));
   if (!p.duenio && enArea(m, j, p) && dist(j, p) < enemigoCerca + .5 && p.y < 2) return { x: p.x - j.x, z: p.z - j.z, sprint: true };
-  // si no, pararse entre la pelota y el centro del arco
+  // si no, pararse entre la pelota y el centro del arco (corrido al palo que prefiere el que la tiene)
   const dg = Math.hypot(p.x - gx, p.z);
+  const tiene = p.duenio && buscar(m, p.duenio);
+  let corrimiento = 0;
+  if (tiene && tiene.eq !== j.eq && m.hidDe[tiene.id] && dg < 18) {
+    const pref = preferencia(lectura(m, m.hidDe[tiene.id]).palo);
+    corrimiento = -pref.lado * j.s * m.arco * .2 * confianza(pref.n, m.dificultad);
+  }
   const sale = clamp(dg * .1, .4, 2.6);
   const ang = Math.atan2(p.z, p.x - gx);
-  const tx = gx + Math.cos(ang) * sale, tz = clamp(Math.sin(ang) * sale + p.z * .08, -m.arco / 2 - .3, m.arco / 2 + .3);
+  const tx = gx + Math.cos(ang) * sale, tz = clamp(Math.sin(ang) * sale + p.z * .08 + corrimiento, -m.arco / 2 - .3, m.arco / 2 + .3);
   const dx = tx - j.x, dz = tz - j.z;
   const l = Math.hypot(dx, dz);
   if (l < .15) { j.ang += angDif(j.ang, Math.atan2(p.z - j.z, p.x - j.x)) * .2; return { x: 0, z: 0 }; }
@@ -533,6 +717,11 @@ export function pensarBot(m, j) {
   ia.prox = m.t + [.26, .17, .1][dif] + Math.random() * .08;
   const enemigos = m.jug.filter((e) => e.eq !== j.eq);
   const cercano = (q) => Math.min(...enemigos.map((e) => dist(e, q)));
+  if (tengo && j.devolverA && j.devolverT > 0) {
+    // pared: se la devuelve al que se la dio, adelantada
+    const otro = buscar(m, j.devolverA); j.devolverA = null;
+    if (otro) return { x: otro.x + Math.cos(otro.ang) * 3 - j.x, z: otro.z + Math.sin(otro.ang) * 3 - j.z, pase: true };
+  }
   if (tengo) {
     const dArco = dist(j, arco);
     const presion = cercano(j);
@@ -546,6 +735,11 @@ export function pensarBot(m, j) {
       // pase al compañero más libre hacia adelante
       const comp = m.jug.filter((o) => o.eq === j.eq && o.id !== j.id && !o.arquero).sort((a, b) => (cercano(b) * 1.2 + (b.x - j.x) * j.s * .25) - (cercano(a) * 1.2 + (a.x - j.x) * j.s * .25))[0];
       if (comp) { ia.inp = { x: 0, z: 0 }; return { x: comp.x - j.x, z: comp.z - j.z, pase: true }; }
+    }
+    // a veces un truco (más en difícil) si tiene a uno encima
+    if (dif > 0 && presion < 1.8 && j.cdTruco <= 0 && Math.random() < .12 + dif * .06) {
+      const t = [1, 5, 7, 3][Math.floor(Math.random() * 4)];
+      return { x: Math.cos(j.ang), z: Math.sin(j.ang) + (Math.random() - .5), truco: t };
     }
     // gambeta hacia el arco esquivando al que viene
     let dx = arco.x - j.x, dz = arco.z * .5 - j.z;
@@ -565,11 +759,19 @@ export function pensarBot(m, j) {
   const futura = viene ? { x: p.x, z: p.z } : { x: p.x + p.vx * .35, z: p.z + p.vz * .35 };
   const cazador = mios.length ? mios.reduce((a, b) => (dist(a, futura) < dist(b, futura) ? a : b)) : j;
   if (!nuestra && cazador === j) {
-    const dx = futura.x - j.x, dz = futura.z - j.z;
+    let dx = futura.x - j.x, dz = futura.z - j.z;
+    // si el que la tiene es una persona y le conocen la gambeta, le cortan para ese lado
+    if (duenio && m.hidDe[duenio.id]) {
+      const pref = preferencia(lectura(m, m.hidDe[duenio.id]).gambeta);
+      const c = confianza(pref.n, dif);
+      const lx = -Math.sin(duenio.ang), lz = Math.cos(duenio.ang);
+      dx += lx * pref.lado * 1.4 * c; dz += lz * pref.lado * 1.4 * c;
+      j.leeBonus = c * .15;
+    } else j.leeBonus = 0;
     ia.inp = { x: dx, z: dz, sprint: j.energia > .25 };
     if (duenio && dist(j, duenio) < 1.15) {
       const r = Math.random();
-      if (r < .3 + dif * .08) return { ...ia.inp, pase: true }; // quite
+      if (r < .3 + dif * .08 + (j.leeBonus || 0)) return { ...ia.inp, pase: true }; // quite
       if (r < .36 + dif * .03 && j.cd <= 0) { j.ang = Math.atan2(dz, dx); return { ...ia.inp, barrida: true }; }
     }
     if (!duenio && p.y > .8 && dist(j, p) < 1.2) return { ...ia.inp, tiro: true }; // volea / cabezazo
@@ -618,11 +820,12 @@ export const BITS = ['pase', 'tiro', 'barrida', 'cambiar', 'sprint'];
 export function codificarEntrada(e) {
   let b = 0;
   BITS.forEach((k, i) => { if (e[k]) b |= 1 << i; });
-  return `I${Math.round((e.x || 0) * 10) / 10},${Math.round((e.z || 0) * 10) / 10},${b}`;
+  return `I${Math.round((e.x || 0) * 10) / 10},${Math.round((e.z || 0) * 10) / 10},${b},${e.truco || 0}`;
 }
 export function decodificarEntrada(s) {
-  const [x, z, b] = s.slice(1).split(',').map(Number);
+  const [x, z, b, t] = s.slice(1).split(',').map(Number);
   const e = { x: clamp(x || 0, -1, 1), z: clamp(z || 0, -1, 1) };
   BITS.forEach((k, i) => { if (b & (1 << i)) e[k] = true; });
+  if (t >= 1 && t <= TRUCOS.length) e.truco = t;
   return e;
 }

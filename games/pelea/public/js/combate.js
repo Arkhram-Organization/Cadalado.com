@@ -7,7 +7,7 @@ const INTRO = 2.6, PAUSA_KO = 3.4;
 
 // luchadores: [{ id, eq: 0|1, npc, nombre, bot }]
 export function crearCombate({ luchadores, mejorDe = 3, tiempo = 90, r = Math.random }) {
-  const c = { luchadores, mejorDe, tiempo, victorias: [0, 0], ronda: 0, fase: 'intro', t: 0, m: null, anuncio: null, anuncioN: 0, ganador: null, poderes: {}, r, perfecta: false };
+  const c = { luchadores, mejorDe, tiempo, victorias: [0, 0], ronda: 0, fase: 'intro', t: 0, m: null, anuncio: null, anuncioN: 0, ganador: null, poderes: {}, r, perfecta: false, lee: {} };
   nuevaRonda(c);
   return c;
 }
@@ -23,7 +23,7 @@ function nuevaRonda(c) {
   c.poderes = sortearPoderes(c.luchadores, c.r);
   const nec = necesarias(c);
   c.evVisto = 0; c.parada = 0; c.lento = 0;
-  c.m = nuevoMundo(c.luchadores, c.poderes, { tiempo: c.tiempo || 9999, decisivo: [c.victorias[0] + 1 >= nec, c.victorias[1] + 1 >= nec] });
+  c.m = nuevoMundo(c.luchadores, c.poderes, { tiempo: c.tiempo || 9999, decisivo: [c.victorias[0] + 1 >= nec, c.victorias[1] + 1 >= nec], lee: c.lee });
   c.fase = 'intro'; c.t = 0;
   const ultima = c.victorias[0] === nec - 1 && c.victorias[1] === nec - 1 && nec > 1;
   anunciar(c, ultima ? 'RONDA FINAL' : `RONDA ${c.ronda}`, '', 'ronda');
