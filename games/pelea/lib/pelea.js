@@ -28,7 +28,7 @@ export const pelea = crearJuego({
       modo: MODOS.includes(opts.modo) ? opts.modo : '1v1',
       mejorDe: [1, 3, 5].includes(Number(opts.mejorDe)) ? Number(opts.mejorDe) : 3,
       tiempo: [0, 60, 90].includes(Number(opts.tiempo)) ? Number(opts.tiempo) : 90,
-      dificultad: [0, 1, 2].includes(Number(opts.dificultad)) ? Number(opts.dificultad) : 1,
+      dificultad: [0, 1, 2, 3].includes(Number(opts.dificultad)) ? Number(opts.dificultad) : 1,
       escenario: ESCENARIOS.includes(opts.escenario) ? opts.escenario : azar(ESCENARIOS),
       luchadorInicial: luchadorValido(opts.luchador),
       equipos: {}, // pid → 'a' | 'b' | 'afuera'
@@ -78,7 +78,7 @@ export const pelea = crearJuego({
         }
         if ([1, 3, 5].includes(Number(msg.mejorDe))) r.mejorDe = Number(msg.mejorDe);
         if ([0, 60, 90].includes(Number(msg.tiempo))) r.tiempo = Number(msg.tiempo);
-        if ([0, 1, 2].includes(Number(msg.dificultad))) r.dificultad = Number(msg.dificultad);
+        if ([0, 1, 2, 3].includes(Number(msg.dificultad))) r.dificultad = Number(msg.dificultad);
         if (ESCENARIOS.includes(msg.escenario)) r.escenario = msg.escenario;
         return {};
       }

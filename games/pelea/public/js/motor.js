@@ -146,7 +146,7 @@ function predecir(m, rival, d, dificultad) {
   const total = Object.values(tabla).reduce((a, b) => a + b, 0);
   if (!total) return null;
   const [accion, n] = Object.entries(tabla).sort((a, b) => b[1] - a[1])[0];
-  return { accion, p: n / total, conf: Math.min(1, L.total / 14) * [.45, .8, 1][dificultad], L };
+  return { accion, p: n / total, conf: Math.min(1, L.total / 14) * (NIVELES[dificultad] || NIVELES[1]).lee, L };
 }
 
 // ---------------------------------------------------------------- un paso de 1/60 s
@@ -449,7 +449,15 @@ function terminar(m) {
 }
 
 // ---------------------------------------------------------------- bots
-// dificultad: 0 fácil, 1 normal, 2 difícil. Devuelve la entrada del bot para este paso.
+// Nivel de los bots: reacción, guardia, combos, castigos (contestar cuando errás un golpe), súper y cuánto
+// aprovechan lo que aprenden de vos. Se nota de verdad la diferencia entre uno y otro.
+export const NIVELES = [
+  { nombre: 'Fácil', reaccion: .38, cubre: .12, combo3: .25, poder: .2, superP: .25, castigo: 0, lee: .35, agresivo: .5 },
+  { nombre: 'Normal', reaccion: .2, cubre: .42, combo3: .55, poder: .38, superP: .5, castigo: .15, lee: .75, agresivo: .75 },
+  { nombre: 'Difícil', reaccion: .1, cubre: .68, combo3: .8, poder: .48, superP: .75, castigo: .45, lee: .95, agresivo: .9 },
+  { nombre: 'Leyenda', reaccion: .05, cubre: .86, combo3: .95, poder: .55, superP: .95, castigo: .8, lee: 1, agresivo: 1 },
+];
+// dificultad: 0 fácil, 1 normal, 2 difícil, 3 leyenda. Devuelve la entrada del bot para este paso.
 export function pensarBot(m, f, dificultad = 1, r = Math.random) {
   const ia = (f.ia ??= { prox: 0, mantener: { x: 0, y: 0 }, cola: [], colaT: 0 });
   const salida = { ...ia.mantener };
@@ -469,7 +477,8 @@ export function pensarBot(m, f, dificultad = 1, r = Math.random) {
     return { x: 0, y: 0 };
   }
   if (m.t < ia.prox) return salida;
-  const reaccion = [.34, .2, .1][dificultad] ?? .2;
+  const N = NIVELES[dificultad] || NIVELES[1];
+  const reaccion = N.reaccion;
   ia.prox = m.t + reaccion + r() * .16;
   const rival = enemigoCercano(m, f);
   if (!rival || rival.ko) { ia.mantener = { x: 0, y: 0 }; return ia.mantener; }
@@ -478,7 +487,10 @@ export function pensarBot(m, f, dificultad = 1, r = Math.random) {
   const lee = pred?.conf || 0;
   // le leyó los saltos: gancho al que viene por el aire
   if (rival.y > .4 && rival.vy < 2 && dist < 2 && pred && pred.L.salto / pred.L.total > .2 && r() < .25 + lee * .6) return { x: 0, y: 1, pina: true };
-  let cubre = [.2, .45, .72][dificultad] ?? .45;
+  // castigo: el rival quedó colgado después de errar o de que le bloqueen un golpe → contesta enseguida
+  const colgado = rival.atk && ATAQUES[rival.atk].act && rival.atkT > ATAQUES[rival.atk].ini + ATAQUES[rival.atk].act && dist < 1.5 && rival.y <= 0;
+  if (colgado && r() < N.castigo) { ia.cola = [{ k: 'pina' }, { k: 'pina' }, { k: 'pina' }]; ia.colaT = 0; return { x: 0, y: 1, pina: true }; }
+  let cubre = N.cubre;
   if (pred && ['pina', 'patada', 'arma', 'gancho'].includes(pred.accion)) cubre += lee * .25;
   // se viene un golpe: cubrirse (agachado si es una barrida)
   const peligro = rival.atk && ATAQUES[rival.atk].act && dist < (ATAQUES[rival.atk].alc || 1) + .6 && rival.atkT < ATAQUES[rival.atk].ini + ATAQUES[rival.atk].act;
@@ -492,13 +504,13 @@ export function pensarBot(m, f, dificultad = 1, r = Math.random) {
     return ia.mantener;
   }
   ia.mantener = { x: 0, y: 0 };
-  if (f.ene >= 100 && r() < .5) return { x: 0, y: 0, super: true };
+  if (f.ene >= 100 && r() < N.superP) return { x: 0, y: 0, super: true };
   // al que se cubre todo el tiempo, barrida (la guardia parada no la para)
   if (pred && pred.L.guardia / pred.L.total > .25 && dist < 1.5 && r() < lee * .55) return { x: 0, y: 1, patada: true };
   if (dist > 3.2) {
     // al que tira poderes de lejos: se le mete saltando
     if (pred?.accion === 'poder' && r() < lee * .6) return { x: dir, y: -1 };
-    if (f.cdPoder <= 0 && r() < [.25, .4, .5][dificultad]) return { x: 0, y: 0, poder: true };
+    if (f.cdPoder <= 0 && r() < N.poder) return { x: 0, y: 0, poder: true };
     if (r() < .1) return { x: dir, y: -1 };
     ia.mantener = { x: dir, y: 0 };
     return ia.mantener;
@@ -514,7 +526,9 @@ export function pensarBot(m, f, dificultad = 1, r = Math.random) {
   }
   // cuerpo a cuerpo
   const p = r();
-  if (p < .3) { ia.cola = [{ k: 'pina' }, { k: 'pina' }, ...(r() < .5 + dificultad * .2 ? [{ k: 'pina' }] : []), ...(dificultad > 0 && r() < .4 ? [{ k: 'poder' }] : [])]; ia.colaT = 0; return { x: 0, y: 0 }; }
+  // los fáciles a veces se quedan mirando
+  if (r() > N.agresivo) { ia.mantener = { x: 0, y: 0 }; return ia.mantener; }
+  if (p < .3) { ia.cola = [{ k: 'pina' }, { k: 'pina' }, ...(r() < N.combo3 ? [{ k: 'pina' }] : []), ...(r() < N.combo3 * .5 ? [{ k: 'poder' }] : [])]; ia.colaT = 0; return { x: 0, y: 0 }; }
   if (p < .45) return { x: 0, y: 0, patada: true };
   if (p < .55) return { x: 0, y: 1, patada: true };
   if (p < .65) return { x: 0, y: 1, pina: true };

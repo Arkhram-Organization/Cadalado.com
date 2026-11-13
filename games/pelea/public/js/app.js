@@ -206,7 +206,7 @@ function seleccion({ dos }) {
           <button class="pf-cara azar" data-id="azar" title="Al azar">?</button></div>
         <div class="pf-opciones">
           ${seg('Modo', 'modo', conf.modo, [['1v1', '1 vs 1'], ['2v2', '2 vs 2']])}
-          ${dos ? '' : seg('Bots', 'dif', conf.dif, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil']])}
+          ${seg('Nivel de los bots', 'dif', conf.dif, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil'], [3, 'Leyenda']])}
           ${seg('Rondas', 'rondas', conf.rondas, [[1, '1'], [3, '3'], [5, '5']])}
           ${seg('Tiempo', 'tiempo', conf.tiempo, [[60, '60'], [90, '90'], [0, '∞']])}
           ${seg('Escenario', 'escenario', conf.escenario, [['azar', 'Al azar'], ...ESCENARIOS.map((e) => [e.id, e.nombre.replace('El ', '').replace('La ', '')])])}
@@ -557,7 +557,7 @@ function abrirSala(code) {
         ${seg('Modo', 'modo', est.modo, [['1v1', '1 vs 1'], ['2v2', '2 vs 2']])}
         ${seg('Rondas', 'mejorDe', est.mejorDe, [[1, '1'], [3, '3'], [5, '5']])}
         ${seg('Tiempo', 'tiempo', est.tiempo, [[60, '60'], [90, '90'], [0, '∞']])}
-        ${seg('Bots', 'dificultad', est.dificultad, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil']])}
+        ${seg('Nivel de los bots', 'dificultad', est.dificultad, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil'], [3, 'Leyenda']])}
         ${seg('Escenario', 'escenario', est.escenario, ESCENARIOS.map((e) => [e.id, e.nombre.replace('El ', '').replace('La ', '')]))}
       </div>
       ${host ? `<div class="pf-listo"><button class="btn btn-lima btn-grande" data-empezar>${fin ? 'Revancha' : '¡A pelear!'}</button></div>` : '<p class="pf-ayuda">Esperando que el anfitrión (★) arranque la pelea…</p>'}

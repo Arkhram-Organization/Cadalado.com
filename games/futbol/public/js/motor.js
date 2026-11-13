@@ -29,6 +29,16 @@ export const TRUCOS = [
   { id: 'elastica', nombre: 'Elástica', desc: 'Corte rápido para un costado' },
   { id: 'pared', nombre: 'Pared', desc: 'Se la das a un compañero y te la devuelve' },
 ];
+// Nivel de los bots: cada número cambia de verdad cómo juegan (velocidad, reacción, puntería, quites,
+// reflejos del arquero, presión, trucos y cuánto aprovechan lo que aprenden de vos).
+export const NIVELES = [
+  { nombre: 'Fácil', vel: .82, reaccion: .36, error: 1.7, quite: .16, barrida: .02, tiroDist: 11, tiroProb: .45, reflejo: .38, ataja: -.2, truco: 0, presion: .55, lee: .35, pase: .3 },
+  { nombre: 'Normal', vel: .94, reaccion: .2, error: 1.15, quite: .3, barrida: .05, tiroDist: 14, tiroProb: .66, reflejo: .58, ataja: 0, truco: .08, presion: 1, lee: .7, pase: .55 },
+  { nombre: 'Difícil', vel: 1.03, reaccion: .11, error: .78, quite: .44, barrida: .08, tiroDist: 17, tiroProb: .8, reflejo: .78, ataja: .1, truco: .16, presion: 1.3, lee: .9, pase: .72 },
+  { nombre: 'Leyenda', vel: 1.12, reaccion: .055, error: .45, quite: .58, barrida: .11, tiroDist: 19.5, tiroProb: .9, reflejo: .96, ataja: .2, truco: .26, presion: 1.6, lee: 1, pase: .85 },
+];
+// cada equipo puede tener su nivel (m.nivelEq), si no, el del partido
+const nivelDe = (m, j) => NIVELES[m.nivelEq?.[j.eq] ?? m.dificultad] || NIVELES[1];
 export const ROLES = [['aleatorio', 'Aleatorio'], ['arquero', 'Arquero'], ['defensa', 'Defensa'], ['medio', 'Medio'], ['delantero', 'Delantero']];
 // puesto de cada lugar de la formación (mismo orden que FORMACIONES)
 const PUESTOS = { 5: ['defensa', 'defensa', 'delantero', 'delantero'], 6: ['defensa', 'defensa', 'medio', 'delantero', 'delantero'], 7: ['defensa', 'defensa', 'defensa', 'medio', 'medio', 'delantero'], 8: ['defensa', 'defensa', 'defensa', 'medio', 'medio', 'delantero', 'delantero'] };
@@ -60,6 +70,12 @@ export const BOTONES = ['pase', 'tiro', 'barrida', 'cambiar', 'sprint'];
 const NADA = { x: 0, z: 0 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+// distancia de un punto al segmento a-b (para ver si un rival tapa la línea del pase)
+function distSegmento(q, a, b) {
+  const vx = b.x - a.x, vz = b.z - a.z, l = vx * vx + vz * vz || 1;
+  const k = Math.max(0, Math.min(1, ((q.x - a.x) * vx + (q.z - a.z) * vz) / l));
+  return Math.hypot(q.x - (a.x + vx * k), q.z - (a.z + vz * k));
+}
 function angDif(a, b) { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; }
 
 // jugadores: [{ id, eq, npc }] (el primero de cada equipo es el arquero); humanos: [{ hid, eq, pid, cambia }]
@@ -256,7 +272,7 @@ function controlar(m, j, inp) {
 function integrar(m, j, dx, dz, sprint, freno = 9) {
   const tengo = m.pel.duenio === j.id;
   const corre = sprint && j.energia > .05 && (dx || dz);
-  const vmax = (j.arquero ? 5.4 : 5.8) * (corre ? 1.38 : 1) * (j.turbo > 0 ? 1.3 : 1) * (tengo ? .9 : 1) * (j.cargando ? .7 : 1) * (.92 + m.dificultad * .04 * (j.humano ? 0 : 1));
+  const vmax = (j.arquero ? 5.4 : 5.8) * (corre ? 1.38 : 1) * (j.turbo > 0 ? 1.3 : 1) * (tengo ? .9 : 1) * (j.cargando ? .7 : 1) * (j.humano ? 1 : nivelDe(m, j).vel);
   const k = Math.min(1, PASO * (dx || dz ? 7 : freno));
   j.vx += (dx * vmax - j.vx) * k; j.vz += (dz * vmax - j.vz) * k;
   j.x += j.vx * PASO; j.z += j.vz * PASO;
@@ -290,7 +306,7 @@ function separar(m) {
 function lectura(m, hid) {
   return (m.lee[hid] ??= { palo: [0, 0], gambeta: [0, 0], pases: 0, tiros: 0, trucos: {}, avisos: {} });
 }
-export function confianza(n, dif = 1) { return Math.min(1, n / 10) * [.5, .8, 1][dif]; }
+export function confianza(n, dif = 1) { return Math.min(1, n / 10) * (NIVELES[dif] || NIVELES[1]).lee; }
 function aprender(m, j, que, dato) {
   const hid = m.hidDe[j.id];
   if (!hid) return;
@@ -401,7 +417,7 @@ function rematar(m, j, carga, dx, dz) {
     // a qué palo: según para dónde apretás (y un poco de error)
     const lado = Math.abs(dz) > .3 ? Math.sign(dz) : (Math.random() < .5 ? -1 : 1);
     // el humano apunta adentro de los palos (con poco error); los bots erran más según la dificultad
-    const err = (Math.random() - .5) * (j.humano ? .28 : 1.25 - m.dificultad * .3) * m.arco;
+    const err = (Math.random() - .5) * (j.humano ? .28 : nivelDe(m, j).error) * m.arco;
     const objetivoZ = clamp(lado * m.arco * (j.humano ? .32 : .41) + err, -m.arco, m.arco);
     if (j.humano) aprender(m, j, 'palo', objetivoZ * j.s);
     ang = Math.atan2(objetivoZ - j.z, arco.x - j.x);
@@ -418,22 +434,32 @@ function rematar(m, j, carga, dx, dz) {
 // pase al compañero que mejor quede para donde apretás (o para donde mira)
 function pasar(m, j, dx, dz, alto) {
   const p = m.pel;
-  const dir = Math.hypot(dx, dz) > .3 ? Math.atan2(dz, dx) : j.ang;
-  let mejor = null, puntaje = -Infinity;
-  for (const o of m.jug) {
-    if (o.eq !== j.eq || o.id === j.id || o.est === 'caido') continue;
-    const d = dist(j, o);
-    if (d < 2 || d > 34) continue;
-    const a = Math.abs(angDif(dir, Math.atan2(o.z - j.z, o.x - j.x)));
-    if (a > 1.2) continue;
-    const libre = Math.min(6, ...m.jug.filter((e) => e.eq !== j.eq).map((e) => dist(e, o)));
-    const pts = -a * 9 - Math.abs(d - 11) * .25 + libre * .7 + (o.x - j.x) * j.s * .12 - (o.arquero ? 6 : 0);
-    if (pts > puntaje) { puntaje = pts; mejor = o; }
-  }
+  // Pase asistido: no hace falta apuntar fino. Con dirección, elige al compañero que mejor quede para ese
+  // lado (cono ancho); sin dirección, al mejor ubicado; y si para ese lado no hay nadie, igual busca a alguien.
+  const conDir = Math.hypot(dx, dz) > .3;
+  const dir = conDir ? Math.atan2(dz, dx) : j.ang;
+  const candidatos = (abierto) => {
+    let mejor = null, puntaje = -Infinity;
+    for (const o of m.jug) {
+      if (o.eq !== j.eq || o.id === j.id || o.est === 'caido') continue;
+      const d = dist(j, o);
+      if (d < 1.8 || d > 36) continue;
+      const a = Math.abs(angDif(dir, Math.atan2(o.z - j.z, o.x - j.x)));
+      if (!abierto && a > 1.75) continue;
+      const libre = Math.min(6, ...m.jug.filter((e) => e.eq !== j.eq).map((e) => dist(e, o)));
+      // ¿hay un rival en la línea del pase? (lo tapa)
+      const tapado = m.jug.some((e) => e.eq !== j.eq && distSegmento(e, j, o) < .9 && dist(e, j) < d);
+      const pts = -a * (conDir && !abierto ? 4.5 : 1.2) - Math.abs(d - 10) * .18 + libre * .8 + (o.x - j.x) * j.s * .14 - (o.arquero ? 8 : 0) - (tapado ? 4 : 0);
+      if (pts > puntaje) { puntaje = pts; mejor = o; }
+    }
+    return mejor;
+  };
+  const mejor = candidatos(false) || candidatos(true);
   let tx, tz;
   if (mejor) {
-    const d = dist(j, mejor), adelanto = d / 14;
-    tx = mejor.x + mejor.vx * adelanto * .8; tz = mejor.z + mejor.vz * adelanto * .8;
+    // adelantado: donde va a estar cuando le llegue
+    const d = dist(j, mejor), vuelo = clamp(d / 15, .25, 1.4);
+    tx = clamp(mejor.x + mejor.vx * vuelo, -m.L / 2 + .5, m.L / 2 - .5); tz = clamp(mejor.z + mejor.vz * vuelo, -m.A / 2 + .5, m.A / 2 - .5);
   } else { tx = j.x + Math.cos(dir) * 10; tz = j.z + Math.sin(dir) * 10; }
   const d = Math.hypot(tx - j.x, tz - j.z), ang = Math.atan2(tz - j.z, tx - j.x);
   soltar(m, j);
@@ -461,7 +487,7 @@ function quitar(m, j) {
   const rival = p.duenio && buscar(m, p.duenio);
   if (!rival || rival.eq === j.eq || dist(j, rival) > 1.25) return;
   if (rival.est === 'ruleta') { evento(m, { k: 'esquiva', a: rival.id, b: j.id }); return; } // la ruleta lo esquiva
-  const prob = .42 + (j.humano ? .1 : m.dificultad * .07) - (rival.arquero ? .3 : 0);
+  const prob = (j.humano ? .52 : .2 + nivelDe(m, j).quite * .7) - (rival.arquero ? .3 : 0);
   if (Math.random() < prob) {
     soltar(m, rival); p.libreDe = rival.id; p.libreT = .5;
     const a = Math.atan2(rival.z - j.z, rival.x - j.x);
@@ -574,7 +600,7 @@ function pelota(m) {
     const rel = Math.hypot(p.vx - mejor.vx, p.vz - mejor.vz);
     if (mejor.arquero && enArea(m, mejor, p)) {
       // atajada: si viene muy fuerte o es una estirada, a veces la da rebote
-      const ataja = Math.random() < clamp(.88 - rel * .036 - (mejor.est === 'vuela' ? .1 : 0) + m.dificultad * .05, .1, .9);
+      const ataja = Math.random() < clamp(.88 - rel * .036 - (mejor.est === 'vuela' ? .1 : 0) + (mejor.humano ? .05 : nivelDe(m, mejor).ataja), .08, .94);
       if (rel > 9 && (mejor.est === 'vuela' || rel > 14)) evento(m, { k: 'atajada', a: mejor.id, rebote: !ataja });
       if (ataja || rel < 9) {
         p.duenio = mejor.id; mejor.agarrada = rel > 6; mejor.est = mejor.agarrada ? 'ataja' : mejor.est; mejor.t = 0; mejor.paraSacar = .9;
@@ -670,7 +696,7 @@ function pensarArquero(m, j) {
       const dz = zLlega - j.z;
       if (Math.abs(dz) > .7) {
         j.est = 'vuela'; j.t = 0; j.cd = 1.2;
-        let reflejo = (.5 + m.dificultad * .1) * (.8 + Math.random() * .4);
+        let reflejo = nivelDe(m, j).reflejo * (.8 + Math.random() * .4);
         const pateo = p.ultimo && m.hidDe[p.ultimo];
         if (pateo) { const pref = preferencia(lectura(m, pateo).palo); if (Math.sign(-pref.lado * j.s) === Math.sign(dz)) reflejo *= 1 + .45 * confianza(pref.n, m.dificultad); }
         j.vz = clamp(dz / Math.max(.18, tLlega), -8.5, 8.5) * reflejo; j.vx = 0;
@@ -714,7 +740,8 @@ export function pensarBot(m, j) {
     return { ...ia.inp, tiro: false };
   }
   if (m.t < ia.prox) return { x: ia.inp.x, z: ia.inp.z, sprint: ia.inp.sprint };
-  ia.prox = m.t + [.26, .17, .1][dif] + Math.random() * .08;
+  const N = nivelDe(m, j);
+  ia.prox = m.t + N.reaccion + Math.random() * N.reaccion * .4;
   const enemigos = m.jug.filter((e) => e.eq !== j.eq);
   const cercano = (q) => Math.min(...enemigos.map((e) => dist(e, q)));
   if (tengo && j.devolverA && j.devolverT > 0) {
@@ -726,18 +753,18 @@ export function pensarBot(m, j) {
     const dArco = dist(j, arco);
     const presion = cercano(j);
     const deFrente = Math.abs(angDif(j.ang, Math.atan2(arco.z - j.z, arco.x - j.x))) < 1.3;
-    if (dArco < 15 + dif * 2.5 && deFrente && Math.random() < .68 + dif * .1) {
+    if (dArco < N.tiroDist && deFrente && Math.random() < N.tiroProb) {
       ia.cargaHasta = m.t + .25 + Math.random() * (.35 + .15 * (dArco > 10)) ;
       ia.inp = { x: Math.sign(arco.x - j.x) * .3, z: Math.random() < .5 ? -1 : 1 };
       return { ...ia.inp, tiro: true };
     }
-    if (presion < 2.3 && Math.random() < .55) {
+    if (presion < 2.3 && Math.random() < N.pase) {
       // pase al compañero más libre hacia adelante
       const comp = m.jug.filter((o) => o.eq === j.eq && o.id !== j.id && !o.arquero).sort((a, b) => (cercano(b) * 1.2 + (b.x - j.x) * j.s * .25) - (cercano(a) * 1.2 + (a.x - j.x) * j.s * .25))[0];
       if (comp) { ia.inp = { x: 0, z: 0 }; return { x: comp.x - j.x, z: comp.z - j.z, pase: true }; }
     }
     // a veces un truco (más en difícil) si tiene a uno encima
-    if (dif > 0 && presion < 1.8 && j.cdTruco <= 0 && Math.random() < .12 + dif * .06) {
+    if (presion < 1.8 && j.cdTruco <= 0 && Math.random() < N.truco) {
       const t = [1, 5, 7, 3][Math.floor(Math.random() * 4)];
       return { x: Math.cos(j.ang), z: Math.sin(j.ang) + (Math.random() - .5), truco: t };
     }
@@ -771,8 +798,8 @@ export function pensarBot(m, j) {
     ia.inp = { x: dx, z: dz, sprint: j.energia > .25 };
     if (duenio && dist(j, duenio) < 1.15) {
       const r = Math.random();
-      if (r < .3 + dif * .08 + (j.leeBonus || 0)) return { ...ia.inp, pase: true }; // quite
-      if (r < .36 + dif * .03 && j.cd <= 0) { j.ang = Math.atan2(dz, dx); return { ...ia.inp, barrida: true }; }
+      if (r < N.quite + (j.leeBonus || 0)) return { ...ia.inp, pase: true }; // quite
+      if (r < N.quite + N.barrida && j.cd <= 0) { j.ang = Math.atan2(dz, dx); return { ...ia.inp, barrida: true }; }
     }
     if (!duenio && p.y > .8 && dist(j, p) < 1.2) return { ...ia.inp, tiro: true }; // volea / cabezazo
     return ia.inp;
@@ -784,7 +811,7 @@ export function pensarBot(m, j) {
     // marcar al rival más cercano a mi puesto
     const libres = enemigos.filter((e) => !e.arquero);
     const marca = libres.length ? libres.reduce((a, b) => (Math.hypot(a.x - q.x, a.z - q.z) < Math.hypot(b.x - q.x, b.z - q.z) ? a : b)) : null;
-    if (marca && Math.hypot(marca.x - q.x, marca.z - q.z) < 7) { tx = (q.x + marca.x - j.s * 1.2) / 2 + (marca.x - j.s * 1.2) / 4; tz = (q.z + marca.z) / 2; }
+    if (marca && Math.hypot(marca.x - q.x, marca.z - q.z) < 4 + N.presion * 3) { tx = (q.x + marca.x - j.s * 1.2) / 2 + (marca.x - j.s * 1.2) / 4; tz = (q.z + marca.z) / 2; }
   }
   const dx = tx - j.x, dz = tz - j.z, l = Math.hypot(dx, dz);
   ia.inp = l < .6 ? { x: 0, z: 0 } : { x: dx / Math.max(l, 2), z: dz / Math.max(l, 2), sprint: l > 8 };

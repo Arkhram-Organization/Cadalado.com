@@ -125,7 +125,10 @@ function aCancha(inp, escena, eq) {
   return out;
 }
 const AYUDA = '<kbd>WASD</kbd> moverse · <kbd>Shift</kbd> correr · <kbd>J</kbd> pase (sin pelota: quitar) · <kbd>K</kbd> tiro (mantené para cargar) · <kbd>L</kbd> barrida / pase largo · <kbd>Espacio</kbd> cambiar · <kbd>1</kbd>-<kbd>8</kbd> trucos · <kbd>H</kbd> lista de trucos · <kbd>C</kbd> cámara · <kbd>Esc</kbd> pausa';
-const listaTrucos = (perfil = 'solo', corto = false) => TRUCOS.map((t, i) => `<span><kbd>${teclaTruco(perfil, i)}</kbd> <b>${t.nombre}</b>${corto ? '' : `<small>${t.desc}</small>`}</span>`).join('');
+const listaTrucos = (perfil = 'solo') => TRUCOS.map((t, i) => `<span><kbd>${teclaTruco(perfil, i)}</kbd> <b>${t.nombre}</b><small>${t.desc}</small></span>`).join('');
+// tira chiquita abajo: aparece solo cuando tenés la pelota
+const CORTO = ['Bici', 'Amague', 'Caño', 'Sombrero', 'Ruleta', 'Taco', 'Elástica', 'Pared'];
+const tiraTrucos = (perfil = 'solo') => CORTO.map((n, i) => `<span><kbd>${teclaTruco(perfil, i)}</kbd>${n}</span>`).join('');
 
 // ---------------------------------------------------------------- menú
 function menu() {
@@ -207,7 +210,7 @@ function armado({ dos }) {
         <div class="pf-opciones">
           ${seg('Formato', 'formato', conf.formato, [[5, 'Fútbol 5'], [6, 'F6'], [7, 'F7'], [8, 'Fútbol 8']])}
           ${seg('Minutos', 'minutos', conf.minutos, [[2, '2'], [4, '4'], [6, '6'], [8, '8']])}
-          ${dos ? '' : seg('Rivales', 'dif', conf.dif, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil']])}
+          ${seg('Nivel de los bots', 'dif', conf.dif, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil'], [3, 'Leyenda']])}
           ${seg('Cancha', 'cancha', conf.cancha, CANCHAS.map((c) => [c.id, c.nombre]))}
           ${seg(dos ? 'Puesto J1' : 'Tu puesto', 'rol', conf.rol, ROLES)}
           ${dos ? seg('Puesto J2', 'rol2', conf.rol2, ROLES) : ''}
@@ -278,6 +281,7 @@ function crearHud(raiz, jugadores) {
       $('[data-aire]').style.width = Math.round((yo.energia ?? 1) * 100) + '%';
       $('[data-carga]').style.width = Math.round((yo.carga || 0) * 100) + '%';
     }
+    $('[data-trucos]')?.classList.toggle('on', !!yo && v.pel.duenio === yo.id);
     // radar
     const W = 200, H = 112, sx = W / (v.L + 2), sz = H / (v.A + 2);
     radar.clearRect(0, 0, W, H);
@@ -321,7 +325,7 @@ async function jugar({ conf, jugadores, humanos, dos, alVolver }) {
   if (dos) escena.ponerCamara('tv'); else escena.ponerCamara(leer('futbol.camara', 'tv'));
   const tec = teclado(), toque = tactil($('.pf'));
   const trucos = $('[data-trucos]');
-  trucos.innerHTML = `<b>Trucos</b>${dos ? '<small>J1: 1-8 · J2: Num4-9 / *</small>' : ''}${listaTrucos(dos ? 'j1' : 'solo', true)}<small>H: ocultar</small>`;
+  trucos.innerHTML = tiraTrucos(dos ? 'j1' : 'solo');
   trucos.classList.toggle('hidden', leer('futbol.verTrucos', 'si') === 'no');
   $('[data-pie]').innerHTML = dos ? 'J1 (Rojo): <kbd>WASD</kbd> <kbd>F</kbd> pase <kbd>G</kbd> tiro <kbd>H</kbd> barrida <kbd>R</kbd> cambio <kbd>Shift izq</kbd> correr &nbsp;|&nbsp; J2 (Azul): flechas <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>U</kbd> <kbd>Shift der</kbd>' : AYUDA;
   let m = null, pausa = false, raf = 0, viva = true, finMostrado = false;
@@ -476,7 +480,7 @@ function abrirSala(code) {
     await escena.armar(m, lista).catch(() => {});
     $('[data-cargando]').classList.add('hidden');
     hud = crearHud(app, lista);
-    $('[data-trucos]').innerHTML = `<b>Trucos</b>${listaTrucos('solo', true)}<small>H: ocultar</small>`;
+    $('[data-trucos]').innerHTML = tiraTrucos('solo');
     $('[data-trucos]').classList.toggle('hidden', leer('futbol.verTrucos', 'si') === 'no');
     tribuna(true);
   }
@@ -501,7 +505,7 @@ function abrirSala(code) {
       <div class="pf-opciones">
         ${seg('Formato', 'formato', est.formato, [[5, 'F5'], [6, 'F6'], [7, 'F7'], [8, 'F8']], !host)}
         ${seg('Minutos', 'minutos', est.minutos, [[2, '2'], [4, '4'], [6, '6'], [8, '8']], !host)}
-        ${seg('Bots', 'dificultad', est.dificultad, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil']], !host)}
+        ${seg('Nivel de los bots', 'dificultad', est.dificultad, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil'], [3, 'Leyenda']], !host)}
         ${seg('Cancha', 'cancha', est.cancha, CANCHAS.map((c) => [c.id, c.nombre]), !host)}
       </div>
       ${host ? `<div class="pf-listo"><button class="btn btn-lima btn-grande" data-empezar>${fin ? 'Revancha' : '¡A la cancha!'}</button></div>` : '<p class="pf-ayuda">Esperando que el anfitrión (★) arranque el partido…</p>'}

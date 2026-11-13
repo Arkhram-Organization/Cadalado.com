@@ -27,7 +27,7 @@ export const futbol = crearJuego({
       formato: FORMATOS.includes(Number(opts.formato)) ? Number(opts.formato) : 5,
       minutos: MINUTOS.includes(Number(opts.minutos)) ? Number(opts.minutos) : 4,
       golesMax: 0,
-      dificultad: [0, 1, 2].includes(Number(opts.dificultad)) ? Number(opts.dificultad) : 1,
+      dificultad: [0, 1, 2, 3].includes(Number(opts.dificultad)) ? Number(opts.dificultad) : 1,
       cancha: CANCHAS.includes(opts.cancha) ? opts.cancha : azar(CANCHAS),
       personajeInicial: ROSTER.includes(opts.personaje) ? opts.personaje : null,
       equipos: {}, personaje: {}, rol: {}, participantes: [], bots: { rojo: [], azul: [] },
@@ -75,7 +75,7 @@ export const futbol = crearJuego({
           for (const eq of ['rojo', 'azul']) de(r, eq).slice(cupo(r)).forEach((p) => (r.equipos[p] = 'afuera'));
         }
         if (MINUTOS.includes(Number(msg.minutos))) r.minutos = Number(msg.minutos);
-        if ([0, 1, 2].includes(Number(msg.dificultad))) r.dificultad = Number(msg.dificultad);
+        if ([0, 1, 2, 3].includes(Number(msg.dificultad))) r.dificultad = Number(msg.dificultad);
         if (CANCHAS.includes(msg.cancha)) r.cancha = msg.cancha;
         return {};
       }

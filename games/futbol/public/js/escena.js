@@ -303,17 +303,53 @@ function potrero(raiz, anim, L, A, r) {
 }
 
 // ---------------------------------------------------------------- pelota
-function crearPelota() {
-  const tex = lienzo(256, 128, (g, w, h) => {
-    g.fillStyle = '#f6f6f2'; g.fillRect(0, 0, w, h);
-    const r = rng(5);
-    for (let i = 0; i < 14; i++) {
-      const x = (i % 7) * w / 7 + (Math.floor(i / 7) ? w / 14 : 0), y = Math.floor(i / 7) ? h * .7 : h * .3;
-      g.fillStyle = i % 3 ? '#16161a' : '#c5f04a';
-      g.beginPath(); for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + r(); g.lineTo(x + Math.cos(a) * 13, y + Math.sin(a) * 11); } g.closePath(); g.fill();
+// Se ve más grande que la de la física (así se lee bien desde lejos) y con paneles de verdad:
+// 12 pentágonos oscuros y 20 hexágonos blancos con costuras, dibujados sobre la esfera.
+export const ESCALA_PELOTA = 1.9;
+let texPelota = null;
+function texturaPelota() {
+  if (texPelota) return texPelota;
+  const W = 1024, H = 512;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const img = g.createImageData(W, H);
+  // centros de los paneles: vértices de un icosaedro (pentágonos) y centros de sus caras (hexágonos)
+  const t = (1 + Math.sqrt(5)) / 2;
+  const v = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t], [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map(([x, y, z]) => { const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; });
+  const caras = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
+  const hex = caras.map(([a, b, cc]) => { const x = v[a][0] + v[b][0] + v[cc][0], y = v[a][1] + v[b][1] + v[cc][1], z = v[a][2] + v[b][2] + v[cc][2]; const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; });
+  const centros = [...v.map((p) => ({ p, pent: true })), ...hex.map((p) => ({ p, pent: false }))];
+  for (let py = 0; py < H; py++) {
+    const lat = (py / H) * Math.PI;
+    for (let px = 0; px < W; px++) {
+      const lon = (px / W) * Math.PI * 2;
+      const d = [Math.sin(lat) * Math.cos(lon), Math.cos(lat), Math.sin(lat) * Math.sin(lon)];
+      // el panel más cercano y el segundo (la costura va donde están casi iguales)
+      let m1 = -2, m2 = -2, pent = false;
+      for (const k of centros) {
+        // los pentágonos "pesan" un poco menos, así quedan más chicos que los hexágonos
+        const dot = d[0] * k.p[0] + d[1] * k.p[1] + d[2] * k.p[2] - (k.pent ? .045 : 0);
+        if (dot > m1) { m2 = m1; m1 = dot; pent = k.pent; } else if (dot > m2) m2 = dot;
+      }
+      const costura = m1 - m2 < .012;
+      let r, gg, bb;
+      if (costura) { r = 120; gg = 125; bb = 132; }
+      else if (pent) { r = 22; gg = 24; bb = 30; }
+      else { const sombra = Math.min(1, (m1 - m2) * 9); r = 236 + sombra * 16; gg = 238 + sombra * 14; bb = 232 + sombra * 14; }
+      const i = (py * W + px) * 4;
+      img.data[i] = r; img.data[i + 1] = gg; img.data[i + 2] = bb; img.data[i + 3] = 255;
     }
-  });
-  const m = new THREE.Mesh(new THREE.SphereGeometry(R_PEL, 20, 14), new THREE.MeshStandardMaterial({ map: tex, roughness: .45 }));
+  }
+  g.putImageData(img, 0, 0);
+  texPelota = new THREE.CanvasTexture(c);
+  texPelota.colorSpace = THREE.SRGBColorSpace;
+  texPelota.anisotropy = 8;
+  return texPelota;
+}
+function crearPelota() {
+  const mat = new THREE.MeshPhysicalMaterial({ map: texturaPelota(), roughness: .32, clearcoat: .8, clearcoatRoughness: .25 });
+  const m = new THREE.Mesh(new THREE.SphereGeometry(R_PEL, 40, 28), mat);
+  m.scale.setScalar(ESCALA_PELOTA);
   m.castShadow = true;
   return m;
 }
@@ -473,12 +509,12 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
     const vel = Math.hypot(p.vx, p.vz);
     const prev = pelota.position.clone();
     pelota.position.x += (p.x - pelota.position.x) * Math.min(1, dt * 30);
-    pelota.position.y += (p.y - pelota.position.y) * Math.min(1, dt * 30);
+    pelota.position.y += (p.y + R_PEL * (ESCALA_PELOTA - 1) - pelota.position.y) * Math.min(1, dt * 30);
     pelota.position.z += (p.z - pelota.position.z) * Math.min(1, dt * 30);
     const mov = pelota.position.clone().sub(prev);
-    if (mov.lengthSq() > 1e-6) { const eje = new THREE.Vector3(mov.z, 0, -mov.x).normalize(); pelota.rotateOnWorldAxis(eje, mov.length() / R_PEL); }
+    if (mov.lengthSq() > 1e-6) { const eje = new THREE.Vector3(mov.z, 0, -mov.x).normalize(); pelota.rotateOnWorldAxis(eje, mov.length() / (R_PEL * ESCALA_PELOTA)); }
     sombraPel.position.set(pelota.position.x, .02, pelota.position.z);
-    sombraPel.scale.setScalar(Math.max(.4, 1 - p.y * .15)); sombraPel.material.opacity = Math.max(.08, .35 - p.y * .05);
+    sombraPel.scale.setScalar(Math.max(.5, 1.7 - p.y * .2)); sombraPel.material.opacity = Math.max(.08, .35 - p.y * .05);
     if (vel > 16 && !p.duenio) part.emitir({ x: pelota.position.x, y: pelota.position.y, z: pelota.position.z, color: '#ffffff', tam: .25, vida: .25, crece: -.5, opacidad: .5 });
     camaraSigue(v, dt, manejados);
     render(dt);

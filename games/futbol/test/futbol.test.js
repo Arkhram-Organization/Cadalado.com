@@ -257,3 +257,16 @@ test('sala online: cada uno elige su puesto y no puede haber dos al arco', async
   assert.ok(Object.values(e.rol).includes('delantero'));
   assert.ok((await accion(A, { t: 'rol', rol: 'tribuna' })).error);
 });
+
+test('pase asistido: aunque apuntes mal (o no apuntes), le llega a un compañero', () => {
+  for (const dir of [{ x: 0, z: 0 }, { x: 0, z: 1 }, { x: -1, z: 0 }]) {
+    const m = partido();
+    const yo = buscar(m, '0-1'), comp = buscar(m, '0-2');
+    despejar(m, ['0-1', '0-2']);
+    Object.assign(yo, { x: -4, z: 0, ang: 0 }); Object.assign(comp, { x: 4, z: 3, vx: 0, vz: 0 }); m.pel.duenio = yo.id;
+    paso(m, new Map([['yo', { ...dir, pase: true }]]));
+    let recibio = false;
+    for (let t = 0; t < 2 && !recibio; t += PASO) { paso(m); recibio = m.pel.duenio === comp.id; }
+    assert.ok(recibio, `con dirección ${JSON.stringify(dir)} igual le llegó`);
+  }
+});

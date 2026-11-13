@@ -39,17 +39,15 @@ body.en-cancha { overflow: hidden; background: #000; }
   .fu-yo { bottom: 160px; } .fu-radar { display: none; }
 }
 @media (max-width: 760px) { .fu-radar { width: 140px; height: 78px; } .fu-yo { width: 150px; } .fu-marcador { font-size: 20px; } .fu-marcador b { font-size: 26px; } }
-/* lista de trucos (en el menú y en el partido, con H se esconde) */
+/* lista de trucos del menú */
 .fu-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
-.fu-lista span, .fu-trucos span { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: center; font-size: 13px; }
-.fu-lista small, .fu-trucos small { grid-column: 2; color: #8d9483; font-size: 11px; }
-.fu-trucos { position: absolute; left: 16px; top: 70px; z-index: 4; width: 150px; display: grid; gap: 3px; padding: 8px 10px; font-size: 12px; border-radius: 12px; background: #0b0d10d0; border: 1px solid #ffffff1c; color: #efede4; pointer-events: none; }
-.fu-trucos > b { font: 900 16px 'Barlow Condensed', sans-serif; text-transform: uppercase; color: #5ae07a; }
-.fu-trucos > small { color: #8d9483; font-size: 11px; }
-.fu-trucos span b { font-weight: 700; }
-@media (max-width: 600px), (pointer: coarse) { .fu-trucos { display: none; } }
+.fu-lista span { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: center; font-size: 13px; }
+.fu-lista small { grid-column: 2; color: #8d9483; font-size: 11px; }
+.fu-lista kbd, .fu-trucos kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 4px; background: #ffffff1a; border: 1px solid #ffffff33; border-bottom-width: 2px; font: 700 10px/1.5 'JetBrains Mono', monospace; color: #fff; text-align: center; }
+/* en el partido: una tira finita abajo, solo cuando tenés la pelota (H la apaga) */
+.fu-trucos { position: absolute; left: 50%; bottom: 58px; transform: translate(-50%, 6px); z-index: 4; display: flex; gap: 10px; padding: 5px 12px; border-radius: 100px; background: #0b0d10b0; backdrop-filter: blur(4px); color: #e8ece4; font: 600 11px Barlow, sans-serif; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .2s, transform .2s; }
+.fu-trucos.on { opacity: 1; transform: translate(-50%, 0); }
+.fu-trucos span { display: inline-flex; gap: 4px; align-items: center; }
+@media (max-width: 700px), (pointer: coarse) { .fu-trucos { display: none; } }
 .fu .pf-pie { font-size: 11px; }
 .fu-yo, .fu-radar { bottom: 70px; }
-
-.fu-trucos span { display: flex; gap: 6px; align-items: center; }
-.fu-trucos kbd, .fu-lista kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 5px; background: #2a2622; border: 1px solid #ffffff2a; border-bottom-width: 3px; font: 700 11px 'JetBrains Mono', monospace; color: #fff; text-align: center; }
