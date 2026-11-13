@@ -26,6 +26,8 @@ export function seguirGrupo() {
     try {
       const { grupo, now } = await pedirClub('/api/club/grupo', { q: Object.fromEntries(new URLSearchParams(q)) });
       enGrupo = !!grupo && grupo.miembros.length >= 2;
+      // para el menú de pausa (Cambiar de juego con la lobby)
+      window.__lobby = grupo ? { miembros: grupo.miembros.length, soyLider: grupo.soyLider, juego: grupo.juego, config: grupo.config || {}, lider: grupo.miembros.find((m) => m.lider)?.nombre || '' } : null;
       if (!enGrupo) return;
       const aca = enSala();
       if (grupo.soyLider) {

@@ -163,7 +163,7 @@ function abrirSala(code) {
   escena.construirMapa(1, 1);
   const show = new Show(escena.renderer);
   let eliminadoYa = false;
-  // Esc: el que armó la sala puede reiniciar la partida
+  // Esc: el que armó la sala puede reiniciar la partida (vuelve a la configuración, no larga directo)
   window.__reiniciar = { puede: () => !!est && est.host === est.yo && est.fase !== 'lobby', hacer: () => sala.enviar({ t: 'reiniciar' }) };
   limpiar.push(() => { delete window.__reiniciar; });
 

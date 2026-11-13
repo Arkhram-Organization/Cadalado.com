@@ -380,7 +380,19 @@ function engancharModificadores(raiz, cambio) {
 }
 function menuEsc($, { terminar, puedeTerminar = () => true, salir = '/haxball/' }) {
   const el = $('[data-esc]');
-  const mostrar = (v) => { el.querySelector('[data-terminar]')?.classList.toggle('hidden', !puedeTerminar()); el.classList.toggle('hidden', !v); };
+  const mostrar = (v) => {
+    el.querySelector('[data-terminar]')?.classList.toggle('hidden', !puedeTerminar());
+    // reiniciar (vuelve a la configuración) y cambiar de juego con la lobby, como en el menú de los demás juegos
+    el.querySelector('[data-reiniciar]')?.classList.toggle('hidden', !window.__reiniciar?.puede?.());
+    const lobby = window.__lobby;
+    const cj = el.querySelector('[data-cambiar-juego]');
+    if (cj) {
+      cj.classList.toggle('hidden', !((lobby?.miembros || 0) >= 2));
+      cj.disabled = !lobby?.soyLider;
+      cj.querySelector('small').textContent = lobby?.soyLider ? 'Elegí otro juego y entran todos los de tu lobby juntos.' : `Lo elige ${lobby?.lider || 'el líder'}, el líder de tu lobby.`;
+    }
+    el.classList.toggle('hidden', !v);
+  };
   el.innerHTML = `<div><header><span>Haxball · pausa</span><button data-volver aria-label="Cerrar">×</button></header><h3>¿Qué querés hacer?</h3><p>El partido sigue para los demás mientras tenés abierto este menú.</p>
     <div class="hx-esc-opciones"><button data-volver><b>▶ Seguir jugando</b><small>Volvé a la cancha.</small></button><button data-copiar><b>↗ Invitar a alguien</b><small>Copiá el enlace de la sala.</small></button><button data-audio><b>♪ Sonido</b><small>${localStorage.getItem('cadalado.audio')==='silencio'?'Apagado':'Activado'}</small></button><button data-full><b>⛶ Pantalla completa</b><small>Ampliá la cancha.</small></button>${terminar ? '<button data-terminar><b>■ Terminar partido</b><small>Solo el anfitrión puede cerrar esta partida.</small></button>' : ''}<a href="${salir}" data-ir><b>↩ Salir de Haxball</b><small>Volvé al menú del juego.</small></a></div>
     <div class="hx-esc-ayuda"><b>Controles</b> · WASD o flechas para moverte · Espacio, Shift, Ctrl o X para patear · Enter para chatear.</div></div>`;
@@ -389,10 +401,15 @@ function menuEsc($, { terminar, puedeTerminar = () => true, salir = '/haxball/' 
   el.querySelector('[data-audio]').onclick=()=>{const silencio=localStorage.getItem('cadalado.audio')==='silencio';localStorage.setItem('cadalado.audio',silencio?'activo':'silencio');el.querySelector('[data-audio] small').textContent=silencio?'Activado':'Apagado';};
   el.querySelector('[data-full]').onclick=()=>document.fullscreenElement?document.exitFullscreen?.():document.documentElement.requestFullscreen?.().catch(()=>{});
   el.querySelector('[data-terminar]')?.addEventListener('click', () => { mostrar(false); terminar(); });
+  const opciones = el.querySelector('.hx-esc-opciones');
+  opciones.insertAdjacentHTML('beforeend', '<button data-reiniciar class="hidden"><b>↻ Reiniciar partida</b><small>Todos vuelven a la configuración de la partida.</small></button><button data-cambiar-juego class="hidden"><b>⇄ Cambiar de juego</b><small></small></button>');
+  el.querySelector('[data-reiniciar]').onclick = () => { if (confirm('¿Reiniciar la partida? Todos vuelven a la configuración.')) { mostrar(false); window.__reiniciar?.hacer?.(); } };
+  el.querySelector('[data-cambiar-juego]').onclick = () => { mostrar(false); import('/comun/cambiar-juego.js').then((m) => m.abrirCambiarJuego()); };
   $('[data-menu]').onclick = () => mostrar(el.classList.contains('hidden'));
-  const tecla = (e) => { if (e.code === 'Escape' && !e.target.closest?.('input')) mostrar(el.classList.contains('hidden')); };
-  addEventListener('keydown', tecla);
-  limpiar.push(() => removeEventListener('keydown', tecla));
+  // Haxball tiene su propio menú de pausa: el Esc lo atiende acá y el menú común no se abre encima
+  const tecla = (e) => { if (e.code === 'Escape' && !e.target.closest?.('input') && !document.querySelector('.cj-capa, .en-capa')) { e.preventDefault(); mostrar(el.classList.contains('hidden')); } };
+  addEventListener('keydown', tecla, true);
+  limpiar.push(() => removeEventListener('keydown', tecla, true));
 }
 
 // ---------------------------------------------------------------- online
@@ -437,6 +454,9 @@ function abrirSala(code) {
       entradas.set(id, { x: Math.max(-1, Math.min(1, x || 0)), y: Math.max(-1, Math.min(1, y || 0)), patea: k === 1 });
     }
   }
+  // Esc: el que armó la sala puede reiniciar la partida (vuelve a la configuración, no larga directo)
+  window.__reiniciar = { puede: () => !!est && est.host === est.yo && est.fase !== 'lobby', hacer: () => sala.enviar({ t: 'reiniciar' }) };
+  limpiar.push(() => { delete window.__reiniciar; });
   const sala = new Sala('/api/haxball', code, {
     intervalo: (e) => (e?.fase === 'partida' ? 1000 : 900),
     onEstado: (e) => {

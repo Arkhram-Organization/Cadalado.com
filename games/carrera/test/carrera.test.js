@@ -334,3 +334,24 @@ test('el anfitrión elige qué personajes entran y el resto se sortea', async ()
   assert.equal(v.botNpc.length, 7);
   assert.deepEqual(v.botNpc.slice(0, 4), ['dobro', 'teo', 'marti', 'maica']);
 });
+
+test('reiniciar: solo el anfitrión, y la sala vuelve a la configuración (no larga sola)', async () => {
+  const A = 'reiniAnfitrion1234', B = 'reiniInvitado12345';
+  const { code } = (await req('POST', '/crear', { pid: A, nombre: 'Anfi', opciones: { bots: 2 } })).data;
+  await req('POST', `/salas/${code}/unirse`, { pid: B, nombre: 'Invi' });
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'empezar' } });
+  let v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.notEqual(v.fase, 'lobby', 'arrancó');
+  await req('POST', `/salas/${code}`, { pid: B, msg: { t: 'reiniciar' } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.notEqual(v.fase, 'lobby', 'un invitado no puede reiniciar');
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'reiniciar' } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.equal(v.fase, 'lobby', 'volvió a la configuración');
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'bots', n: 5 } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.equal(v.bots, 5, 'se puede cambiar la configuración');
+  await req('POST', `/salas/${code}`, { pid: A, msg: { t: 'empezar' } });
+  v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
+  assert.notEqual(v.fase, 'lobby', 'y largar de nuevo');
+});

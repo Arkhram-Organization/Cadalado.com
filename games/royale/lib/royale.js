@@ -103,6 +103,14 @@ export const royale = crearJuego({
         r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
         return {};
       }
+      case 'reiniciar': {
+        // vuelve a la configuración de la partida (no larga directo)
+        if (!ctx.esHost || r.fase === 'lobby') return {};
+        r.fase = 'lobby';
+        r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.partidas, r.npcElegidos);
+        ctx.sistema('La partida se reinició: volvemos a la configuración.');
+        return {};
+      }
       case 'empezar': {
         if (!ctx.esHost) return { error: 'Arranca quien armó la sala' };
         if (r.fase !== 'lobby' && r.fase !== 'fin') return {};

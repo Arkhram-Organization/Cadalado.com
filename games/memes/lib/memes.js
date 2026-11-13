@@ -168,6 +168,14 @@ export const memes = crearJuego({
   accion(r, msg, ctx) {
     const { pid } = ctx;
     switch (msg.t) {
+      case 'reiniciar': {
+        // vuelve a la sala de espera (bots, personajes) sin arrancar
+        if (!ctx.esHost || r.fase === 'lobby') return {};
+        r.fase = 'lobby';
+        r.fin = 0;
+        ctx.sistema('La partida se reinició: volvemos a la sala de espera.');
+        return {};
+      }
       case 'empezar': {
         if (!ctx.esHost) return { error: 'Solo quien creó la sala puede empezar' };
         if (!['lobby', 'final'].includes(r.fase)) return {};

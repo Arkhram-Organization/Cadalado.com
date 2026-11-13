@@ -280,6 +280,9 @@ function abrirSala(code) {
 
   // ---------------------------------------------------------------- red
   const red = { actual: null };
+  // Esc: el que armó la sala puede reiniciar la partida (vuelve a la configuración, no larga directo)
+  window.__reiniciar = { puede: () => !!est && est.host === est.yo && est.fase !== 'lobby', hacer: () => sala.enviar({ t: 'reiniciar' }) };
+  limpiar.push(() => { delete window.__reiniciar; });
   const sala = new Sala('/api/royale', code, {
     intervalo: (e) => (e?.fase === 'partida' ? 1000 : 900),
     onEstado: (e) => {

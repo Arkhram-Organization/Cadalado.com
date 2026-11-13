@@ -42,7 +42,8 @@ export function menuEsc({ juego = 'Juego', volver = '/', boton = true } = {}) {
       <div class="cl-esc-grid"><section class="cl-esc-seccion"><h3>Partida</h3>
         <button class="cl-esc-opcion principal" data-seguir><span class="icono">▶</span><span><b>Seguir jugando</b><small>Volvé a la partida donde la dejaste.</small></span></button>
         <button class="cl-esc-opcion" data-copiar><span class="icono">↗</span><span><b>Invitar a alguien</b><small>Copiá el enlace de esta partida.</small></span></button>
-        ${window.__reiniciar?.puede?.() ? '<button class="cl-esc-opcion" data-reiniciar><span class="icono">↻</span><span><b>Reiniciar partida</b><small>Vuelve a largar desde el principio, con todos.</small></span></button>' : ''}
+        ${window.__reiniciar?.puede?.() ? '<button class="cl-esc-opcion" data-reiniciar><span class="icono">↻</span><span><b>Reiniciar partida</b><small>Todos vuelven a la configuración de la partida para armarla de nuevo.</small></span></button>' : ''}
+        ${(window.__lobby?.miembros || 0) >= 2 ? (window.__lobby.soyLider ? '<button class="cl-esc-opcion" data-cambiar-juego><span class="icono">⇄</span><span><b>Cambiar de juego</b><small>Elegí otro juego y entran todos los de tu lobby juntos.</small></span></button>' : `<div class="cl-esc-opcion" aria-disabled="true" style="opacity:.6;cursor:default"><span class="icono">⇄</span><span><b>Cambiar de juego</b><small>Lo elige ${esc(window.__lobby.lider || 'el líder')}, el líder de tu lobby.</small></span></div>`) : ''}
         <a class="cl-esc-opcion salir" href="${esc(volver)}"><span class="icono">↩</span><span><b>Salir de la partida</b><small>Volvé al menú de ${esc(juego)}.</small></span></a>
       </section><section class="cl-esc-seccion"><h3>Pantalla y sonido</h3>
         <button class="cl-esc-opcion" data-audio><span class="icono">♪</span><span><b>Sonido</b><small data-audio-estado></small></span></button>
@@ -51,7 +52,8 @@ export function menuEsc({ juego = 'Juego', volver = '/', boton = true } = {}) {
         <div class="cl-esc-ayuda"><b>Atajos</b><br>Esc: abrí o cerrá este menú. Enter: chat, si el juego tiene uno. Los controles de cada juego aparecen en su pantalla de inicio.</div>
         <a class="cl-esc-opcion" href="/"><span class="icono">⌂</span><span><b>Ir a cadalado</b><small>Explorá todos los juegos del club.</small></span></a>
       </section></div><div class="cl-esc-pie">También podés tocar fuera del panel para seguir.</div></div>`;
-    abierto.querySelector('[data-reiniciar]')?.addEventListener('click', () => { if (confirm('¿Reiniciar la partida para todos?')) { window.__reiniciar?.hacer?.(); cerrar(); } });
+    abierto.querySelector('[data-cambiar-juego]')?.addEventListener('click', () => { cerrar(); import('./cambiar-juego.js').then((m) => m.abrirCambiarJuego()); });
+    abierto.querySelector('[data-reiniciar]')?.addEventListener('click', () => { if (confirm('¿Reiniciar la partida? Todos vuelven a la configuración.')) { window.__reiniciar?.hacer?.(); cerrar(); } });
     abierto.addEventListener('click', e => { if (e.target === abierto || e.target.closest('[data-seguir],[data-cerrar]')) cerrar(); });
     abierto.querySelector('[data-audio-estado]').textContent = localStorage.getItem('cadalado.audio') === 'silencio' ? 'Apagado · tocá para activarlo' : 'Activado · tocá para silenciarlo';
     abierto.querySelector('[data-audio]').onclick = () => {

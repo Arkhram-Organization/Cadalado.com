@@ -158,7 +158,15 @@ export const carrera = crearJuego({
         }
         return {};
       }
-      case 'reiniciar':
+      case 'reiniciar': {
+        // vuelve a la configuración de la partida (no larga directo): el anfitrión ajusta y larga de nuevo
+        if (!ctx.esHost || r.fase === 'lobby') return {};
+        r.fase = 'lobby';
+        r.golpes = {};
+        r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras, r.npcElegidos);
+        ctx.sistema('La partida se reinició: volvemos a la configuración.');
+        return {};
+      }
       case 'npcs': {
         // el anfitrión elige a mano qué personajes del club entran; los lugares que sobran se sortean
         if (!ctx.esHost || r.fase !== 'lobby') return {};
@@ -169,8 +177,7 @@ export const carrera = crearJuego({
       }
       case 'empezar': {
         if (!ctx.esHost) return { error: 'Larga la carrera quien armó la sala' };
-        if (msg.t === 'empezar' && r.fase !== 'lobby' && r.fase !== 'podio') return {};
-        if (msg.t === 'reiniciar') ctx.sistema('La partida se reinició.');
+        if (r.fase !== 'lobby' && r.fase !== 'podio') return {};
         r.participantes = Object.keys(r.jugadores).filter((p) => ctx.online.has(p) || p === pid).slice(0, 16);
         const nBots = Math.min(r.bots, Math.max(0, 16 - r.participantes.length));
         if (r.botNpc.length !== r.bots) r.botNpc = elegirNpcs(r.bots, r.semillaSala + r.carreras, r.npcElegidos);

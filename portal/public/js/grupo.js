@@ -5,6 +5,7 @@ import { avatarSvg, lookDeNombre } from '/comun/avatar.js';
 import { lookParaDibujo } from '/comun/look.js';
 import { JUEGOS } from './datos.js';
 import { pedirClub, clubEnVivo, alCambiarLobby } from '/comun/club-vivo.js';
+import { SALAS } from '/comun/juegos-lobby.js';
 
 const PID_KEY = 'cadalado.pid'; // el mismo que usan los juegos
 function pid() {
@@ -24,15 +25,7 @@ const cara = (m) => `<span class="gr-cara">${avatarSvg(m.look ? lookParaDibujo(m
 // Juegos donde el líder puede armar la sala para todos (los demás se suman con el link).
 // /royale/sala/ABC → /royale/?sala=ABC: esa dirección siempre la sirve el hosting (el juego acomoda la URL solo)
 const aIndice = (url) => String(url).replace(/^\/([a-z]{3,12})\/(sala|mesa)\/([A-Za-z0-9-]{3,24})\/?$/, '/$1/?$2=$3');
-const SALAS = {
-  truco: () => ({ api: '/api/truco/rooms', url: '/truco/sala/', directo: true, opciones: { mode: '3v3', target: 30, isPublic: false } }),
-  ajedrez: () => ({ api: '/ajedrez/api/games', url: '/ajedrez/game/', directo: true, opciones: { tc: '10+0', color: 'w' } }),
-  royale: (o) => ({ api: '/api/royale/crear', url: '/royale/sala/', opciones: { bots: 7, publica: false, ...o } }),
-  carrera: (o) => ({ api: '/api/carrera/crear', url: '/carrera/sala/', opciones: { bots: 5, publica: false, ...o } }),
-  memes: (o) => ({ api: '/api/memes/crear', url: '/memes/sala/', opciones: { bots: 2, publica: false, ...o } }),
-  haxball: (o) => ({ api: '/api/haxball/crear', url: '/haxball/sala/', opciones: { bots: 1, publica: false, ...o } }),
-  casino: (o) => ({ api: '/api/casino/crear', url: '/casino/mesa/', opciones: { tipo: 'blackjack', publica: false, ...o } }),
-};
+// la tabla de cómo se arma la sala de cada juego está en /comun/juegos-lobby.js (la usan también los juegos)
 
 export function montarGrupo({ usuario, nombre, alCambiar, juegoElegido, irA }) {
   const yo = () => ({ pid: pid(), nombre: usuario?.nombre || nombre(), look: usuario?.look || leer('cadalado.look', null) });
