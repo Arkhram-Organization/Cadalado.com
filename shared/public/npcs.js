@@ -263,6 +263,8 @@ export const NPCS = [
     nombre: 'Marti',
     // La profe de Lengua y Literatura: prolepsis, suspenso y otros recursos, Operación Masacre (Giunta y Livraga),
     // Nul que grita en sus clases y aquella vez que Asman le entró al aula y ella le enseñó quién manda.
+    // muletilla: la dice muy seguido (en cualquier situación, cerca de 4 de cada 10 veces)
+    muletilla: { texto: '¡Felicidades, descubriste la ironía!', prob: 0.4 },
     look: { modelo: 'marti', clips: { quieto: 'Idle_4', patada: 'Roundhouse_Kick', baila: 'Hip_Hop_Dance_1' }, travesuras: { quieto: ['habla', 'habla', 'saluda', 'baila'], corre: ['festeja'] }, estilo: 'meshy', piel: '#ecc8ab', pelo: { estilo: 'largo', color: '#7a3424' }, ojos: '#4a3020', cuerpo: 'normal', ropa: { remera: '#3a9a8a', pantalon: '#2a5a6a', zapatillas: '#1e1e22' }, genero: 'm' },
     frases: [
       'Hoy vemos la prolepsis: adelantar lo que va a pasar. Spoiler, chicos: se sacan un 4.',
@@ -276,6 +278,7 @@ export const NPCS = [
       'Asman todavía se acuerda. Pregúntenle.',
       'Metáfora, hipérbole, personificación. Y la paciencia mía, que es un oxímoron.',
       'Esto no es un recurso literario, es una amenaza: entreguen el trabajo.',
+      '¡Felicidades, descubriste la ironía!',
     ],
   },
   {
@@ -466,6 +469,7 @@ export function elegirNpcs(n, semilla, elegidos = []) {
 export function frase(id, r = Math.random, jugador = 'alguien', anterior = null) {
   const n = POR_ID[id];
   if (!n) return '';
+  if (n.muletilla && n.muletilla.texto !== anterior && r() < n.muletilla.prob) return n.muletilla.texto;
   let f = n.frases[Math.floor(r() * n.frases.length)];
   if (f === anterior && n.frases.length > 1) f = n.frases[(n.frases.indexOf(f) + 1) % n.frases.length];
   return f.replace('{jugador}', jugador);

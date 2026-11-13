@@ -133,6 +133,8 @@ const DICHOS = {
 
 // Frase de un NPC para una situación. {jugador} se reemplaza por un nombre.
 export function dicho(id, situacion, jugador = 'alguien', r = Math.random) {
+  const m = POR_ID[id]?.muletilla;
+  if (m && r() < m.prob) return m.texto;
   const lista = DICHOS[id]?.[situacion];
   if (lista?.length && r() < 0.8) return lista[Math.floor(r() * lista.length)].replace('{jugador}', jugador);
   return frase(id, r, jugador);
