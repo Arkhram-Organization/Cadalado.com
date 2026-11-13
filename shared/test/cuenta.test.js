@@ -162,3 +162,48 @@ test('recuperar la contraseña: con el código propio o con la clave de admin', 
   delete process.env.ADMIN_CLAVE;
   assert.equal((await cli('13.0.0.7')('POST', '/recuperar', { usuario, codigo: 'clave-admin-de-prueba', clave: 'x1234567' })).status, 401, 'sin la clave configurada, no');
 });
+
+test('mail: se carga, sirve para entrar y recuperar, no se muestra a los demás y los errores son claros', async () => {
+  const { handle } = await import('../club-api.js');
+  const cli = (ip) => {
+    let cookie = '';
+    return async (metodo, ruta, body) => {
+      const res = await handle(new Request('http://localhost/api/club' + ruta, { method: metodo, headers: { 'content-type': 'application/json', cookie, 'x-forwarded-for': ip }, body: body ? JSON.stringify(body) : undefined }));
+      const sc = res.headers.get('set-cookie'); if (sc) cookie = sc.split(';')[0];
+      return { status: res.status, data: await res.json() };
+    };
+  };
+  const yo = cli('14.0.0.1');
+  const usuario = 'conmail' + Math.random().toString(36).slice(2, 7);
+  const mail = `${usuario}@ejemplo.com`;
+  await yo('POST', '/registro', { usuario, nombre: 'Con Mail', clave: 'clave123', email: mail.toUpperCase() });
+  assert.equal((await yo('GET', '/yo')).data.usuario.email, mail, 'el mail queda guardado (en minúscula)');
+  assert.equal((await cli('14.0.0.2')('POST', '/entrar', { usuario: ' ' + mail + ' ', clave: 'clave123' })).status, 200, 'se entra con el mail');
+  assert.equal((await cli('14.0.0.2')('POST', '/entrar', { usuario: '@' + usuario.toUpperCase(), clave: 'clave123' })).status, 200, 'y con @usuario en mayúscula');
+  assert.equal((await cli('14.0.0.3')('POST', '/registro', { usuario: usuario + 'b', clave: 'clave123', email: mail })).status, 200, 'si el mail ya está, la cuenta se crea igual');
+
+  // errores claros
+  let r = await cli('14.0.0.4')('POST', '/recuperar', { usuario: 'nadie@nada.com', codigo: 'x', clave: 'nueva123' });
+  assert.equal(r.status, 404);
+  assert.match(r.data.error, /No hay ninguna cuenta/);
+  delete process.env.ADMIN_CLAVE;
+  r = await cli('14.0.0.4')('POST', '/recuperar', { usuario: mail, codigo: 'algo', clave: 'nueva123' });
+  assert.match(r.data.error, /clave de admin configurada/);
+  // clave corta (4+) y con espacios de más al pegar
+  process.env.ADMIN_CLAVE = '  seba  ';
+  r = await cli('14.0.0.5')('POST', '/recuperar', { usuario: mail, codigo: 'mala', clave: 'nueva123' });
+  assert.match(r.data.error, /no coinciden/);
+  r = await cli('14.0.0.5')('POST', '/recuperar', { usuario: mail, codigo: ' seba ', clave: 'nueva123' });
+  assert.equal(r.status, 200, 'con el mail y la clave de admin');
+  assert.equal((await cli('14.0.0.6')('POST', '/entrar', { usuario, clave: 'nueva123' })).status, 200);
+  delete process.env.ADMIN_CLAVE;
+
+  // cambiar y sacar el mail; los demás no lo ven
+  const otro = 'otro' + Math.random().toString(36).slice(2, 7) + '@ejemplo.com';
+  assert.equal((await yo('POST', '/yo', { email: otro })).data.usuario.email, otro);
+  assert.equal((await cli('14.0.0.7')('POST', '/entrar', { usuario: mail, clave: 'nueva123' })).status, 401, 'el mail viejo ya no sirve');
+  assert.equal((await yo('POST', '/yo', { email: 'no-es-un-mail' })).status, 400);
+  assert.equal((await yo('POST', '/yo', { email: '' })).data.usuario.email, '');
+  const perfil = await cli('14.0.0.8')('GET', '/perfil?u=' + usuario);
+  assert.ok(!JSON.stringify(perfil.data).includes('@ejemplo.com'), 'el mail no aparece en el perfil público');
+});

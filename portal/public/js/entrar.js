@@ -14,6 +14,8 @@ function pintar() {
   document.querySelectorAll('[data-solo-recuperar]').forEach((e) => e.classList.toggle('hidden', modo !== 'recuperar'));
   $('[data-enviar]').textContent = modo === 'registro' ? 'Crear cuenta' : modo === 'recuperar' ? 'Cambiar la contraseña y entrar' : 'Entrar';
   $('[data-label-clave]').textContent = modo === 'recuperar' ? 'Contraseña nueva' : 'Contraseña';
+  $('[data-label-usuario]').textContent = modo === 'registro' ? 'Usuario' : 'Usuario o mail';
+  $('#usuario').autocomplete = modo === 'registro' ? 'username' : 'username email';
   $('[data-olvide]').textContent = modo === 'recuperar' ? 'Volver a entrar con mi contraseña' : '¿Te olvidaste la contraseña?';
   $('#clave').autocomplete = modo === 'entrar' ? 'current-password' : 'new-password';
   $('[data-error]').textContent = '';
@@ -31,9 +33,9 @@ yo().then((u) => u && location.replace(volver));
 $('[data-form]').addEventListener('submit', async (e) => {
   e.preventDefault();
   const boton = $('[data-enviar]');
-  const datos = { usuario: $('#usuario').value.trim(), clave: $('#clave').value, nombre: $('#nombre').value.trim(), codigo: $('#codigo').value.trim() };
+  const datos = { usuario: $('#usuario').value.trim(), clave: $('#clave').value, nombre: $('#nombre').value.trim(), codigo: $('#codigo').value.trim(), email: $('#email').value.trim() };
   if (modo === 'recuperar' && !datos.codigo) return ($('[data-error]').textContent = 'Poné tu código de recuperación.');
-  if (datos.usuario.length < 3) return ($('[data-error]').textContent = 'Poné tu usuario.');
+  if (datos.usuario.length < 3) return ($('[data-error]').textContent = modo === 'registro' ? 'Poné tu usuario.' : 'Poné tu usuario o tu mail.');
   if (datos.clave.length < 6) return ($('[data-error]').textContent = 'La contraseña tiene al menos 6 caracteres.');
   boton.disabled = true;
   try {

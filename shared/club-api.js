@@ -43,10 +43,16 @@ export async function handle(request) {
     }
     if (ruta === '/yo' && metodo === 'GET') {
       const u = await c.usuarioActual(request);
-      return json({ usuario: c.publico(u) || null });
+      // el mail es solo para vos: no va en lo público (lo que ven los demás)
+      return json({ usuario: u ? { ...c.publico(u), email: u.email || '' } : null });
     }
     if (ruta === '/yo' && metodo === 'POST') {
-      return json({ usuario: await c.cambiarNombre(await necesitaCuenta(request), body.nombre) });
+      const u = await necesitaCuenta(request);
+      if ('email' in body) {
+        const email = await c.cambiarMail(u, body.email);
+        return json({ usuario: { ...c.publico(u), email } });
+      }
+      return json({ usuario: await c.cambiarNombre(u, body.nombre) });
     }
     // tienda de skins (se pagan con las fichas del casino)
     if (ruta === '/tienda' && metodo === 'GET') {

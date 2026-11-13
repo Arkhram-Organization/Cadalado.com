@@ -37,6 +37,16 @@ function pintarPerfil() {
   $('[data-usuario]').textContent = '@' + yoMismo.usuario + ' · en cadalado desde ' + new Date(yoMismo.creado).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
 }
 
+// mail: para entrar y recuperar la cuenta (no lo ve nadie más)
+$('[data-mail]')?.addEventListener('click', async () => {
+  const actual = (await api('/api/club/yo').catch(() => ({})))?.usuario?.email || '';
+  const nuevo = prompt('Tu mail (para entrar y para recuperar la contraseña; no lo ve nadie). Dejalo vacío para sacarlo.', actual);
+  if (nuevo === null) return;
+  try {
+    const r = await api('/api/club/yo', { email: nuevo.trim() });
+    toast(r.usuario.email ? `Listo: ${r.usuario.email}` : 'Sacamos el mail de tu cuenta');
+  } catch (e) { toast(e.message, true); }
+});
 // código para recuperar la contraseña (se muestra solo cuando lo pedís)
 $('[data-recup-ver]')?.addEventListener('click', async () => {
   const caja = $('[data-recup]');

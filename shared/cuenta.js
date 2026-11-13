@@ -65,6 +65,32 @@ export async function usuarioPorNombre(usuario) {
   const id = await getStore().get(`uname:${limpiarUsuario(usuario)}`);
   return usuarioPorId(id);
 }
+// Mail (opcional): sirve para entrar y para recuperar la contraseña en lugar del usuario. No se muestra a nadie.
+export const limpiarMail = (m) => String(m ?? '').trim().toLowerCase();
+const mailValido = (m) => /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/.test(m);
+// Busca la cuenta por usuario o por mail (lo que la persona haya puesto)
+export async function buscarCuenta(texto) {
+  const t = String(texto ?? '').trim();
+  if (t.includes('@') && !t.startsWith('@')) {
+    const id = await getStore().get(`email:${limpiarMail(t)}`);
+    return usuarioPorId(id);
+  }
+  return usuarioPorNombre(t.replace(/^@/, ''));
+}
+export async function cambiarMail(u, email) {
+  const m = limpiarMail(email);
+  if (m && !mailValido(m)) throw new ErrorCuenta('Ese mail no parece válido.');
+  const store = getStore();
+  if (m && m !== u.email) {
+    if (!(await store.setNX(`email:${m}`, u.id, 10 * 365 * 86400 * 1000))) {
+      if ((await store.get(`email:${m}`)) !== u.id) throw new ErrorCuenta('Ese mail ya está en otra cuenta.', 409);
+    }
+  }
+  if (u.email && u.email !== m) await store.del(`email:${u.email}`);
+  u.email = m || undefined;
+  await store.set(`u:${u.id}`, JSON.stringify(u));
+  return m;
+}
 
 // Frena intentos repetidos (por IP y minuto).
 async function limitar(request, accion, max = 15) {
@@ -108,7 +134,7 @@ async function abrirSesion(id) {
   return token;
 }
 
-export async function registrar(request, { usuario, nombre, clave }) {
+export async function registrar(request, { usuario, nombre, clave, email }) {
   await limitar(request, 'registro', 8);
   usuario = limpiarUsuario(usuario);
   if (!usuarioValido(usuario)) throw new ErrorCuenta('El usuario tiene que tener de 3 a 20 letras, números, punto o guion bajo.');
@@ -122,13 +148,14 @@ export async function registrar(request, { usuario, nombre, clave }) {
   const hash = (await scryptAsync(String(clave), sal)).toString('base64url');
   const u = { id, usuario, nombre: limpiarNombre(nombre) || usuario, sal, hash, creado: Date.now() };
   await store.set(`u:${id}`, JSON.stringify(u));
+  if (email) await cambiarMail(u, email).catch(() => {}); // si el mail no sirve, la cuenta se crea igual
   return { usuario: publico(u), token: await abrirSesion(id) };
 }
 
 export async function entrar(request, { usuario, clave }) {
   await limitar(request, 'entrar');
-  const u = await usuarioPorNombre(usuario);
-  const malo = new ErrorCuenta('Usuario o contraseña incorrectos.', 401);
+  const u = await buscarCuenta(usuario);
+  const malo = new ErrorCuenta('Usuario (o mail) o contraseña incorrectos.', 401);
   if (!u) throw malo;
   const hash = await scryptAsync(String(clave ?? ''), u.sal);
   const guardado = Buffer.from(u.hash, 'base64url');
@@ -154,17 +181,20 @@ export async function codigoRecuperacion(u, nuevo = false) {
 }
 export async function recuperarClave(request, { usuario, codigo, clave }) {
   await limitar(request, 'recuperar', 8);
-  const malo = new ErrorCuenta('El usuario o el código no coinciden.', 401);
-  const u = await usuarioPorNombre(usuario);
-  if (!u) throw malo;
+  const u = await buscarCuenta(usuario);
+  if (!u) throw new ErrorCuenta('No hay ninguna cuenta con ese usuario o mail en este sitio.', 404);
   if (String(clave ?? '').length < 6) throw new ErrorCuenta('La contraseña nueva tiene que tener al menos 6 caracteres.');
   if (String(clave).length > 200) throw new ErrorCuenta('La contraseña es demasiado larga.');
   const store = getStore();
   const dado = normalizarCodigo(codigo);
   const propio = normalizarCodigo(await store.get(`recup:${u.id}`));
-  const admin = String(process.env.ADMIN_CLAVE || '');
-  const esAdmin = admin.length >= 8 && String(codigo ?? '') === admin;
-  if (!esAdmin && !(propio && dado === propio)) throw malo;
+  // la clave del admin (secreto ADMIN_CLAVE del servidor); sin importar espacios de más al copiar y pegar
+  const admin = String(process.env.ADMIN_CLAVE || '').trim().replace(/^["']|["']$/g, '');
+  const esAdmin = admin.length >= 4 && String(codigo ?? '').trim() === admin;
+  if (!esAdmin && !(propio && dado === propio)) {
+    if (admin.length < 4 && !propio) throw new ErrorCuenta('Este sitio todavía no tiene la clave de admin configurada.', 401);
+    throw new ErrorCuenta('La clave o el código no coinciden.', 401);
+  }
   u.sal = randomBytes(16).toString('base64url');
   u.hash = (await scryptAsync(String(clave), u.sal)).toString('base64url');
   await store.set(`u:${u.id}`, JSON.stringify(u));
