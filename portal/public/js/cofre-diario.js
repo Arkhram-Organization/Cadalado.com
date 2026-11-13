@@ -162,7 +162,7 @@ export function montarCofre({ datos, rarezas, api, pid, portada, nombre, frase, 
 
   // la tira de la ruleta: con lo que había adentro, el premio en su lugar y a veces una buena al lado
   function armarTira(r) {
-    const c = datos().cofre, N = 40, W = 33;
+    const c = datos().cofre, N = 72, W = 62; // muchas cartas: la ruleta pasa un buen rato antes de frenar
     const por = {}; for (const id of r.pool) (por[rz(id)] ??= []).push(id);
     const hay = ORDEN.filter((k) => por[k]);
     const total = hay.reduce((n, k) => n + c.probabilidades[k], 0);
@@ -182,13 +182,13 @@ export function montarCofre({ datos, rarezas, api, pid, portada, nombre, frase, 
     escena.classList.add('abriendo');
     tres?.cargar();
     let r;
-    try { [r] = await Promise.all([api('/api/club/tienda/cofre', { pid: pid() }), espera(750)]); }
+    try { [r] = await Promise.all([api('/api/club/tienda/cofre', { pid: pid() }), espera(1300)]); }
     catch (e) { girando = false; toast(e.message, true); vista(); return; }
     alActualizar(r);
     const col = color(r.rareza);
     tres?.abrir(col);
     escena.style.setProperty('--r', col); escena.classList.add('abierto');
-    await espera(850);
+    await espera(1150);
     tres?.cerrar(); tres = null;
     const { tira, W } = armarTira(r);
     capa.innerHTML = `<div class="cd-ruleta" style="--r:${col}">
@@ -197,19 +197,29 @@ export function montarCofre({ datos, rarezas, api, pid, portada, nombre, frase, 
     const tiraEl = $('.cd-tira', capa), ventana = $('.cd-ventana', capa);
     const ancho = tiraEl.children[0].getBoundingClientRect().width + 10;
     const destino = W * ancho + ancho / 2 + 10 - ventana.clientWidth / 2 + (Math.random() - 0.5) * (ancho * 0.7);
-    requestAnimationFrame(() => requestAnimationFrame(() => { tiraEl.style.transform = `translateX(${-destino}px)`; }));
-    let ultimo = -1;
-    const tic = () => { // la línea late cada vez que pasa una carta
-      if (!tiraEl.isConnected || !girando) return;
-      const m = new DOMMatrixReadOnly(getComputedStyle(tiraEl).transform);
-      const i = Math.floor((-m.m41 + ventana.clientWidth / 2) / ancho);
-      if (i !== ultimo) { ultimo = i; const l = $('.cd-linea', capa); l?.classList.remove('tic'); void l?.offsetWidth; l?.classList.add('tic'); }
-      requestAnimationFrame(tic);
-    };
-    requestAnimationFrame(tic);
-    await Promise.race([espera(3400), new Promise((ok) => (saltear = ok))]);
+    // La ruleta la mueve el código cuadro a cuadro (no una transición de CSS): así anda aunque el sistema
+    // tenga "reducir animaciones" activado. Arranca rápido, va frenando y termina despacito sobre el premio.
+    const DUR = 7000;
+    const frenar = (t) => 1 - Math.pow(1 - t, 4.2);
+    const linea = $('.cd-linea', capa);
+    let ultimo = -1, saltar = false;
+    saltear = () => (saltar = true);
+    await new Promise((listo) => {
+      const t0 = performance.now();
+      const paso = (ahora) => {
+        if (!tiraEl.isConnected) return listo();
+        const t = saltar ? 1 : Math.min(1, (ahora - t0) / DUR);
+        const x = destino * frenar(t);
+        tiraEl.style.transform = `translateX(${-x}px)`;
+        // la línea late cada vez que pasa una carta
+        const i = Math.floor((x + ventana.clientWidth / 2) / ancho);
+        if (i !== ultimo) { ultimo = i; linea?.classList.remove('tic'); void linea?.offsetWidth; linea?.classList.add('tic'); }
+        if (t < 1) requestAnimationFrame(paso); else listo();
+      };
+      requestAnimationFrame(paso);
+    });
     saltear = null;
-    if (tiraEl.isConnected) { tiraEl.style.transition = 'transform .2s ease-out'; tiraEl.style.transform = `translateX(${-destino}px)`; tiraEl.children[W]?.classList.add('gano'); }
+    tiraEl.children[W]?.classList.add('gano');
     await espera(450);
     girando = false;
     revelar(r);

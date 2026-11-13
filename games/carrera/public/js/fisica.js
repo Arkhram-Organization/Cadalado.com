@@ -75,7 +75,8 @@ export class Jugador {
     if (this.enfriar > 0 || this.aturdido > 0 || this.llego) return false;
     this.enfriar = ENFRIAR_GOLPE;
     this.pina = 0.4;
-    this.tipoGolpe = Math.random() < 0.5 ? 'pina' : 'patada';
+    // alterna: la primera es piña, la siguiente patada, y así
+    this.tipoGolpe = this.tipoGolpe === 'pina' ? 'patada' : 'pina';
     return true;
   }
 

@@ -154,10 +154,10 @@ function abrirSala(code) {
     <div class="capa eliminacion hidden" data-eliminacion></div>
     <div class="capa espectar hidden" data-espectar><button class="btn btn-chico" data-esp="-1" aria-label="Anterior">&lsaquo;</button><span>Mirando a <b data-esp-nombre></b></span><button class="btn btn-chico" data-esp="1" aria-label="Siguiente">&rsaquo;</button></div>
     <div class="capa gestos-tip" style="position:absolute;right:16px;bottom:70px;color:#fff;font-size:12px;opacity:.75;z-index:5">Mantené <kbd>B</kbd> para los gestos</div>
-    <div class="capa pina-hud" data-pina><kbd>E</kbd><span>Piña</span><i><b></b></i></div>
+    <div class="capa pina-hud" data-pina><kbd>E</kbd><span data-pina-que>Piña</span><i><b></b></i></div>
     <div class="capa panel-flota podio-flota hidden" data-podio></div>
     <div class="capa chat-mini"><div class="log" data-log aria-live="polite"></div><form data-chat><input class="entrada" maxlength="200" placeholder="Escribí y pulsá Enter · Esc cierra" autocomplete="off"></form><button type="button" class="chat-ayuda" data-chat-abrir>T para hablar</button></div>
-    <div class="capa tactil" data-tactil><div class="joy" data-joy><i></i></div><div class="botones-t"><button class="chico" data-boton="golpe">PIÑA</button><button class="chico" data-boton="buceo">TIRARSE</button><button data-boton="salto">SALTAR</button></div></div>
+    <div class="capa tactil" data-tactil><div class="joy" data-joy><i></i></div><div class="botones-t"><button class="chico" data-boton="golpe">PIÑA / PATADA</button><button class="chico" data-boton="buceo">TIRARSE</button><button data-boton="salto">SALTAR</button></div></div>
   </div>`;
   const $ = (s) => app.querySelector(s);
   const escena = new Escena($('[data-lienzo]'));
@@ -781,6 +781,10 @@ function abrirSala(code) {
     pinaEl.classList.toggle('hidden', jugador.espectador || mirando() || fase === 'ronda');
     pinaEl.classList.toggle('lista', jugador.enfriar <= 0);
     pinaEl.querySelector('b').style.width = `${(1 - jugador.enfriar / ENFRIAR_GOLPE) * 100}%`;
+    // lo que sale la próxima vez que toques E (piña y patada se van turnando)
+    const proximo = jugador.tipoGolpe === 'pina' ? 'Patada' : 'Piña';
+    const que = pinaEl.querySelector('[data-pina-que]');
+    if (que.textContent !== proximo) que.textContent = proximo;
 
     // cámara: sigue a mi personaje; si estoy afuera o ya llegué, miro a los demás (con ‹ ›)
     let foco = jugador.estado();

@@ -373,3 +373,17 @@ test('Agregar bots: personajes repetidos + al azar, con el tope del juego', asyn
   v = (await req('POST', `/salas/${code}`, { pid: A, ping: 1 })).data.estado;
   assert.equal(v.bots, 0, 'sin bots');
 });
+
+test('E alterna: primero piña, después patada, y así', async () => {
+  const { Jugador, ENFRIAR_GOLPE } = await import('../public/js/fisica.js');
+  const j = new Jugador(1, 7);
+  const tipos = [];
+  for (let i = 0; i < 4; i++) {
+    j.enfriar = 0;
+    assert.ok(j.golpear());
+    tipos.push(j.tipoGolpe);
+  }
+  assert.deepEqual(tipos, ['pina', 'patada', 'pina', 'patada']);
+  assert.equal(j.golpear(), false, 'con el enfriamiento no se puede de nuevo');
+  assert.ok(ENFRIAR_GOLPE > 0);
+});
