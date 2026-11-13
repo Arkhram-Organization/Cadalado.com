@@ -19,6 +19,7 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 | Battle Shmitz (battle royale 3D) | [`games/royale`](games/royale) | `cadalado.com/royale` |
 | Haxball (fútbol 2D por equipos) | [`games/haxball`](games/haxball) | `cadalado.com/haxball` |
 | Piña Final (pelea 2D, 1v1 y 2v2) | [`games/pelea`](games/pelea) | `cadalado.com/pelea` |
+| La Canchita (fútbol 5 a 8 en 3D) | [`games/futbol`](games/futbol) | `cadalado.com/futbol` |
 | Cuentas, historial, amigos y chats | [`shared`](shared) | `cadalado.com/club` |
 
 ```
@@ -89,6 +90,11 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
   **arma** (katana, hacha, nunchaku, martillo) al azar; el elemento define su poder, su súper y el remate final.
   El motor (`public/js/motor.js` y `combate.js`) es puro y lo comparten la compu, el anfitrión online y los tests.
   Online funciona como el haxball: el anfitrión simula y manda la pelea por WebRTC, cada uno manda sus teclas.
+- **La Canchita:** fútbol 5 a fútbol 8 en 3D con los mismos personajes. Cancha cerrada (la pelota rebota en las
+  paredes), pase al compañero según para dónde apretás, remate con carga, barrida, volea y cabezazo, arqueros que se
+  estiran y cambio de jugador. Cámara de transmisión o en tercera persona (C). Contra bots, 2 jugadores en la misma
+  compu y salas online rojo contra azul (cada persona maneja un jugador; el arquero y los que faltan son bots).
+  Reutiliza de Piña Final las partículas y el barrio (`/pelea/js/calles.js`, `/pelea/js/objetos3d.js`).
 - **Make it Meme:** las 100 plantillas son las más usadas de imgflip.com y se cargan desde ahí.
 
 ### Cuentas

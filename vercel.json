@@ -39,6 +39,10 @@
       "destination": "/api/juegos/pelea?ruta=:ruta*"
     },
     {
+      "source": "/api/futbol/:ruta*",
+      "destination": "/api/juegos/futbol?ruta=:ruta*"
+    },
+    {
       "source": "/api/memes/:ruta*",
       "destination": "/api/juegos/memes?ruta=:ruta*"
     },
@@ -69,6 +73,18 @@
     {
       "source": "/pelea/local",
       "destination": "/pelea/index"
+    },
+    {
+      "source": "/futbol/sala/:code",
+      "destination": "/futbol/index"
+    },
+    {
+      "source": "/futbol/bots",
+      "destination": "/futbol/index"
+    },
+    {
+      "source": "/futbol/local",
+      "destination": "/futbol/index"
     },
     {
       "source": "/memes/sala/:code",

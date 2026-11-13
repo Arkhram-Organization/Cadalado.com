@@ -1,0 +1,41 @@
+/* La Canchita: usa los estilos de Piña Final (menú, grilla, paneles) y suma el marcador, el gol, el radar y las barras. */
+:root { --pf: #5ae07a; }
+body.en-cancha { overflow: hidden; background: #000; }
+.fu-menu .menu-hero h1 { font: 900 italic clamp(48px, 8vw, 96px)/.9 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.fu-menu .menu-hero h1 em { color: #5ae07a; font-style: normal; text-shadow: 0 0 30px #5ae07a55; }
+.fu-sel { background: radial-gradient(ellipse at 50% 120%, #10501e 0%, #0c1a10 55%, #050806 100%); }
+.fu-marcador { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 12px; background: #0b0d10e6; border: 1px solid #ffffff22; box-shadow: 0 6px 20px #0008; font: 900 26px/1 'Barlow Condensed', sans-serif; color: #fff; pointer-events: none; }
+.fu-marcador .eq { font-size: 15px; letter-spacing: 1px; color: var(--c); }
+.fu-marcador b { min-width: 22px; text-align: center; font-size: 34px; }
+.fu-marcador i { font-style: normal; color: #8d9483; }
+.fu-marcador time { margin-left: 8px; padding-left: 10px; border-left: 1px solid #ffffff22; font: 700 18px 'JetBrains Mono', monospace; color: #c5f04a; }
+.fu-gol { position: absolute; left: 0; right: 0; top: 30%; text-align: center; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .4s; }
+.fu-gol.on { opacity: 1; transition: none; }
+.fu-gol b { display: block; font: 900 italic clamp(60px, 13vw, 150px)/.9 'Barlow Condensed', sans-serif; color: #fff; -webkit-text-stroke: 3px var(--c); text-shadow: 0 8px 0 #000, 0 0 50px var(--c); }
+.fu-gol.on b { animation: pf-entra .4s cubic-bezier(.2,1.6,.4,1); }
+.fu-gol small { display: block; margin-top: 8px; font: 800 clamp(18px, 3vw, 28px) 'Barlow Condensed', sans-serif; text-transform: uppercase; color: #fff; text-shadow: 0 2px 4px #000; }
+.fu-gol span { display: inline-block; margin-top: 8px; padding: 4px 14px; border-radius: 8px; background: #000a; font: 900 30px 'Barlow Condensed', sans-serif; color: #fff; }
+.fu-aviso { position: absolute; left: 0; right: 0; top: 22%; text-align: center; z-index: 4; pointer-events: none; font: 900 italic clamp(30px, 6vw, 60px) 'Barlow Condensed', sans-serif; color: #ffdd4a; text-shadow: 0 4px 0 #000, 0 0 20px #ff8a1a; opacity: 0; }
+.fu-aviso.on { animation: fu-aviso 1.4s ease-out forwards; }
+@keyframes fu-aviso { 0% { opacity: 0; transform: scale(2); } 12% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+.fu-yo { position: absolute; left: 16px; bottom: 44px; z-index: 4; width: 210px; display: grid; gap: 5px; pointer-events: none; }
+.fu-yo b { font: 900 italic 22px 'Barlow Condensed', sans-serif; text-transform: uppercase; text-shadow: 0 2px 0 #000; }
+.fu-barra { height: 8px; border-radius: 5px; background: #0009; border: 1px solid #ffffff2a; overflow: hidden; }
+.fu-barra i { display: block; height: 100%; width: 0; transition: width .08s; }
+.fu-barra.aire i { background: linear-gradient(90deg, #3ae0ff, #7affc8); }
+.fu-barra.carga { height: 12px; }
+.fu-barra.carga i { background: linear-gradient(90deg, #ffe14a, #ff4a1a); }
+.fu-radar { position: absolute; right: 16px; bottom: 44px; z-index: 4; width: 200px; height: 112px; border-radius: 8px; border: 1px solid #ffffff2a; pointer-events: none; }
+.fu-boton { transform: translateX(-50%) translateY(52px); }
+.fu-chat { bottom: 170px; }
+.fu-tactil { display: none; }
+@media (pointer: coarse) {
+  .fu-tactil { display: block; position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  .fu-joy { position: absolute; left: 20px; bottom: 24px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff14; border: 2px solid #ffffff33; pointer-events: auto; touch-action: none; }
+  .fu-joy i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; background: #ffffff55; }
+  .fu-btns { position: absolute; right: 14px; bottom: 18px; display: grid; grid-template-columns: repeat(3, 58px); gap: 8px; pointer-events: auto; }
+  .fu-btns button { width: 58px; height: 58px; border-radius: 50%; border: 2px solid #ffffff44; background: #0007; color: #fff; font: 800 11px 'Barlow Condensed', sans-serif; text-transform: uppercase; touch-action: none; }
+  .fu-btns button.on { background: #5ae07a; color: #10200a; }
+  .fu-yo { bottom: 160px; } .fu-radar { display: none; }
+}
+@media (max-width: 760px) { .fu-radar { width: 140px; height: 78px; } .fu-yo { width: 150px; } .fu-marcador { font-size: 20px; } .fu-marcador b { font-size: 26px; } }

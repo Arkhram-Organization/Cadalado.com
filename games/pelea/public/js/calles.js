@@ -20,7 +20,7 @@ const emis = (color, k = 1) => new THREE.MeshStandardMaterial({ color, emissive:
 const FUENTE = '"Barlow Condensed", "Arial Black", sans-serif';
 const CJK = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
 
-function cieloCiudad(arriba, medio, abajo, estrellas = 80) {
+export function cieloCiudad(arriba, medio, abajo, estrellas = 80) {
   return lienzo(512, 512, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h);
     gr.addColorStop(0, arriba); gr.addColorStop(.55, medio); gr.addColorStop(1, abajo);
@@ -71,7 +71,7 @@ function calle({ tipo = 'asfalto', ancho = 46, fondo = 18, reflejos = ['#ff3b5c'
 }
 
 // reflejo de una luz en el piso mojado: una mancha estirada que brilla
-function reflejo(color, x, z, ancho = 1, largo = 3, op = .35) {
+export function reflejo(color, x, z, ancho = 1, largo = 3, op = .35) {
   const s = new THREE.Mesh(new THREE.PlaneGeometry(ancho, largo), new THREE.MeshBasicMaterial({ map: texturaMancha(), color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
   s.rotation.x = -Math.PI / 2; s.position.set(x, .012, z);
   return s;
@@ -87,7 +87,7 @@ function texturaMancha() {
 }
 
 // Fachada de un edificio: local abajo (vidriera prendida, persiana, toldo) y ventanas arriba
-function fachada({ w, h, color, r, local = true, toldo = null, letrero = null, letreroColor = '#ffd27a', cjk = false }) {
+export function fachada({ w, h, color, r, local = true, toldo = null, letrero = null, letreroColor = '#ffd27a', cjk = false }) {
   const px = 64;
   return lienzo(Math.round(w * px), Math.round(h * px), (g, W, H) => {
     g.fillStyle = color; g.fillRect(0, 0, W, H);
@@ -151,7 +151,7 @@ function fachada({ w, h, color, r, local = true, toldo = null, letrero = null, l
   });
 }
 
-function edificio(raiz, { x, z, w, h, d = 3, color, r, ...op }) {
+export function edificio(raiz, { x, z, w, h, d = 3, color, r, ...op }) {
   const tex = fachada({ w, h, color, r, ...op });
   const lado = mat('#1c1a22');
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [lado, lado, mat('#141218'), lado, new THREE.MeshStandardMaterial({ map: tex, roughness: .9, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .32 }), lado]);
@@ -194,7 +194,7 @@ function neonVertical(raiz, anim, { x, y, z, texto, color = '#ff3b5c', cjk = tru
 }
 
 // Cartel horizontal de neón con contorno
-function neonTexto(raiz, anim, { x, y, z, texto, color, ancho = 4, alto = 1, fuente = FUENTE, rotY = 0, parpadea = true }) {
+export function neonTexto(raiz, anim, { x, y, z, texto, color, ancho = 4, alto = 1, fuente = FUENTE, rotY = 0, parpadea = true }) {
   const tex = lienzo(512, 128, (g, w, h) => {
     g.clearRect(0, 0, w, h);
     g.font = `900 ${h * .62}px ${fuente}`; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -218,7 +218,7 @@ function neonTexto(raiz, anim, { x, y, z, texto, color, ancho = 4, alto = 1, fue
 }
 
 // Faroles chinos colgando de un cable (curva de catenaria) que se mecen con el viento
-function hileraFaroles(raiz, anim, { x0, x1, y, z, comba = .8, cada = 1.15, color = '#ff2a2a', fase = 0 }) {
+export function hileraFaroles(raiz, anim, { x0, x1, y, z, comba = .8, cada = 1.15, color = '#ff2a2a', fase = 0 }) {
   const n = Math.floor((x1 - x0) / cada);
   const pts = [];
   for (let i = 0; i <= 40; i++) { const k = i / 40; pts.push(new THREE.Vector3(x0 + (x1 - x0) * k, y - Math.sin(k * Math.PI) * comba, z)); }
@@ -243,7 +243,7 @@ function hileraFaroles(raiz, anim, { x0, x1, y, z, comba = .8, cada = 1.15, colo
 }
 
 // Pétalos de sakura cayendo: muchas instancias que flotan con el viento y se dan vuelta
-function petalos(raiz, anim, { n = 520, area = [-16, 16, -9, 4], alto = 10, color = '#ffb7d0' } = {}) {
+export function petalos(raiz, anim, { n = 520, area = [-16, 16, -9, 4], alto = 10, color = '#ffb7d0' } = {}) {
   const forma = new THREE.Shape();
   forma.moveTo(0, -.045); forma.bezierCurveTo(.05, -.02, .045, .04, 0, .045); forma.bezierCurveTo(-.045, .04, -.05, -.02, 0, -.045);
   const geo = new THREE.ShapeGeometry(forma, 4);
@@ -282,7 +282,7 @@ function petalos(raiz, anim, { n = 520, area = [-16, 16, -9, 4], alto = 10, colo
 }
 
 // Cerezo en flor: tronco con ramas y copa de nubes rosas
-function cerezo(raiz, { x, z, alto = 4.2, r }) {
+export function cerezo(raiz, { x, z, alto = 4.2, r }) {
   const g = new THREE.Group(); g.position.set(x, 0, z);
   const madera = mat('#3b2620', { roughness: 1 });
   const flores = [new THREE.MeshStandardMaterial({ color: '#ffb7d0', emissive: '#ff6fa0', emissiveIntensity: .28, roughness: .9, flatShading: true }), new THREE.MeshStandardMaterial({ color: '#ffd3e2', emissive: '#ff8ab4', emissiveIntensity: .25, roughness: .9, flatShading: true }), new THREE.MeshStandardMaterial({ color: '#f792b5', emissive: '#d84a80', emissiveIntensity: .3, roughness: .9, flatShading: true })];
@@ -314,7 +314,7 @@ function cerezo(raiz, { x, z, alto = 4.2, r }) {
 }
 
 // Gente mirando la pelea: siluetas con ropa de colores que saltan y levantan los brazos con los golpes fuertes
-function publico(raiz, anim, { lugares, r, celulares = false }) {
+export function publico(raiz, anim, { lugares, r, celulares = false }) {
   const gente = [];
   const piel = ['#e8c4a8', '#c99a7a', '#8d5a3c', '#f0d2b8', '#b47a55'];
   const ropa = ['#2a3a6a', '#7a2a3a', '#2a5a3a', '#3a2a5a', '#5a4a2a', '#1a1a22', '#6a6a72', '#a83a2a', '#d8a838', '#2a7a8a'];
@@ -369,7 +369,7 @@ function publico(raiz, anim, { lugares, r, celulares = false }) {
 }
 
 // Vapor que sale de una alcantarilla
-function vapor(raiz, part, anim, x, z) {
+export function vapor(raiz, part, anim, x, z) {
   const tapa = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, .03, 24), mat('#2a2a2e', { metalness: .8, roughness: .5 }));
   tapa.position.set(x, .015, z); raiz.add(tapa);
   let acum = 0;
@@ -380,7 +380,7 @@ function vapor(raiz, part, anim, x, z) {
 }
 
 // Lluvia: gotas estiradas que caen en diagonal y salpican en el piso
-function lluvia(raiz, part, anim, { n = 1400, area = [-16, 16, -9, 5], alto = 11 } = {}) {
+export function lluvia(raiz, part, anim, { n = 1400, area = [-16, 16, -9, 5], alto = 11 } = {}) {
   const geo = new THREE.BufferGeometry();
   const pos = new Float32Array(n * 6);
   const datos = [];

@@ -17,6 +17,7 @@ import { handle as casino } from '../games/casino/api.js';
 import { handle as memes } from '../games/memes/api.js';
 import { handle as haxball } from '../games/haxball/api.js';
 import { handle as pelea } from '../games/pelea/api.js';
+import { handle as futbol } from '../games/futbol/api.js';
 import { handle as truco } from '../games/truco/api.js';
 import { handle as ajedrez } from '../games/chessort/api.js';
 import { handle as club } from '../shared/club-api.js';
@@ -26,8 +27,8 @@ const contexto = new AsyncLocalStorage();
 usarAlmacen(() => contexto.getStore()?.store);
 avisosGrupo.alCambiar = (g) => contexto.getStore()?.objeto?.avisarGrupo(g);
 
-const API = [['/api/royale/', royale], ['/api/carrera/', carrera], ['/api/casino/', casino], ['/api/memes/', memes], ['/api/haxball/', haxball], ['/api/pelea/', pelea], ['/api/truco/', truco], ['/ajedrez/api/', ajedrez], ['/api/club/', club]];
-const JUEGOS_SALA = new Set(['memes', 'casino', 'carrera', 'royale', 'haxball', 'pelea']);
+const API = [['/api/royale/', royale], ['/api/carrera/', carrera], ['/api/casino/', casino], ['/api/memes/', memes], ['/api/haxball/', haxball], ['/api/pelea/', pelea], ['/api/futbol/', futbol], ['/api/truco/', truco], ['/ajedrez/api/', ajedrez], ['/api/club/', club]];
+const JUEGOS_SALA = new Set(['memes', 'casino', 'carrera', 'royale', 'haxball', 'pelea', 'futbol']);
 // Con gente conectada la sala avanza sola cada segundo (bots, tiempos, tormenta…). Si nadie hace nada
 // (ninguna acción) por un rato, más despacio: cada alarma es un pedido y el plan gratis tiene un tope por día.
 const tickMs = (quieta) => (quieta > 30 * 60_000 ? 30_000 : quieta > 5 * 60_000 ? 5000 : 1000);

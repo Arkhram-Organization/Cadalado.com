@@ -177,6 +177,7 @@ const LISTAS_DE_SALAS = {
   casino: ['/api/casino/lobby', () => import('../games/casino/api.js')],
   haxball: ['/api/haxball/lobby', () => import('../games/haxball/api.js')],
   pelea: ['/api/pelea/lobby', () => import('../games/pelea/api.js')],
+  futbol: ['/api/futbol/lobby', () => import('../games/futbol/api.js')],
   memes: ['/api/memes/lobby', () => import('../games/memes/api.js')],
   truco: ['/api/truco/lobby', () => import('../games/truco/api.js')],
   ajedrez: ['/ajedrez/api/lobby', () => import('../games/chessort/api.js')],

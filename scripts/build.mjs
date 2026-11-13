@@ -11,6 +11,7 @@ export const JUEGOS = [
   { carpeta: 'games/memes', ruta: 'memes' },
   { carpeta: 'games/haxball', ruta: 'haxball' },
   { carpeta: 'games/pelea', ruta: 'pelea' },
+  { carpeta: 'games/futbol', ruta: 'futbol' },
   { carpeta: 'games/casino', ruta: 'casino' },
   { carpeta: 'games/carrera', ruta: 'carrera' },
   { carpeta: 'games/royale', ruta: 'royale' },

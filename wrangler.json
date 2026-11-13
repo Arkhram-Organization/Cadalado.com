@@ -18,6 +18,8 @@
       "/*/sala/*",
       "/pelea/bots",
       "/pelea/local",
+      "/futbol/bots",
+      "/futbol/local",
       "/casino/mesa/*",
       "/ajedrez/game/*",
       "/ajedrez/local",
