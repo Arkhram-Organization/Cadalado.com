@@ -270,3 +270,70 @@ test('pase asistido: aunque apuntes mal (o no apuntes), le llega a un compañero
     assert.ok(recibio, `con dirección ${JSON.stringify(dir)} igual le llegó`);
   }
 });
+
+// ---------------------------------------------------------------- penales y copa
+function hastaElFinal(m, max = 60 * 400) { let n = 0; while (!(m.fase === 'fin' && m.faseT > 6) && n++ < max) paso(m); return m; }
+
+test('empate con penales activados: tanda hasta que hay ganador, y el campeón se junta para la copa', () => {
+  let definidas = 0;
+  for (let k = 0; k < 4; k++) {
+    const m = partido(5, { minutos: 2, penales: true, humanos: [] });
+    m.marcador = [2, 2]; m.tiempo = .02;
+    hastaElFinal(m);
+    assert.equal(m.fase, 'fin');
+    assert.ok(m.pen, 'hubo tanda');
+    assert.notEqual(m.ganador, null, 'los penales definen');
+    assert.notEqual(m.pen.goles[0], m.pen.goles[1]);
+    const [a, b] = [m.pen.tiros[0].length, m.pen.tiros[1].length];
+    assert.ok(Math.abs(a - b) <= 1, 'se patea alternado');
+    assert.ok(m.copa && m.copa.eq === m.ganador, 'el ganador levanta la copa');
+    for (const j of m.jug.filter((x) => x.eq === m.ganador)) assert.equal(j.est, 'copa', 'todo el campeón está en la ceremonia');
+    definidas++;
+  }
+  assert.equal(definidas, 4);
+});
+
+test('sin penales el empate queda empate (y no hay copa)', () => {
+  const m = partido(5, { minutos: 2, penales: false, humanos: [] });
+  m.marcador = [1, 1]; m.tiempo = .02;
+  correr(m, .5);
+  assert.equal(m.fase, 'fin');
+  assert.equal(m.ganador, null);
+  assert.equal(m.copa, null);
+});
+
+test('el que gana en el tiempo levanta la copa: el capitán es la persona del equipo', () => {
+  const m = partido(5, { minutos: 2 });
+  m.marcador = [3, 1]; m.tiempo = .02;
+  correr(m, 6);
+  assert.equal(m.ganador, 0);
+  assert.equal(m.copa.capitan, m.mando.yo, 'la persona es la capitana');
+});
+
+test('penales por la red: el tablero de la tanda viaja', () => {
+  const m = partido(5, { minutos: 2, penales: true, humanos: [] });
+  m.marcador = [0, 0]; m.tiempo = .02;
+  correr(m, 8);
+  const v = decodificar(codificar(m), m);
+  assert.equal(v.fase, 'penales');
+  assert.ok(v.pen && v.pen.pateador);
+  assert.deepEqual(v.pen.goles, m.pen.goles);
+});
+
+test('sala online: el empate por penales queda con ganador y en el historial', async () => {
+  const A = 'pidPenalesHost001';
+  const { code } = await req('POST', '/crear', { pid: A, nombre: 'Ana', opciones: { formato: 5 } });
+  const accion = (pid, msg) => req('POST', `/salas/${code}`, { pid, ping: 1, msg });
+  const ver = async (pid) => (await req('GET', `/salas/${code}?pid=${pid}&ping=1`)).estado;
+  await accion(A, { t: 'join', nombre: 'Ana' });
+  assert.equal((await ver(A)).penales, true, 'vienen activados');
+  await accion(A, { t: 'config', penales: false });
+  assert.equal((await ver(A)).penales, false);
+  await accion(A, { t: 'config', penales: true });
+  await accion(A, { t: 'empezar' });
+  const e = await ver(A);
+  await accion(A, { t: 'resultado', n: e.partidoN, marcador: [2, 2], penales: [4, 3] });
+  const f = await ver(A);
+  assert.equal(f.ganador, 0);
+  assert.deepEqual(f.penalesRes, [4, 3]);
+});

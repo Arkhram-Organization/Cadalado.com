@@ -17,7 +17,7 @@ const FORMACIONES = {
   8: [[.42, -.66], [.4, 0], [.42, .66], [.88, -.5], [.88, .5], [1.3, -.3], [1.3, .3]],
 };
 export const R_PEL = .11, R_JUG = .36, G = 20;
-export const ESTADOS = ['quieto', 'corre', 'patea', 'pase', 'barrida', 'caido', 'levanta', 'vuela', 'ataja', 'festeja', 'triste', 'cabezazo', 'bicicleta', 'amague', 'ruleta', 'taco', 'elastica', 'sombrero', 'cano'];
+export const ESTADOS = ['quieto', 'corre', 'patea', 'pase', 'barrida', 'caido', 'levanta', 'vuela', 'ataja', 'festeja', 'triste', 'cabezazo', 'bicicleta', 'amague', 'ruleta', 'taco', 'elastica', 'sombrero', 'cano', 'copa'];
 // Trucos con la pelota (teclas 1 a 8). Son fáciles: se aprietan y salen; si sirven o no depende de dónde estén los rivales.
 export const TRUCOS = [
   { id: 'bicicleta', nombre: 'Bicicleta', desc: 'Engaña al que te marca y salís rápido' },
@@ -79,10 +79,10 @@ function distSegmento(q, a, b) {
 function angDif(a, b) { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; }
 
 // jugadores: [{ id, eq, npc }] (el primero de cada equipo es el arquero); humanos: [{ hid, eq, pid, cambia }]
-export function nuevoPartido({ formato = 5, jugadores, humanos = [], minutos = 4, golesMax = 0, dificultad = 1 }) {
+export function nuevoPartido({ formato = 5, jugadores, humanos = [], minutos = 4, golesMax = 0, dificultad = 1, penales = false }) {
   const F = FORMATOS[formato] || FORMATOS[5];
   const m = {
-    t: 0, formato, ...F, dificultad,
+    t: 0, formato, ...F, dificultad, conPenales: !!penales, pen: null, copa: null,
     jug: [], pel: { x: 0, y: R_PEL, z: 0, vx: 0, vy: 0, vz: 0, duenio: null, ultimo: null, penultimo: null, libreDe: null, libreT: 0 },
     marcador: [0, 0], fase: 'saque', faseT: 0, saca: Math.random() < .5 ? 0 : 1,
     tiempo: minutos ? minutos * 60 : Infinity, golesMax, ganador: null,
@@ -138,7 +138,8 @@ export function paso(m, entradas = new Map()) {
     if (m.golesMax && Math.max(...m.marcador) >= m.golesMax) return terminar(m);
     m.fase = 'saque'; m.faseT = 0; acomodar(m);
   }
-  if (m.fase === 'fin') { for (const j of m.jug) { festejar(m, j); integrar(m, j, 0, 0, false); } return; }
+  if (m.fase === 'fin') { for (const j of m.jug) ceremonia(m, j); return; }
+  if (m.fase === 'penales') return pasoPenales(m, entradas);
   if (m.fase === 'juego') {
     m.tiempo -= PASO;
     if (m.tiempo <= 0) { m.tiempo = 0; return terminar(m); }
@@ -176,10 +177,166 @@ export function paso(m, entradas = new Map()) {
 }
 
 function terminar(m) {
-  m.fase = 'fin'; m.faseT = 0;
   m.ganador = m.marcador[0] === m.marcador[1] ? null : m.marcador[0] > m.marcador[1] ? 0 : 1;
-  m.pel.duenio = null;
-  evento(m, { k: 'final', ganador: m.ganador });
+  // empate con penales activados: tanda de penales
+  if (m.ganador === null && m.conPenales && !m.pen) return empezarPenales(m);
+  m.fase = 'fin'; m.faseT = 0;
+  m.pel.duenio = null; m.pel.vx = m.pel.vz = 0;
+  if (m.ganador !== null) armarCeremonia(m);
+  evento(m, { k: 'final', ganador: m.ganador, penales: m.pen ? m.pen.goles : null });
+}
+
+// ---------------------------------------------------------------- la copa: el campeón se junta y el capitán la levanta
+// El capitán es la persona del equipo ganador (si hay), si no, el que más goles hizo.
+function armarCeremonia(m) {
+  const eq = m.ganador;
+  const mios = m.jug.filter((j) => j.eq === eq);
+  const persona = mios.find((j) => Object.values(m.mando).includes(j.id) && !j.arquero) || mios.find((j) => Object.values(m.mando).includes(j.id));
+  const goleador = [...mios].sort((a, b) => b.goles - a.goles)[0];
+  const capitan = persona || (goleador?.goles ? goleador : mios.find((j) => !j.arquero)) || mios[0];
+  // el capitán adelante (mirando a la cámara) y el resto en dos filas detrás
+  const cz = m.A * .14, lugares = {};
+  lugares[capitan.id] = { x: 0, z: cz + 1.3 };
+  const resto = mios.filter((j) => j !== capitan);
+  resto.forEach((j, i) => {
+    const fila = i < 4 ? 0 : 1, enFila = fila ? resto.length - 4 : Math.min(4, resto.length), k = fila ? i - 4 : i;
+    lugares[j.id] = { x: (k - (enFila - 1) / 2) * 1.15, z: cz - fila * 1.2 };
+  });
+  m.copa = { eq, capitan: capitan.id, lugares };
+}
+function ceremonia(m, j) {
+  if (m.ganador === null || !m.copa) { festejar(m, j); integrar(m, j, 0, 0, false); return; }
+  if (j.eq !== m.ganador) {
+    // los que perdieron se van para su arco, tristes
+    const tx = -j.s * (m.L / 2 - 4), tz = (j.slot + 1) * 1.5 - 3;
+    const dx = tx - j.x, dz = tz - j.z, l = Math.hypot(dx, dz);
+    if (l > .6) { integrar(m, j, dx / l * .45, dz / l * .45, false); if (j.est === 'corre' || j.est === 'quieto') j.est = 'corre'; }
+    else { integrar(m, j, 0, 0, false); j.est = 'triste'; }
+    return;
+  }
+  const L = m.copa.lugares[j.id];
+  const dx = L.x - j.x, dz = L.z - j.z, l = Math.hypot(dx, dz);
+  if (l > .25 && m.faseT < 4.5) { integrar(m, j, dx / Math.max(l, 1), dz / Math.max(l, 1), l > 3); if (j.est === 'quieto') j.est = 'corre'; }
+  else { j.vx = j.vz = 0; j.ang += angDif(j.ang, Math.PI / 2) * .15; j.est = 'copa'; } // mirando a la cámara (+z)
+}
+
+// ---------------------------------------------------------------- tanda de penales
+// 5 por lado, alternados; si siguen iguales, muerte súbita. Se patea desde el punto penal: la persona elige el palo
+// (izquierda/derecha) y carga el tiro; el arquero se tira con la barrida. Los bots patean y atajan solos.
+const puntoPenal = (m, s) => s * (m.L / 2 - Math.min(6, m.A * .28) * .75);
+function empezarPenales(m) {
+  m.fase = 'penales'; m.faseT = 0;
+  m.pen = { turno: Math.random() < .5 ? 0 : 1, tiros: [[], []], goles: [0, 0], orden: [0, 0], estado: 'prepara', t: 0, pateador: null, arquero: null, mandoPartido: { ...m.mando } };
+  evento(m, { k: 'penales' });
+  prepararPenal(m);
+}
+function prepararPenal(m) {
+  const P = m.pen, eq = P.turno;
+  // patean todos los de campo por turno (personas primero)
+  const humanosEq = new Set(Object.entries(P.mandoPartido).filter(([, pid]) => buscar(m, pid)?.eq === eq).map(([, pid]) => pid));
+  const pateadores = m.jug.filter((j) => j.eq === eq && !j.arquero).sort((a, b) => (humanosEq.has(b.id) ? 1 : 0) - (humanosEq.has(a.id) ? 1 : 0));
+  const pat = pateadores[P.orden[eq]++ % pateadores.length];
+  const arq = m.jug.find((j) => j.eq !== eq && j.arquero);
+  Object.assign(P, { pateador: pat.id, arquero: arq.id, estado: 'prepara', t: 0, resuelto: false, pateo: false });
+  const sx = puntoPenal(m, pat.s);
+  // los demás miran desde la mitad de la cancha
+  let k = 0;
+  for (const j of m.jug) {
+    j.vx = j.vz = 0; j.cargando = false; j.carga = 0; j.est = 'quieto'; j.t = 0; j.engano = 0; j.turbo = 0;
+    if (j === pat || j === arq) continue;
+    j.x = (j.eq ? 1 : -1) * (.8 + (k % 2) * .9); j.z = -m.A / 2 + 2 + Math.floor(k / 2) * 1.1; j.ang = Math.PI / 2; k++;
+  }
+  pat.x = sx - pat.s * .5; pat.z = 0; pat.ang = pat.s > 0 ? 0 : Math.PI;
+  arq.x = pat.s * (m.L / 2 - .35); arq.z = 0; arq.ang = pat.s > 0 ? Math.PI : 0;
+  Object.assign(m.pel, { x: sx, y: R_PEL, z: 0, vx: 0, vy: 0, vz: 0, duenio: pat.id, ultimo: pat.id, libreT: 0 });
+  // las personas: el que patea maneja al pateador; la del otro equipo, al arquero
+  m.mando = {};
+  for (const [hid, pid] of Object.entries(P.mandoPartido)) { const j = buscar(m, pid); if (j) m.mando[hid] = j.eq === eq ? pat.id : arq.id; }
+}
+// el penal del bot: a un palo, con error según su nivel (los buenos casi no la tiran afuera)
+function patearPenal(m, j, lado) {
+  const p = m.pel, N = nivelDe(m, j);
+  const gx = j.s * m.L / 2;
+  const z = clamp(lado * m.arco * (.22 + Math.random() * .2) + (Math.random() - .5) * N.error * .32 * m.arco, -m.arco, m.arco);
+  const ang = Math.atan2(z - j.z, gx - j.x), v = 18 + Math.random() * 8;
+  soltar(m, j);
+  p.vx = Math.cos(ang) * v; p.vz = Math.sin(ang) * v; p.vy = 1.2 + Math.random() * 2.2;
+  j.est = 'patea'; j.t = 0;
+  evento(m, { k: 'remate', a: j.id, fuerza: .8 });
+}
+function pasoPenales(m, entradas) {
+  const P = m.pen, p = m.pel;
+  P.t += PASO;
+  const pat = buscar(m, P.pateador), arq = buscar(m, P.arquero);
+  const hidPat = Object.keys(m.mando).find((h) => m.mando[h] === pat.id);
+  const hidArq = Object.keys(m.mando).find((h) => m.mando[h] === arq.id);
+  m.hidDe = {}; if (hidPat) m.hidDe[pat.id] = hidPat; if (hidArq) m.hidDe[arq.id] = hidArq;
+  for (const j of m.jug) { j.t += PASO; if (j.cd > 0) j.cd -= PASO; j.humano = j.id === pat.id ? !!hidPat : j.id === arq.id ? !!hidArq : false; }
+  if (P.estado === 'prepara') { if (P.t > 1.3) { P.estado = 'listo'; P.t = 0; evento(m, { k: 'pitazo' }); } return; }
+  if (P.estado === 'listo') {
+    // el pateador: quieto en el punto, elige el palo y carga
+    if (hidPat) {
+      const inp = entradas.get(hidPat) || NADA;
+      controlar(m, pat, { x: 0, z: inp.z || 0, tiro: inp.tiro || P.t > 8 });
+      if (P.t > 8.3 && p.duenio === pat.id) rematar(m, pat, .7, 0, Math.random() < .5 ? -1 : 1);
+    } else if (P.t > 1.4 + (P.botEspera ??= Math.random() * 1.2)) {
+      // el bot elige palo (si te conoce como arquero, va al otro lado) y patea
+      patearPenal(m, pat, Math.random() < .5 ? -1 : 1);
+      P.botEspera = undefined;
+    }
+    pat.x = puntoPenal(m, pat.s) - pat.s * .5; pat.z = 0; pat.vx = pat.vz = 0;
+    if (p.duenio !== pat.id) {
+      P.estado = 'vuela'; P.t = 0; P.pateo = true;
+      // el arquero bot adivina un lado en el momento del remate (si te conoce, va a tu palo preferido)
+      if (!hidArq) {
+        const N = nivelDe(m, arq);
+        let lado = Math.random() < .5 ? -1 : 1;
+        if (hidPat) {
+          const pref = preferencia(lectura(m, hidPat).palo);
+          if (pref.n && Math.random() < .5 + .45 * confianza(pref.n, m.dificultad)) lado = Math.sign(-pref.lado * arq.s) || lado;
+        }
+        if (Math.random() < .12) lado = 0; // a veces se queda parado en el medio
+        arq.est = 'vuela'; arq.t = 0; arq.cd = 2; arq.lado = lado || 1;
+        arq.vz = lado * 6.2 * (.85 + N.reflejo * .3); arq.vx = 0;
+        if (lado) evento(m, { k: 'estirada', a: arq.id, lado });
+      }
+    }
+  }
+  // el arquero: persona (se tira con L) o bot (reacciona al tiro)
+  const inpArq = hidArq ? (entradas.get(hidArq) || NADA) : { x: 0, z: 0 };
+  controlar(m, arq, P.estado === 'listo' && hidArq ? { x: 0, z: inpArq.z || 0 } : inpArq);
+  arq.x = clamp(arq.x, pat.s * (m.L / 2 - 1.2), pat.s * (m.L / 2 - .2)) || arq.x;
+  if (Math.sign(arq.x) !== pat.s) arq.x = pat.s * (m.L / 2 - .35);
+  if (P.estado === 'vuela') {
+    pelota(m);
+    const lx = m.L / 2;
+    const entro = Math.abs(p.x) > lx + R_PEL && Math.abs(p.z) < m.arco / 2 && p.y < m.altoArco;
+    const fallo = !entro && (P.t > 2.4 || p.duenio === arq.id || (P.t > .4 && Math.hypot(p.vx, p.vz) < 1.2) || Math.sign(p.vx) !== pat.s && P.t > .3);
+    if ((entro || fallo) && !P.resuelto) {
+      P.resuelto = true; P.estado = 'resultado'; P.t = 0;
+      P.tiros[pat.eq].push(entro); if (entro) P.goles[pat.eq]++;
+      evento(m, { k: 'penal', eq: pat.eq, a: pat.id, gol: entro, ataja: !entro && p.duenio === arq.id });
+    }
+    return;
+  }
+  if (P.estado === 'resultado') {
+    if (P.t < 2) return;
+    // ¿ya está definido?
+    const [ga, gb] = P.goles, na = P.tiros[0].length, nb = P.tiros[1].length;
+    let definido = false;
+    if (na <= 5 && nb <= 5 && !(na === 5 && nb === 5)) definido = ga + (5 - na) < gb || gb + (5 - nb) < ga;
+    else definido = na === nb && ga !== gb;
+    if (definido) {
+      m.ganador = ga > gb ? 0 : 1;
+      m.fase = 'fin'; m.faseT = 0; m.pel.duenio = null; m.pel.vx = m.pel.vz = 0;
+      m.mando = { ...P.mandoPartido };
+      armarCeremonia(m);
+      evento(m, { k: 'final', ganador: m.ganador, penales: [...P.goles] });
+      return;
+    }
+    P.turno = 1 - P.turno;
+    prepararPenal(m);
+  }
 }
 function festejar(m, j) {
   if (m.faseT < .6 || ['festeja', 'triste'].includes(j.est)) return;
@@ -580,7 +737,7 @@ function pelota(m) {
   if (Math.abs(p.x) > lx + 1.1) { p.x = Math.sign(p.x) * (lx + 1.1); p.vx = -p.vx * .15; } // la red de atrás
   if (Math.abs(p.x) > lx && Math.abs(p.z) > m.arco / 2 - R_PEL) { p.z = Math.sign(p.z) * (m.arco / 2 - R_PEL); p.vz *= -.3; }
   if (Math.abs(p.x) > lx && p.y > m.altoArco - R_PEL) { p.y = m.altoArco - R_PEL; p.vy = -Math.abs(p.vy) * .2; }
-  if (m.fase !== 'juego') return;
+  if (m.fase !== 'juego' && m.fase !== 'penales') return;
   // ¿alguien la controla?
   let mejor = null, md = Infinity;
   for (const j of m.jug) {
@@ -717,7 +874,7 @@ function pensarArquero(m, j) {
     const pref = preferencia(lectura(m, m.hidDe[tiene.id]).palo);
     corrimiento = -pref.lado * j.s * m.arco * .2 * confianza(pref.n, m.dificultad);
   }
-  const sale = clamp(dg * .1, .4, 2.6);
+  const sale = m.fase === 'penales' ? .35 : clamp(dg * .1, .4, 2.6);
   const ang = Math.atan2(p.z, p.x - gx);
   const tx = gx + Math.cos(ang) * sale, tz = clamp(Math.sin(ang) * sale + p.z * .08 + corrimiento, -m.arco / 2 - .3, m.arco / 2 + .3);
   const dx = tx - j.x, dz = tz - j.z;
@@ -819,7 +976,7 @@ export function pensarBot(m, j) {
 }
 
 // ---------------------------------------------------------------- red: el anfitrión manda esto a los demás
-const FASES = ['saque', 'juego', 'gol', 'fin'];
+const FASES = ['saque', 'juego', 'gol', 'fin', 'penales'];
 const r2 = (v) => Math.round(v * 100) / 100;
 export function codificar(m) {
   const p = m.pel;
@@ -828,6 +985,8 @@ export function codificar(m) {
     m.jug.map((j) => [r2(j.x), r2(j.z), r2(j.ang), ESTADOS.indexOf(j.est), r2(j.t), r2(j.vx), r2(j.vz), r2(j.carga), r2(j.energia)]),
     [r2(p.x), r2(p.y), r2(p.z), r2(p.vx), r2(p.vy), r2(p.vz), p.duenio ? m.jug.findIndex((j) => j.id === p.duenio) : -1],
     m.ev.slice(-8).map((e) => ({ ...e, t: undefined })), m.mando, m.ganador,
+    m.pen ? [m.pen.turno, m.pen.estado, m.pen.tiros.map((t) => t.map((x) => (x ? 1 : 0)).join('')), m.pen.pateador, m.pen.arquero, r2(m.pen.t)] : 0,
+    m.copa ? [m.copa.eq, m.copa.capitan] : 0,
   ]);
 }
 // arma una vista dibujable a partir de lo recibido (los ids salen del partido local armado igual)
@@ -838,6 +997,8 @@ export function decodificar(s, base) {
     v.jug = base.jug.map((j, i) => { const f = d[4][i] || []; return { ...j, x: f[0], z: f[1], ang: f[2], est: ESTADOS[f[3]] || 'quieto', t: f[4], vx: f[5], vz: f[6], carga: f[7], energia: f[8], velocidad: Math.hypot(f[5], f[6]) }; });
     const b = d[5];
     v.pel = { x: b[0], y: b[1], z: b[2], vx: b[3], vy: b[4], vz: b[5], duenio: b[6] >= 0 ? base.jug[b[6]]?.id : null };
+    if (d[9]) { const t = d[9][2].map((x) => [...x].map((c) => c === '1')); v.pen = { turno: d[9][0], estado: d[9][1], tiros: t, goles: t.map((x) => x.filter(Boolean).length), pateador: d[9][3], arquero: d[9][4], t: d[9][5] }; }
+    if (d[10]) v.copa = { eq: d[10][0], capitan: d[10][1] };
     return v;
   } catch {
     return null;

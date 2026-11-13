@@ -31,7 +31,7 @@ export const futbol = crearJuego({
       cancha: CANCHAS.includes(opts.cancha) ? opts.cancha : azar(CANCHAS),
       personajeInicial: ROSTER.includes(opts.personaje) ? opts.personaje : null,
       equipos: {}, personaje: {}, rol: {}, participantes: [], bots: { rojo: [], azul: [] },
-      partidoN: 0, marcador: [0, 0], ganador: null, goles: [], fin: 0,
+      partidoN: 0, marcador: [0, 0], ganador: null, goles: [], fin: 0, penales: opts.penales !== false, penalesRes: null,
     };
   },
   unirse(r, j) {
@@ -77,6 +77,7 @@ export const futbol = crearJuego({
         if (MINUTOS.includes(Number(msg.minutos))) r.minutos = Number(msg.minutos);
         if ([0, 1, 2, 3].includes(Number(msg.dificultad))) r.dificultad = Number(msg.dificultad);
         if (CANCHAS.includes(msg.cancha)) r.cancha = msg.cancha;
+        if (typeof msg.penales === 'boolean') r.penales = msg.penales;
         return {};
       }
       case 'empezar': {
@@ -101,9 +102,13 @@ export const futbol = crearJuego({
         const mk = Array.isArray(msg.marcador) ? msg.marcador.slice(0, 2).map((x) => Math.max(0, Math.min(99, Math.floor(Number(x) || 0)))) : [0, 0];
         r.marcador = mk;
         r.ganador = mk[0] === mk[1] ? null : mk[0] > mk[1] ? 0 : 1;
+        // empate definido por penales
+        const pen = Array.isArray(msg.penales) ? msg.penales.slice(0, 2).map((x) => Math.max(0, Math.min(40, Math.floor(Number(x) || 0)))) : null;
+        r.penalesRes = r.ganador === null && pen && pen[0] !== pen[1] ? pen : null;
+        if (r.penalesRes) r.ganador = pen[0] > pen[1] ? 0 : 1;
         r.goles = (Array.isArray(msg.goles) ? msg.goles : []).slice(0, 60).map((g) => ({ eq: g?.eq === 1 ? 1 : 0, autor: String(g?.autor || '').slice(0, 40), contra: !!g?.contra }));
         r.fase = 'fin'; r.fin = ctx.now + FIN_MS;
-        ctx.sistema(r.ganador === null ? `¡Terminó! Empate ${mk[0]} a ${mk[1]}.` : `¡Ganó el ${r.ganador ? 'Azul' : 'Rojo'}! ${mk[0]} a ${mk[1]}.`);
+        ctx.sistema(r.ganador === null ? `¡Terminó! Empate ${mk[0]} a ${mk[1]}.` : `¡Campeón el ${r.ganador ? 'Azul' : 'Rojo'}! ${mk[0]} a ${mk[1]}${r.penalesRes ? ` (${r.penalesRes[0]} a ${r.penalesRes[1]} en penales)` : ''}.`);
         const eqG = r.ganador === null ? null : r.ganador ? 'azul' : 'rojo';
         const bot = eqG && r.bots[eqG][1];
         if (bot) ctx.evento({ k: 'chat', de: 'bot', nombre: POR_ID[bot]?.nombre || 'Bot', npc: bot, bot: true, texto: dicho(bot, 'gana', ctx.jugador?.nombre || 'alguien') });
@@ -139,7 +144,7 @@ export const futbol = crearJuego({
       equipos: Object.fromEntries(Object.entries(r.equipos).map(([p, e]) => [idPublico(p), e])),
       personaje: Object.fromEntries(Object.entries(r.personaje).map(([p, l]) => [idPublico(p), l])),
       rol: Object.fromEntries(Object.entries(r.rol || {}).map(([p, l]) => [idPublico(p), l])),
-      participantes: r.participantes.map(idPublico), bots: r.bots, partidoN: r.partidoN, marcador: r.marcador, ganador: r.ganador,
+      participantes: r.participantes.map(idPublico), bots: r.bots, partidoN: r.partidoN, marcador: r.marcador, ganador: r.ganador, penales: r.penales, penalesRes: r.penalesRes,
     };
   },
   lobby(r) {
@@ -160,7 +165,7 @@ export const futbol = crearJuego({
       await registrarPartida(j.uid, {
         juego: 'futbol', sala: r.code, url: `/futbol/sala/${r.code}`, resultado,
         detalle: `${goles} goles con ${POR_ID[r.personaje[pid]]?.nombre || 'su jugador'}`,
-        marcador: `${r.marcador[eq]} - ${r.marcador[1 - eq]}`,
+        marcador: `${r.marcador[eq]} - ${r.marcador[1 - eq]}${r.penalesRes ? ` (${r.penalesRes[eq]}-${r.penalesRes[1 - eq]} pen.)` : ''}`,
         rivales: r.participantes.filter((p) => (r.equipos[p] === 'azul' ? 1 : 0) !== eq).map((p) => r.jugadores[p]?.nombre).filter(Boolean).slice(0, 6),
       });
     }

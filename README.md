@@ -99,6 +99,9 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
   botones). Cada persona elige su puesto (arquero, defensa, medio, delantero o aleatorio): `armarEquipo` en el motor
   reparte los lugares, y online usa una semilla común para que todas las compus armen lo mismo. Seis canchas:
   Barrio Chino, Terraza, Noche de lluvia, Estadio, Playa y Potrero.
+  Si se activa "Si empatan: penales", el empate se define en una tanda (5 por lado y muerte súbita; la persona
+  elige el palo y carga el tiro, o se tira con L si ataja). Cuando hay campeón, ceremonia con una copa propia:
+  el equipo se junta, el capitán la levanta, papelitos, fuegos artificiales y bailes.
 - **Bots que aprenden (Piña Final y La Canchita):** durante el partido anotan cómo jugás (en la pelea: qué hacés a
   cada distancia, cuánto saltás o te cubrís; en el fútbol: a qué palo pateás, para qué lado gambeteás, qué trucos
   repetís) y se acomodan: gancho al que salta, barrida al que se cubre, el arquero se tira a tu palo, te cortan la

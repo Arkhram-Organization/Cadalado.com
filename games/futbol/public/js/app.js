@@ -198,7 +198,7 @@ function menu() {
 const seg = (nombre, op, valor, opciones, deshab = false) => `<div class="pf-grupo"><span>${nombre}</span><div class="pf-seg" data-op="${op}">${opciones.map(([v, t]) => `<button type="button" data-v="${v}" class="${String(v) === String(valor) ? 'on' : ''}" ${deshab ? 'disabled' : ''}>${t}</button>`).join('')}</div></div>`;
 function armado({ dos }) {
   document.title = (dos ? '2 jugadores' : 'Contra bots') + ' · La Canchita';
-  const conf = { formato: Number(leer('futbol.formato', 5)), minutos: Number(leer('futbol.minutos', 4)), dif: Number(leer('futbol.dif', 1)), cancha: leer('futbol.cancha', 'barrio'), rol: leer('futbol.rol', 'aleatorio'), rol2: leer('futbol.rol2', 'aleatorio') };
+  const conf = { formato: Number(leer('futbol.formato', 5)), minutos: Number(leer('futbol.minutos', 4)), dif: Number(leer('futbol.dif', 1)), cancha: leer('futbol.cancha', 'barrio'), rol: leer('futbol.rol', 'aleatorio'), rol2: leer('futbol.rol2', 'aleatorio'), penales: leer('futbol.penales', 'si') };
   let p1 = ROSTER.includes(leer('futbol.personaje', '')) ? leer('futbol.personaje', '') : null, p2 = null;
   const pintar = () => {
     const turno = dos && p1 && !p2 ? 2 : 1;
@@ -212,6 +212,7 @@ function armado({ dos }) {
           ${seg('Minutos', 'minutos', conf.minutos, [[2, '2'], [4, '4'], [6, '6'], [8, '8']])}
           ${seg('Nivel de los bots', 'dif', conf.dif, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil'], [3, 'Leyenda']])}
           ${seg('Cancha', 'cancha', conf.cancha, CANCHAS.map((c) => [c.id, c.nombre]))}
+          ${seg('Si empatan', 'penales', conf.penales, [['si', 'Penales'], ['no', 'Queda empate']])}
           ${seg(dos ? 'Puesto J1' : 'Tu puesto', 'rol', conf.rol, ROLES)}
           ${dos ? seg('Puesto J2', 'rol2', conf.rol2, ROLES) : ''}
         </div>
@@ -227,7 +228,7 @@ function armado({ dos }) {
       pintar();
     }));
     app.querySelectorAll('[data-op]').forEach((s) => s.querySelectorAll('button').forEach((b) => (b.onclick = () => {
-      const op = s.dataset.op; conf[op] = ['cancha', 'rol', 'rol2'].includes(op) ? b.dataset.v : Number(b.dataset.v);
+      const op = s.dataset.op; conf[op] = ['cancha', 'rol', 'rol2', 'penales'].includes(op) ? b.dataset.v : Number(b.dataset.v);
       guardar('futbol.' + op, b.dataset.v); sfx('cursor'); pintar();
     })));
     app.querySelector('[data-jugar]')?.addEventListener('click', () => {
@@ -253,6 +254,8 @@ function htmlCancha() {
     <div class="fu-gol" data-gol></div>
     <div class="fu-aviso" data-aviso></div>
     <div class="pf-lee" data-lee></div>
+    <div class="fu-pen hidden" data-pen></div>
+    <div class="fu-campeon" data-campeon></div>
     <div class="fu-trucos" data-trucos></div>
     <div class="fu-yo" data-yo><b data-yo-nombre></b><div class="fu-barra aire"><i data-aire></i></div><div class="fu-barra carga"><i data-carga></i></div></div>
     <canvas class="fu-radar" data-radar width="200" height="112"></canvas>
@@ -307,11 +310,37 @@ function crearHud(raiz, jugadores) {
       } else if (['palo', 'atajada', 'cabezazo', 'volea', 'esquiva'].includes(e.k) || (e.k === 'truco' && e.exito)) {
         const txt = e.k === 'truco' ? `¡${e.nombre.toUpperCase()}!` : { palo: '¡PALO!', atajada: e.rebote ? '¡DA REBOTE!' : '¡QUÉ ATAJADA!', cabezazo: '¡CABEZAZO!', volea: '¡DE VOLEA!', esquiva: '¡QUÉ RULETA!' }[e.k];
         $('[data-aviso]').textContent = txt; $('[data-aviso]').classList.remove('on'); void $('[data-aviso]').offsetWidth; $('[data-aviso]').classList.add('on'); avisoT = performance.now();
+      } else if (e.k === 'penales') {
+        relator('¡Vamos a los penales!');
+      } else if (e.k === 'penal') {
+        const el = $('[data-aviso]'); el.textContent = e.gol ? '¡GOOOL!' : e.ataja ? '¡LO ATAJÓ!' : '¡AFUERA!'; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); avisoT = performance.now();
       } else if (e.k === 'final') {
         relator(v.ganador === null ? '¡Terminó! Empate.' : `¡Terminó! Ganó el ${NOMBRE_EQ[v.ganador]}.`);
       }
     }
     if (performance.now() - golT > 3000) $('[data-gol]').classList.remove('on');
+    // tanda de penales: bolitas por equipo, quién patea y quién ataja
+    const pen = $('[data-pen]');
+    pen.classList.toggle('hidden', v.fase !== 'penales' || !v.pen);
+    if (v.fase === 'penales' && v.pen) {
+      const n = Math.max(5, v.pen.tiros[0].length, v.pen.tiros[1].length);
+      const fila = (eq) => `<div><b style="color:${COLOR_EQ[eq]}">${NOMBRE_EQ[eq]}</b>${Array.from({ length: n }, (_, i) => { const t = v.pen.tiros[eq][i]; return `<i class="${t === true ? 'si' : t === false ? 'no' : ''}"></i>`; }).join('')}<span>${v.pen.goles[eq]}</span></div>`;
+      const pat = v.jug.find((j) => j.id === v.pen.pateador), arq = v.jug.find((j) => j.id === v.pen.arquero);
+      const yoPateo = Object.entries(v.mando || {}).some(([h, id]) => mios.includes(h) && id === v.pen.pateador);
+      const yoAtajo = Object.entries(v.mando || {}).some(([h, id]) => mios.includes(h) && id === v.pen.arquero);
+      const html = `<h4>Tanda de penales</h4>${fila(0)}${fila(1)}<p>Patea <b>${esc(nombre(pat?.id))}</b> · ataja <b>${esc(nombre(arq?.id))}</b></p>${yoPateo ? '<small>Apretá para un costado para elegir el palo y mantené <kbd>K</kbd> para patear</small>' : yoAtajo ? '<small>Apretá <kbd>L</kbd> y un costado para tirarte</small>' : ''}`;
+      if (pen.dataset.h !== html) { pen.dataset.h = html; pen.innerHTML = html; }
+    }
+    // la vuelta olímpica: cartel de campeones cuando el capitán levanta la copa
+    const camp = $('[data-campeon]');
+    if (v.fase === 'fin' && v.copa && v.faseT > 4.6) {
+      if (!camp.classList.contains('on')) {
+        const pens = v.pen ? ` · ${v.pen.goles[0]} a ${v.pen.goles[1]} en penales` : '';
+        camp.innerHTML = `<b style="--c:${COLOR_EQ[v.copa.eq]}">¡CAMPEONES!</b><small>Equipo ${NOMBRE_EQ[v.copa.eq]} · ${v.marcador[0]} a ${v.marcador[1]}${pens}</small>`;
+        camp.classList.add('on');
+        relator(`¡Campeones! ¡Campeón el equipo ${NOMBRE_EQ[v.copa.eq]}!`);
+      }
+    } else camp.classList.remove('on');
     if (performance.now() - avisoT > 1400) $('[data-aviso]').classList.remove('on');
   };
 }
@@ -329,7 +358,7 @@ async function jugar({ conf, jugadores, humanos, dos, alVolver }) {
   trucos.classList.toggle('hidden', leer('futbol.verTrucos', 'si') === 'no');
   $('[data-pie]').innerHTML = dos ? 'J1 (Rojo): <kbd>WASD</kbd> <kbd>F</kbd> pase <kbd>G</kbd> tiro <kbd>H</kbd> barrida <kbd>R</kbd> cambio <kbd>Shift izq</kbd> correr &nbsp;|&nbsp; J2 (Azul): flechas <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> <kbd>U</kbd> <kbd>Shift der</kbd>' : AYUDA;
   let m = null, pausa = false, raf = 0, viva = true, finMostrado = false;
-  const nuevo = () => { m = nuevoPartido({ formato: conf.formato, jugadores, humanos, minutos: conf.minutos, dificultad: conf.dif ?? 1 }); finMostrado = false; };
+  const nuevo = () => { m = nuevoPartido({ formato: conf.formato, jugadores, humanos, minutos: conf.minutos, dificultad: conf.dif ?? 1, penales: conf.penales !== 'no' }); finMostrado = false; };
   nuevo();
   limpiar.push(() => { viva = false; cancelAnimationFrame(raf); tec.destruir(); escena.destruir(); tribuna(false); speechSynthesis?.cancel?.(); });
   await escena.armar(m, jugadores).catch(() => {});
@@ -368,7 +397,7 @@ async function jugar({ conf, jugadores, humanos, dos, alVolver }) {
     capa.classList.remove('hidden');
     const g = m.ganador, gan = !dos && g === 0;
     const goleadores = m.jug.filter((j) => j.goles).sort((a, b) => b.goles - a.goles).map((j) => `${esc(nombreNpc(jugadores.find((x) => x.id === j.id).npc))} (${j.goles})`).join(', ');
-    capa.innerHTML = `<div class="pf-caja"><div class="pf-festejo"><b>${g === null ? '¡Empate!' : dos ? `¡Ganó el ${NOMBRE_EQ[g]}!` : gan ? '¡Ganaste!' : 'Perdiste…'}</b><span>${m.marcador[0]} a ${m.marcador[1]}${goleadores ? ` · Goles: ${goleadores}` : ''}</span></div>
+    capa.innerHTML = `<div class="pf-caja"><div class="pf-festejo"><b>${g === null ? '¡Empate!' : dos ? `¡Ganó el ${NOMBRE_EQ[g]}!` : gan ? '¡Campeones!' : 'Perdiste…'}</b><span>${m.marcador[0]} a ${m.marcador[1]}${m.pen ? ` (${m.pen.goles[0]} a ${m.pen.goles[1]} en penales)` : ''}${goleadores ? ` · Goles: ${goleadores}` : ''}</span></div>
       <div class="pf-opc"><button data-a="otra"><b>↻ Revancha</b><small>Mismos equipos, 0 a 0.</small></button><button data-a="elegir"><b>☰ Cambiar equipo y formato</b></button><a href="/futbol/" data-ir><b>↩ Menú</b></a></div></div>`;
     capa.querySelector('[data-a="otra"]').onclick = () => { capa.classList.add('hidden'); nuevo(); };
     capa.querySelector('[data-a="elegir"]').onclick = alVolver;
@@ -392,7 +421,7 @@ async function jugar({ conf, jugadores, humanos, dos, alVolver }) {
         }
         paso(m, ent);
       }
-      if (m.fase === 'fin' && m.faseT > 4 && !finMostrado) { finMostrado = true; finPanel(); }
+      if (m.fase === 'fin' && m.faseT > (m.copa ? 12 : 4) && !finMostrado) { finMostrado = true; finPanel(); }
     }
     escena.actualizar(m, pausa ? 0 : dt, { mios });
     hud(m, mios);
@@ -470,7 +499,7 @@ function abrirSala(code) {
     partidoN = est.partidoN; avisado = false; vista = null;
     const { lista, humanos } = armarJugadores();
     jugadores = lista;
-    m = nuevoPartido({ formato: est.formato, jugadores: lista, humanos, minutos: est.minutos, golesMax: est.golesMax, dificultad: est.dificultad });
+    m = nuevoPartido({ formato: est.formato, jugadores: lista, humanos, minutos: est.minutos, golesMax: est.golesMax, dificultad: est.dificultad, penales: est.penales !== false });
     base = m;
     escena?.destruir();
     const lienzo = $('.pf-lienzo'); const nuevo = lienzo.cloneNode(); lienzo.replaceWith(nuevo);
@@ -494,7 +523,7 @@ function abrirSala(code) {
     const fila = (j) => `<li><img src="${foto(est.personaje[j.id] || ROSTER[0])}" data-npc="${est.personaje[j.id] || ROSTER[0]}" alt="">${esc(j.nombre)}${j.id === est.yo ? ' (vos)' : ''}${j.id === est.host ? ' ★' : ''}<em>${esc(rolDe(j.id))} · ${esc(nombreNpc(est.personaje[j.id]))}</em></li>`;
     const mio = est.personaje[est.yo], fin = est.fase === 'fin';
     const html = `<div class="pf-caja">
-      ${fin ? `<div class="pf-festejo"><b>${est.ganador === null ? '¡Empate!' : `¡Ganó el ${NOMBRE_EQ[est.ganador]}!`}</b><span>${est.marcador[0]} a ${est.marcador[1]}</span></div>` : ''}
+      ${fin ? `<div class="pf-festejo"><b>${est.ganador === null ? '¡Empate!' : `¡Campeón el ${NOMBRE_EQ[est.ganador]}!`}</b><span>${est.marcador[0]} a ${est.marcador[1]}${est.penalesRes ? ` (${est.penalesRes[0]} a ${est.penalesRes[1]} en penales)` : ''}</span></div>` : ''}
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><h2 style="margin-right:auto">Canchita ${code}</h2><button class="btn btn-chico" data-copiar>Copiar link</button><a class="btn btn-chico btn-borde" href="/futbol/" data-ir>Salir</a></div>
       <div class="pf-equipos">${['rojo', 'azul'].map((eq, k) => `<div class="pf-eq" style="--c:${COLOR_EQ[k]}"><h3>Equipo ${NOMBRE_EQ[k]} <small>${de(eq).length}/${cupo}</small></h3><ul>${de(eq).map(fila).join('')}${de(eq).length < cupo ? `<li><span style="color:#8d9483">+ ${cupo - de(eq).length} bots del club${de(eq).some((j) => est.rol?.[j.id] === 'arquero') ? '' : ' (uno al arco)'}</span></li>` : ''}</ul>${est.equipos[est.yo] === eq ? '<small style="color:#c5f04a;font-weight:700">Estás acá</small>' : `<button class="btn btn-chico" data-eq="${eq}">Pasarme acá</button>`}</div>`).join('')}</div>
       <p style="margin:0">Mirando: ${est.jugadores.filter((j) => j.online && est.equipos[j.id] === 'afuera').map((j) => esc(j.nombre)).join(', ') || 'nadie'} ${est.equipos[est.yo] !== 'afuera' ? '<button class="btn btn-chico btn-borde" data-eq="afuera">Solo mirar</button>' : ''}</p>
@@ -507,6 +536,7 @@ function abrirSala(code) {
         ${seg('Minutos', 'minutos', est.minutos, [[2, '2'], [4, '4'], [6, '6'], [8, '8']], !host)}
         ${seg('Nivel de los bots', 'dificultad', est.dificultad, [[0, 'Fácil'], [1, 'Normal'], [2, 'Difícil'], [3, 'Leyenda']], !host)}
         ${seg('Cancha', 'cancha', est.cancha, CANCHAS.map((c) => [c.id, c.nombre]), !host)}
+        ${seg('Si empatan', 'penales', est.penales === false ? 'no' : 'si', [['si', 'Penales'], ['no', 'Queda empate']], !host)}
       </div>
       ${host ? `<div class="pf-listo"><button class="btn btn-lima btn-grande" data-empezar>${fin ? 'Revancha' : '¡A la cancha!'}</button></div>` : '<p class="pf-ayuda">Esperando que el anfitrión (★) arranque el partido…</p>'}
     </div>`;
@@ -518,7 +548,8 @@ function abrirSala(code) {
     capa.querySelectorAll('[data-pj]').forEach((b) => (b.onclick = () => { guardar('futbol.personaje', b.dataset.pj); sfx('elegir'); sala.enviar({ t: 'personaje', id: b.dataset.pj }); }));
     capa.querySelectorAll('[data-op]').forEach((s) => s.querySelectorAll('button').forEach((b) => (b.onclick = () => {
       if (s.dataset.op === 'rol') { guardar('futbol.rol', b.dataset.v); return sala.enviar({ t: 'rol', rol: b.dataset.v }); }
-      sala.enviar({ t: 'config', [s.dataset.op]: s.dataset.op === 'cancha' ? b.dataset.v : Number(b.dataset.v) });
+      const op = s.dataset.op;
+      sala.enviar({ t: 'config', [op]: op === 'cancha' ? b.dataset.v : op === 'penales' ? b.dataset.v === 'si' : Number(b.dataset.v) });
     })));
     capa.querySelector('[data-empezar]')?.addEventListener('click', () => sala.enviar({ t: 'empezar' }));
   }
@@ -535,7 +566,7 @@ function abrirSala(code) {
     acum += dt;
     while (acum >= PASO) { acum -= PASO; paso(m, entradas); }
     if (ahora - envio > 50) { envio = ahora; red.actual?.enviar(codificar(m)); }
-    if (m.fase === 'fin' && m.faseT > 4 && !avisado) { avisado = true; sala.enviar({ t: 'resultado', n: est.partidoN, marcador: m.marcador, goles: m.goles.map((g) => ({ eq: g.eq, autor: g.autor, contra: g.contra })) }); }
+    if (m.fase === 'fin' && m.faseT > (m.copa ? 12 : 4) && !avisado) { avisado = true; sala.enviar({ t: 'resultado', n: est.partidoN, marcador: m.marcador, penales: m.pen ? m.pen.goles : null, goles: m.goles.map((g) => ({ eq: g.eq, autor: g.autor, contra: g.contra })) }); }
   }
   const sim = setInterval(simular, 1000 / 60);
   let raf, antes = performance.now();

@@ -354,6 +354,24 @@ function crearPelota() {
   return m;
 }
 
+// ---------------------------------------------------------------- la copa de La Canchita (diseño propio)
+// Copa dorada con dos asas, base de mármol negro y un anillo verde lima con una estrella arriba.
+function crearCopa() {
+  const g = new THREE.Group();
+  const oro = new THREE.MeshPhysicalMaterial({ color: '#f2c14a', metalness: 1, roughness: .18, clearcoat: 1, emissive: '#5a3a08', emissiveIntensity: .35 });
+  const perfil = [[0, 0], [.09, 0], [.09, .03], [.04, .06], [.035, .2], [.06, .24], [.05, .27], [.07, .3], [.15, .36], [.19, .46], [.2, .56], [.195, .6], [.17, .6], [.17, .57]].map(([x, y]) => new THREE.Vector2(x, y));
+  const cuerpo = new THREE.Mesh(new THREE.LatheGeometry(perfil, 40), oro); cuerpo.castShadow = true; g.add(cuerpo);
+  for (const sx of [-1, 1]) { const asa = new THREE.Mesh(new THREE.TorusGeometry(.085, .016, 10, 24, Math.PI * 1.25), oro); asa.position.set(sx * .2, .47, 0); asa.rotation.z = sx > 0 ? -Math.PI * .62 : Math.PI * .38; g.add(asa); }
+  const marmol = new THREE.MeshStandardMaterial({ color: '#141418', roughness: .25, metalness: .2 });
+  const base1 = new THREE.Mesh(new THREE.CylinderGeometry(.12, .14, .08, 24), marmol); base1.position.y = -.04; g.add(base1);
+  const base2 = new THREE.Mesh(new THREE.CylinderGeometry(.14, .16, .07, 24), marmol); base2.position.y = -.115; g.add(base2);
+  const anillo = new THREE.Mesh(new THREE.TorusGeometry(.13, .012, 8, 32), new THREE.MeshStandardMaterial({ color: '#c5f04a', emissive: '#7aa020', emissiveIntensity: .8 })); anillo.rotation.x = Math.PI / 2; anillo.position.y = -.075; g.add(anillo);
+  const estrella = new THREE.Mesh(new THREE.OctahedronGeometry(.045), new THREE.MeshStandardMaterial({ color: '#c5f04a', emissive: '#c5f04a', emissiveIntensity: .9 })); estrella.position.y = .66; g.add(estrella);
+  const brillo = halo('#ffd27a', 1.2, .35); brillo.position.y = .4; g.add(brillo);
+  g.userData.estrella = estrella;
+  return g;
+}
+
 // ---------------------------------------------------------------- escena
 export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas: lienzoCanvas, antialias: true, powerPreference: 'high-performance' });
@@ -406,7 +424,7 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
   function animar(L, j, dt) {
     if (!L.listo || !L.p.clip) { L.p.animar?.(j.est === 'corre' ? 'corre' : 'quieto', dt); return; }
     const v = j.velocidad ?? Math.hypot(j.vx || 0, j.vz || 0);
-    let clave = j.est;
+    let clave = j.est === 'copa' ? (j.poseCopa || 'quieto') : j.est;
     if (j.est === 'corre') clave = v > 6.5 ? 'pique' : v > 2.2 ? 'corre' : 'camina';
     const reinicio = clave !== L.clave || (['patea', 'pase', 'cabezazo', 'vuela', 'caido'].includes(j.est) && j.t < L.t - .05);
     if (reinicio) {
@@ -425,6 +443,11 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
       else if (clave === 'bicicleta' || clave === 'cano' || clave === 'ruleta' || clave === 'elastica') clip(L, ['Running'], { vez: false, dur: clave === 'bicicleta' ? .45 : .6, fundido: .06 });
       else if (clave === 'amague') clip(L, ['Boxing_Guard_Right_Straight_Kick', 'Spartan_Kick'], { desde: .25, hasta: .42, dur: .32, fundido: .05 });
       else if (clave === 'taco' || clave === 'sombrero') clip(L, ['Step_in_High_Kick', 'Boxing_Guard_Right_Straight_Kick'], { desde: .35, hasta: .7, dur: .3, fundido: .05 });
+      else if (clave === 'agachados') clip(L, ['Crouch_Walk_Left_with_Gun_inplace', 'Crouch_Walk_Left_with_Gun'], { congelar: true, desde: .05, fundido: .35 });
+      else if (clave === 'capitanCamina') clip(L, ['Walking'], { vez: false, dur: 1.4, fundido: .3 });
+      else if (clave === 'alzaCopa') clip(L, ['Cheer_with_Both_Hands', 'Hop_with_Arms_Raised'], { vez: false, fundido: .2 });
+      else if (clave === 'saltan') clip(L, ['Hop_with_Arms_Raised', 'Cheer_with_Both_Hands'], { vez: false, dur: 1 + (L.j.id.length % 3) * .12, fundido: .1 });
+      else if (clave === 'baila') clip(L, [L.look?.clips?.festeja, L.look?.clips?.baila, 'Hip_Hop_Dance_4', 'Hip_Hop_Dance_1', 'Hop_with_Arms_Raised'].flat().filter(Boolean), { vez: false, fundido: .4 });
       else if (clave === 'festeja') clip(L, [L.look?.clips?.festeja, L.look?.clips?.baila, 'Hip_Hop_Dance_4', 'Hop_with_Arms_Raised', 'Show_Both_Arm_Muscles'].flat().filter(Boolean), { vez: false, fundido: .3 });
       else if (clave === 'triste') clip(L, ['Headache_Relief', 'Unsteady_Walk'], { vez: false, fundido: .3 });
       L.clave = clave;
@@ -462,6 +485,8 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
     else if (ev.k === 'barre' || ev.k === 'quite') sfx('quite');
     else if (ev.k === 'cae') { sfx('cae'); hablar(ev.a, 'pierde', ev.n, .5); for (let i = 0; i < 8; i++) part.emitir({ x: p.x, y: .1, z: p.z, vx: (Math.random() - .5) * 2, vy: Math.random(), color: '#7aa860', tam: .3, vida: .6, crece: 1, aditivo: false, opacidad: .6 }); }
     else if (ev.k === 'pitazo') sfx('silbato');
+    else if (ev.k === 'penal') { if (ev.gol) { sfx('gol'); amb.vitorear?.(1.5); hablar(ev.a, 'gana', ev.n, .8); } else { sfx('atajada'); amb.vitorear?.(1); hablar(ev.a, 'pierde', ev.n, .8); } }
+    else if (ev.k === 'penales') sfx('silbato');
     else if (ev.k === 'cabezazo' || ev.k === 'volea') sfx('remate', .8);
     else if (ev.k === 'gol') {
       sfx('gol'); amb.vitorear?.(2); sacudida = .35;
@@ -471,6 +496,50 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
     else if (ev.k === 'truco') { sfx(ev.exito ? 'ole' : 'truco'); if (ev.exito) { amb.vitorear?.(.9); hablar(ev.a, 'gana', ev.n, .45); } }
     else if (ev.k === 'esquiva') { sfx('ole'); amb.vitorear?.(.6); }
     else if (ev.k === 'lectura') { const bot = v.jug.find((j) => !j.humano && j.eq !== v.jug.find((x) => x.id === v.mando?.[ev.hid])?.eq); if (bot) hablar(bot.id, 'gana', ev.n, 1); }
+  }
+
+  let copa = null, ceremoniaT = -1, fuegosT = 0;
+  function ceremoniaCopa(v, dt) {
+    const C = v.copa;
+    if (v.fase !== 'fin' || !C) { if (copa) copa.visible = false; ceremoniaT = -1; return; }
+    const t = v.faseT, cz = v.A * .14;
+    const LEVANTA = 4.6, ESPERA = 3.3;
+    // poses: los del equipo agachados esperando; el capitán camina con la copa; la levanta y todos saltan; después bailan
+    for (const j of v.jug) {
+      if (j.eq !== C.eq || j.est !== 'copa') continue;
+      j.poseCopa = j.id === C.capitan ? (t < LEVANTA ? 'capitanCamina' : 'alzaCopa') : t < ESPERA ? 'quieto' : t < LEVANTA ? 'agachados' : t < 9 ? 'saltan' : 'baila';
+    }
+    const cap = jug.get(C.capitan);
+    if (!cap) return;
+    if (!copa) { copa = crearCopa(); escena.add(copa); }
+    copa.visible = t > ESPERA - .4;
+    const pos = cap.pivote.position;
+    const arriba = Math.min(1, Math.max(0, (t - LEVANTA) / .45));
+    const k = arriba * arriba * (3 - 2 * arriba);
+    copa.position.set(pos.x, (1.0 + k * .9) + (t > LEVANTA ? Math.sin(t * 5) * .05 : 0), pos.z + .38 * (1 - k) + .2 * k);
+    copa.rotation.y += dt * (t > LEVANTA ? 1.2 : .3);
+    copa.scale.setScalar(Math.min(1, (t - ESPERA + .4) * 3) * 1.45);
+    copa.userData.estrella.rotation.y += dt * 4;
+    // sonidos y festejo
+    if (ceremoniaT < ESPERA && t >= ESPERA) sfx('redoble');
+    if (ceremoniaT < LEVANTA && t >= LEVANTA) {
+      sfx('copa'); amb.vitorear?.(2.5); sacudida = .25;
+      estallido(part, pos.x, 2.6, { color: '#ffd27a', color2: '#ffffff', n: 70, vel: 6, tam: .3, vida: 1.2, g: 2 });
+    }
+    ceremoniaT = t;
+    if (t > LEVANTA && t < 13) {
+      const colores = ['#ffd27a', '#ffffff', COLOR_EQ[C.eq], '#c5f04a'];
+      for (let i = 0; i < 9; i++) part.emitir({ x: (Math.random() - .5) * 14, y: 6 + Math.random() * 3, z: cz + (Math.random() - .5) * 8, vx: (Math.random() - .5) * .6, vy: -.6, color: colores[i % 4], tam: .09, vida: 4.5, g: .5, aditivo: false, roce: .995 });
+      fuegosT -= dt;
+      if (fuegosT <= 0) {
+        fuegosT = .32 + Math.random() * .3;
+        const fx = (Math.random() - .5) * v.L * .8, fz = -v.A / 2 - 6 - Math.random() * 6, fy = 11 + Math.random() * 6;
+        const c1 = ['#ff4a3a', '#3a8aff', '#ffd27a', '#c5f04a', '#ff8ad8', '#7affc8'][Math.floor(Math.random() * 6)];
+        for (let i = 0; i < 8; i++) part.emitir({ x: fx, y: fy - 6 + i * .7, z: fz, color: '#ffe8b0', tam: .15, vida: .25 + i * .04, opacidad: .7 });
+        estallido(part, fx, fy, { color: c1, color2: '#ffffff', n: 46, vel: 7, tam: .28, vida: 1.4, g: 2.5, z: fz });
+        sfx('fuegos');
+      }
+    }
   }
 
   function actualizar(v, dt, { mios = [] } = {}) {
@@ -516,6 +585,7 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
     sombraPel.position.set(pelota.position.x, .02, pelota.position.z);
     sombraPel.scale.setScalar(Math.max(.5, 1.7 - p.y * .2)); sombraPel.material.opacity = Math.max(.08, .35 - p.y * .05);
     if (vel > 16 && !p.duenio) part.emitir({ x: pelota.position.x, y: pelota.position.y, z: pelota.position.z, color: '#ffffff', tam: .25, vida: .25, crece: -.5, opacidad: .5 });
+    ceremoniaCopa(v, dt);
     camaraSigue(v, dt, manejados);
     render(dt);
   }
@@ -524,6 +594,7 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
     const p = v.pel, m = v;
     let pos, mira;
     const mio = [...manejados].map((id) => v.jug.find((j) => j.id === id)).find(Boolean);
+    const pateador = v.fase === 'penales' && v.pen && v.jug.find((j) => j.id === v.pen.pateador);
     if (modo === 'tercera' && mio) {
       const s = mio.eq ? -1 : 1;
       const tx = mio.x * .8 + p.x * .2, tz = mio.z * .8 + p.z * .2;
@@ -538,7 +609,20 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
       if (v.fase === 'gol') { pos.lerp(new THREE.Vector3(p.x * .9, 4, p.z + 8), .6); mira.set(p.x * .9, 1, p.z); }
     }
     const k = Math.min(1, dt * (modo === 'tercera' ? 5 : 3));
-    camPos.lerp(pos, k); camMira.lerp(mira, k);
+    if (pateador) {
+      const s = pateador.eq ? -1 : 1;
+      pos = new THREE.Vector3(pateador.x - s * 6.5, 2.7, pateador.z + 1.2);
+      mira = new THREE.Vector3(s * m.L / 2, 1, 0);
+    } else if (v.fase === 'fin' && v.copa) {
+      const t = v.faseT, cz = m.A * .14, cap = v.jug.find((j) => j.id === v.copa.capitan);
+      const a = t < 4.6 ? -.35 + t * .04 : -.2 + (t - 4.6) * .1;
+      const d = t < 4.6 ? 10 - Math.min(2, t * .4) : 7.6;
+      const cx = cap ? cap.x * .5 : 0;
+      pos = new THREE.Vector3(cx + Math.sin(a) * d, t < 4.6 ? 3 : 2.1, cz + 1 + Math.cos(a) * d);
+      mira = new THREE.Vector3(cx, t < 4.6 ? 1.1 : 1.45, cz);
+    }
+    const k2 = v.fase === 'fin' && v.copa ? Math.min(1, dt * 2.2) : k;
+    camPos.lerp(pos, k2); camMira.lerp(mira, k2);
   }
 
   function render(dt) {
