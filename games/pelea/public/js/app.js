@@ -280,7 +280,6 @@ function htmlPelea() {
     <button class="pf-boton-menu" data-menu>Pausa · Esc</button>
     <div class="pf-poderes" data-poderes></div>
     <div class="pf-anuncio" data-anuncio></div>
-    <div class="pf-lee" data-lee></div>
     <div class="pf-combo izq" data-combo="0"></div><div class="pf-combo der" data-combo="1"></div>
     <div class="pf-pie" data-pie></div>
     <div class="pf-cargando" data-cargando>Preparando el ring…</div>
@@ -341,15 +340,6 @@ function crearHud(raiz, luch) {
     }
     const dura = { ronda: 1700, peleen: 1000, ko: 1500, rematalo: 2800, remate: 3500, gana: 2200, campeon: 999999 }[a?.tipo] ?? 2000;
     caja.classList.toggle('sale', !a || performance.now() - anuncioT > dura);
-    // los bots te leyeron un patrón: aviso arriba
-    for (const e of v.ev || []) {
-      if (e.k !== 'lectura' || e.n <= leeVisto) continue;
-      leeVisto = e.n;
-      const el = raiz.querySelector('[data-lee]');
-      const quien = e.a ? luch.find((l) => l.id === e.a)?.nombre : null;
-      el.innerHTML = `🧠 <b>${esc(quien || 'El rival')}</b> ${esc(e.texto.replace(/^Te leyó: /, 'te leyó: '))}`;
-      el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
-    }
     // contador de combo: golpes seguidos que le está metiendo cada equipo al otro
     for (const eq of [0, 1]) {
       const n = Math.max(0, ...v.luch.filter((f) => f.eq !== eq).map((f) => f.combo || 0));

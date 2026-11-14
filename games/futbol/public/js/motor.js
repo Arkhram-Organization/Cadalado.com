@@ -4,10 +4,10 @@
 // Cancha cerrada (como las de fútbol 5): la pelota rebota en las paredes y en la red del techo.
 export const PASO = 1 / 60;
 export const FORMATOS = {
-  5: { L: 40, A: 22, arco: 3.4, altoArco: 2.0 },
-  6: { L: 46, A: 25, arco: 3.8, altoArco: 2.1 },
-  7: { L: 52, A: 29, arco: 4.4, altoArco: 2.2 },
-  8: { L: 58, A: 33, arco: 5.0, altoArco: 2.3 },
+  5: { L: 40, A: 22, arco: 4.2, altoArco: 2.3 },
+  6: { L: 46, A: 25, arco: 4.7, altoArco: 2.35 },
+  7: { L: 52, A: 29, arco: 5.3, altoArco: 2.4 },
+  8: { L: 58, A: 33, arco: 6.0, altoArco: 2.45 },
 };
 // posiciones de cada uno (sin el arquero): x = 0 en el arco propio, 1 en la mitad de cancha; z de -1 a 1
 const FORMACIONES = {
@@ -297,7 +297,7 @@ function pasoPenales(m, entradas) {
           if (pref.n && Math.random() < .5 + .45 * confianza(pref.n, m.dificultad)) lado = Math.sign(-pref.lado * arq.s) || lado;
         }
         if (Math.random() < .12) lado = 0; // a veces se queda parado en el medio
-        arq.est = 'vuela'; arq.t = 0; arq.cd = 2; arq.lado = lado || 1;
+        arq.est = 'vuela'; arq.t = 0; arq.cd = 2; arq.lado = lado || 1; arq.altoVuelo = .2 + Math.random() * .9;
         arq.vz = lado * 6.2 * (.85 + N.reflejo * .3); arq.vx = 0;
         if (lado) evento(m, { k: 'estirada', a: arq.id, lado });
       }
@@ -382,9 +382,12 @@ function controlar(m, j, inp) {
     if (j.t >= dur) { j.est = 'quieto'; j.t = 0; }
     return;
   }
-  if (j.est === 'vuela') { // estirada del arquero
-    j.x += j.vx * PASO; j.z += j.vz * PASO; j.vx *= .97; j.vz *= .97; limitar(m, j);
-    if (j.t > .75) { j.est = 'levanta'; j.t = 0; j.vx = j.vz = 0; }
+  if (j.est === 'vuela') { // estirada del arquero: vuela ~0,55 s y después se arrastra hasta frenar
+    const enElAire = j.t < .55;
+    j.x += j.vx * PASO; j.z += j.vz * PASO;
+    const roce = enElAire ? .992 : .86;
+    j.vx *= roce; j.vz *= roce; limitar(m, j);
+    if (j.t > .9) { j.est = 'levanta'; j.t = 0; j.vx = j.vz = 0; }
     return;
   }
   if (['patea', 'pase', 'cabezazo'].includes(j.est) && j.t < .28) { integrar(m, j, 0, 0, false, 5); return; }
@@ -420,7 +423,8 @@ function controlar(m, j, inp) {
     // el arquero manejado por una persona se estira con la barrida
     if (apreto('barrida') && j.cd <= 0 && j.arquero) {
       const lado = Math.abs(dz) > .2 ? Math.sign(dz) : (m.pel.z > j.z ? 1 : -1);
-      j.est = 'vuela'; j.t = 0; j.cd = 1; j.vz = lado * 7; j.vx = dx * 3; j.lado = lado;
+      j.est = 'vuela'; j.t = 0; j.cd = 1; j.vz = lado * 7.2; j.vx = dx * 3; j.lado = lado;
+      j.altoVuelo = clamp((m.pel.y > .9 ? m.pel.y : .45) - .2, .15, 1.3);
       evento(m, { k: 'estirada', a: j.id, lado }); return;
     }
     if (apreto('barrida') && j.cd <= 0 && !j.arquero) { j.est = 'barrida'; j.t = 0; j.cd = 1.2; j.barrio = false; evento(m, { k: 'barrida', a: j.id }); }
@@ -532,7 +536,8 @@ function truco(m, j, n, dx, dz) {
     // el rival se abre para un costado (le pasó entre las piernas) y yo no la toco hasta que pase
     const lado = Math.random() < .5 ? 1 : -1;
     delante.engano = .6; delante.enganoDir = { x: -Math.sin(j.ang) * lado, z: Math.cos(j.ang) * lado };
-    j.turbo = 1; j.esperaPase = 1.4; j.sinAgarrar = .22; j.pasa = { id: delante.id, t: .8 };
+    // no la toca hasta que la pelota pasó al rival (si no, la volvía a agarrar antes del caño)
+    j.turbo = 1; j.esperaPase = 1.4; j.sinAgarrar = dist(j, delante) / 6.5 + .14; j.pasa = { id: delante.id, t: .9 };
   } else if (T.id === 'sombrero') {
     j.est = 'sombrero'; exito = !!delante;
     soltar(m, j);
@@ -752,9 +757,15 @@ function pelota(m) {
     if (j.sinAgarrar > 0) continue;
     const d = dist(j, p);
     const arq = j.arquero && enArea(m, j, p);
+    if (arq) {
+      // el arquero: la pelota tiene que tocar su cuerpo (parado o estirado)
+      const c = cuerpoArquero(j), t = distPalo(p, c.a, c.b);
+      if (t.d < c.r + R_PEL && t.d < md) { md = t.d; mejor = j; j.toque = t.u; j.toqueVuela = c.vuela; }
+      continue;
+    }
     // después de un truco o de un pase que te esperan, un poco más de alcance para volver a agarrarla (ayuda)
-    const alcance = arq ? (j.est === 'vuela' ? 1.05 : .72) : j.esperaPase > 0 ? .95 : .62;
-    const alto = arq ? (j.est === 'vuela' ? 2.1 : 2.3) : .75;
+    const alcance = j.esperaPase > 0 ? .95 : .62;
+    const alto = .75;
     if (d < alcance && p.y < alto && d < md) {
       const rel = Math.hypot(p.vx - j.vx, p.vz - j.vz);
       if (j.est === 'vuela' || rel < 24 || (j.arquero && enArea(m, j, p))) { md = d; mejor = j; }
@@ -763,14 +774,21 @@ function pelota(m) {
   if (mejor) {
     const rel = Math.hypot(p.vx - mejor.vx, p.vz - mejor.vz);
     if (mejor.arquero && enArea(m, mejor, p)) {
-      // atajada: si viene muy fuerte o es una estirada, a veces la da rebote
-      const ataja = Math.random() < clamp(.88 - rel * .036 - (mejor.est === 'vuela' ? .1 : 0) + (mejor.humano ? .05 : nivelDe(m, mejor).ataja), .08, .94);
-      if (rel > 9 && (mejor.est === 'vuela' || rel > 14)) evento(m, { k: 'atajada', a: mejor.id, rebote: !ataja });
-      if (ataja || rel < 9) {
+      // ¿la agarra o la da rebote? Las lentas se agarran; las fuertes y las que pega con la punta de los dedos, menos
+      const extra = mejor.humano ? .05 : nivelDe(m, mejor).ataja;
+      const punta = mejor.toqueVuela && mejor.toque > .8;
+      const ataja = rel < 8 || Math.random() < clamp(.97 - Math.max(0, rel - 8) * .045 + extra - (punta ? .3 : 0) - (mejor.toqueVuela ? .08 : 0), .05, .97);
+      if (rel > 9) evento(m, { k: 'atajada', a: mejor.id, rebote: !ataja });
+      if (ataja) {
         p.duenio = mejor.id; mejor.agarrada = rel > 6; mejor.est = mejor.agarrada ? 'ataja' : mejor.est; mejor.t = 0; mejor.paraSacar = .9;
+        p.vx = p.vy = p.vz = 0;
       } else {
-        p.vx = -p.vx * .35 + (Math.random() - .5) * 4; p.vz = p.vz * .4 + (Math.random() - .5) * 8; p.vy = 2 + Math.random() * 3;
-        p.libreDe = mejor.id; p.libreT = .35; p.ultimo = mejor.id;
+        // rebote: siempre para afuera del arco (hacia la cancha) y abierto al costado, como un manotazo
+        const lado = Math.sign(p.z - mejor.z) || mejor.lado || 1;
+        const f = clamp(rel * .4, 4, 11);
+        p.vx = mejor.s * (f * .55 + Math.random() * 2); p.vz = lado * (f * .7 + Math.random() * 2); p.vy = 2 + Math.random() * 2.5 + (punta ? 2 : 0);
+        p.x = clamp(p.x, -m.L / 2 + R_PEL, m.L / 2 - R_PEL);
+        p.libreDe = mejor.id; p.libreT = .4; p.ultimo = mejor.id;
       }
     } else if (rel < 15 || mejor.esperaPase > 0) {
       const antes = p.ultimo && buscar(m, p.ultimo);
@@ -785,6 +803,22 @@ function pelota(m) {
   for (const j of m.jug) if (j.esperaPase > 0) j.esperaPase -= PASO;
 }
 
+// El cuerpo del arquero, para saber si la pelota lo toca: un "palo" del piso a las manos cuando está parado
+// (con los brazos un poco abiertos) y, cuando se estira, del pecho a la punta de los dedos, volando en arco.
+function cuerpoArquero(j) {
+  if (j.est === 'vuela') {
+    const k = Math.min(1, j.t / .55), h = j.altoVuelo ?? .5, lado = j.lado || 1;
+    const y = .3 + Math.sin(k * Math.PI) * h;
+    return { a: { x: j.x, y: Math.max(.2, y - .15), z: j.z - lado * .3 }, b: { x: j.x, y: y + .2 + h * .35, z: j.z + lado * 1.2 }, r: .3, vuela: true };
+  }
+  return { a: { x: j.x, y: .1, z: j.z }, b: { x: j.x, y: 2.15, z: j.z }, r: .46, vuela: false };
+}
+// distancia de la pelota (en 3D) al palo a-b, y en qué parte del palo (0 = a, 1 = b)
+function distPalo(p, a, b) {
+  const vx = b.x - a.x, vy = b.y - a.y, vz = b.z - a.z, l = vx * vx + vy * vy + vz * vz || 1;
+  const u = clamp(((p.x - a.x) * vx + (p.y - a.y) * vy + (p.z - a.z) * vz) / l, 0, 1);
+  return { d: Math.hypot(p.x - (a.x + vx * u), p.y - (a.y + vy * u), p.z - (a.z + vz * u)), u };
+}
 const enArea = (m, j, p) => Math.abs(p.x - (-j.s * m.L / 2)) < 6.5 && Math.abs(p.z) < m.arco / 2 + 4.5;
 
 function gol(m, eq) {
@@ -851,23 +885,54 @@ function pensarArquero(m, j) {
     if (o) return { x: (o.x - j.x), z: (o.z - j.z), pase: true, ...(dist(o, j) > 18 ? { barrida: true, pase: false } : {}) };
     return { x: j.s, z: 0, tiro: false };
   }
-  // ¿viene un remate? se estira
+  // ¿viene un remate? Reacciona (más rápido cuanto mejor es), calcula por dónde pasa y se estira a esa altura
+  const N = nivelDe(m, j);
   const haciaMi = p.vx * -j.s;
-  if (!p.duenio && haciaMi > 7 && j.est !== 'vuela' && j.cd <= 0) {
-    const tLlega = (Math.abs(p.x - gx)) / Math.abs(p.vx);
-    const zLlega = p.z + p.vz * tLlega;
-    if (tLlega < .48 && Math.abs(zLlega) < m.arco / 2 + .6) {
-      const dz = zLlega - j.z;
-      if (Math.abs(dz) > .7) {
-        j.est = 'vuela'; j.t = 0; j.cd = 1.2;
-        let reflejo = nivelDe(m, j).reflejo * (.8 + Math.random() * .4);
-        const pateo = p.ultimo && m.hidDe[p.ultimo];
-        if (pateo) { const pref = preferencia(lectura(m, pateo).palo); if (Math.sign(-pref.lado * j.s) === Math.sign(dz)) reflejo *= 1 + .45 * confianza(pref.n, m.dificultad); }
-        j.vz = clamp(dz / Math.max(.18, tLlega), -8.5, 8.5) * reflejo; j.vx = 0;
-        j.ang = j.s > 0 ? 0 : Math.PI;
-        evento(m, { k: 'estirada', a: j.id, lado: Math.sign(dz) });
+  if (!p.duenio && haciaMi > 6 && j.est !== 'vuela') {
+    j.vioTiro ??= m.t;
+    const tK = (j.x - p.x) / (p.vx || 1e-6); // cuándo cruza la línea del arquero
+    if (m.t - j.vioTiro >= (1 - N.reflejo) * .22 && tK > 0 && tK < .75 && j.cd <= 0) {
+      const error = (Math.random() - .5) * (1 - N.reflejo) * 1.4;
+      const zK = p.z + p.vz * tK + error, yK = Math.max(.12, p.y + p.vy * tK - G / 2 * tK * tK);
+      const dz = zK - j.z;
+      if (Math.abs(zK) < m.arco / 2 + .8) {
+        if (Math.abs(dz) > .5 || yK > 2.05) {
+          let reflejo = (.85 + N.reflejo * .3) * (.9 + Math.random() * .2);
+          const pateo = p.ultimo && m.hidDe[p.ultimo];
+          if (pateo) { const pref = preferencia(lectura(m, pateo).palo); if (Math.sign(-pref.lado * j.s) === Math.sign(dz)) reflejo *= 1 + .3 * confianza(pref.n, m.dificultad); }
+          const lado = Math.sign(dz) || 1;
+          const destino = zK - lado * .8; // las manos llegan, no el cuerpo
+          const maxV = 6 + N.reflejo * 3.5;
+          j.est = 'vuela'; j.t = 0; j.cd = 1.3; j.lado = lado;
+          j.vz = clamp((destino - j.z) / Math.max(.12, Math.min(tK, .55)), -maxV, maxV) * reflejo; j.vx = 0;
+          j.altoVuelo = clamp(yK - .25, .12, 1.35);
+          j.ang = j.s > 0 ? 0 : Math.PI;
+          evento(m, { k: 'estirada', a: j.id, lado });
+          return { x: 0, z: 0 };
+        }
+        // le va casi al cuerpo: da un pasito
+        return { x: 0, z: clamp(dz * 3, -1, 1) };
+      }
+    }
+  } else j.vioTiro = null;
+  // mano a mano: si uno entra solo al área, sale a achicar (y si está muy cerca, se le tira a los pies)
+  const conPelota = p.duenio && buscar(m, p.duenio);
+  if (conPelota && conPelota.eq !== j.eq && j.est !== 'vuela') {
+    const dArco = Math.hypot(conPelota.x - gx, conPelota.z);
+    if (dArco < 8.5 && Math.abs(conPelota.z) < m.arco * 1.4) {
+      const dj = dist(j, conPelota);
+      if (dj < 1.6 && j.cd <= 0 && Math.random() < .04 + N.reflejo * .08) {
+        const lado = Math.sign(conPelota.z - j.z) || 1;
+        j.est = 'vuela'; j.t = 0; j.cd = 1.4; j.lado = lado; j.altoVuelo = .1;
+        j.vx = (conPelota.x - j.x) * 2.5; j.vz = (conPelota.z - j.z) * 2.5;
+        evento(m, { k: 'estirada', a: j.id, lado });
         return { x: 0, z: 0 };
       }
+      const sale = clamp(dArco * .38, 1.2, 4.2);
+      const a = Math.atan2(conPelota.z, conPelota.x - gx);
+      const tx = gx + Math.cos(a) * sale, tz = Math.sin(a) * sale;
+      const dx = tx - j.x, dz = tz - j.z, l = Math.hypot(dx, dz);
+      return l < .15 ? { x: 0, z: 0 } : { x: dx / Math.max(l, .4), z: dz / Math.max(l, .4), sprint: l > 1.5 };
     }
   }
   // pelota suelta cerca del arco y nadie del otro equipo más cerca: salir a buscarla

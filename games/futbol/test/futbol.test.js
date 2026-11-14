@@ -192,12 +192,11 @@ test('hay 8 trucos y el caño pasa la pelota entre las piernas', () => {
   despejar(m, ['0-1', '1-1']);
   Object.assign(rival, { x: 1.3, z: 0, est: 'quieto', t: 0, vx: 0, vz: 0, ia: { prox: 1e9, inp: { x: 0, z: 0 } } });
   Object.assign(yo, { x: 0, z: 0, ang: 0, vx: 0, vz: 0 }); m.pel.duenio = yo.id;
-  paso(m, new Map([['yo', { x: 0, z: 0, truco: 3 }]]));
+  conAzar(.1, () => paso(m, new Map([['yo', { x: 0, z: 0, truco: 3 }]])));
   assert.ok(m.ev.some((e) => e.k === 'truco' && e.truco === 'cano' && e.exito));
-  let recupero = false;
-  for (let t = 0; t < 1.5 && !recupero; t += PASO) { paso(m, new Map([['yo', { x: 1, z: 0 }]])); recupero = m.pel.duenio === yo.id; }
-  assert.ok(recupero, 'la volvió a agarrar del otro lado');
-  assert.ok(yo.x > rival.x, 'pasó al rival');
+  correr(m, 1.5, new Map([['yo', { x: 1, z: 0 }]]));
+  assert.equal(m.pel.duenio, yo.id, 'la volvió a agarrar');
+  assert.ok(yo.x > rival.x, 'y quedó del otro lado del rival');
 });
 
 test('la ruleta esquiva el quite', () => {
@@ -427,4 +426,58 @@ test('los trucos sin la pelota no hacen nada y tienen espera entre uno y otro', 
   paso(m, new Map([['yo', { x: 0, z: 0 }]]));
   truco(m, 7);
   assert.equal(m.ev.filter((e) => e.k === 'truco').length, antes, 'hay que esperar entre trucos');
+});
+
+// ---------------------------------------------------------------- arqueros
+function remateAlArco(zDestino, { vel = 20, vy = 1.5, dificultad = 1, desde = 9 } = {}) {
+  const m = partido(5, { dificultad, humanos: [] });
+  for (const j of m.jug) if (!j.arquero) { j.x = -m.L / 2 + 3; j.z = m.A / 2 - 1; j.est = 'caido'; j.t = -1000; }
+  const arq = buscar(m, '1-0');
+  Object.assign(arq, { x: m.L / 2 - .8, z: 0, est: 'quieto', t: 0, cd: 0, vx: 0, vz: 0, vioTiro: null });
+  const x0 = m.L / 2 - desde, ang = Math.atan2(zDestino, m.L / 2 - x0);
+  Object.assign(m.pel, { x: x0, z: 0, y: .11, vx: Math.cos(ang) * vel, vz: Math.sin(ang) * vel, vy, duenio: null, ultimo: '0-1', libreT: 0 });
+  return { m, arq };
+}
+
+test('arquero: al remate cruzado se estira para ese lado', () => {
+  const { m, arq } = remateAlArco(1.7);
+  let seTiro = false;
+  for (let t = 0; t < .8; t += PASO) { paso(m); if (arq.est === 'vuela') { seTiro = true; break; } }
+  assert.ok(seTiro, 'se tiró');
+  assert.equal(arq.lado, 1, 'para el lado de la pelota');
+});
+
+test('arquero: los rebotes salen siempre para la cancha, nunca para su arco', () => {
+  let rebotes = 0;
+  for (let k = 0; k < 60; k++) {
+    const { m, arq } = remateAlArco((Math.random() - .5) * 3, { vel: 26 });
+    let visto = 0;
+    for (let t = 0; t < 1; t += PASO) {
+      paso(m);
+      const reb = m.ev.find((e) => e.k === 'atajada' && e.rebote && e.n > visto);
+      if (reb) { visto = reb.n; rebotes++; assert.ok(m.pel.vx * arq.s >= 0, 'el rebote va hacia la cancha'); break; }
+    }
+  }
+  assert.ok(rebotes > 0, 'hubo rebotes para probar');
+});
+
+test('arquero: la pelota lenta al cuerpo la agarra', () => {
+  const { m, arq } = remateAlArco(0, { vel: 9, vy: .5, desde: 6 });
+  for (let t = 0; t < 2 && m.pel.duenio !== arq.id; t += PASO) paso(m);
+  assert.equal(m.pel.duenio, arq.id);
+});
+
+test('arquero: sale a achicar en el mano a mano', () => {
+  const m = partido(5, { humanos: [{ hid: 'yo', eq: 0, pid: '0-1', cambia: false }] });
+  const yo = buscar(m, '0-1'), arq = buscar(m, '1-0');
+  despejar(m, ['0-1', '1-0']);
+  Object.assign(arq, { x: m.L / 2 - .8, z: 0, est: 'quieto', t: 0 });
+  Object.assign(yo, { x: m.L / 2 - 7, z: 0, ang: 0 }); m.pel.duenio = yo.id;
+  const antes = arq.x;
+  correr(m, .8, new Map([['yo', { x: 0, z: 0 }]]));
+  assert.ok(antes - arq.x > .8, `salió (${(antes - arq.x).toFixed(2)} m)`);
+});
+
+test('arcos más grandes en todos los formatos', () => {
+  for (const f of [5, 6, 7, 8]) assert.ok(FORMATOS[f].arco >= 4.2 && FORMATOS[f].altoArco >= 2.3);
 });

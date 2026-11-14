@@ -253,7 +253,6 @@ function htmlCancha() {
     <div class="fu-marcador"><span class="eq" style="--c:${COLOR_EQ[0]}">ROJO</span><b data-g0>0</b><i>-</i><b data-g1>0</b><span class="eq" style="--c:${COLOR_EQ[1]}">AZUL</span><time data-reloj>04:00</time></div>
     <div class="fu-gol" data-gol></div>
     <div class="fu-aviso" data-aviso></div>
-    <div class="pf-lee" data-lee></div>
     <div class="fu-pen hidden" data-pen></div>
     <div class="fu-campeon" data-campeon></div>
     <div class="fu-trucos" data-trucos></div>
@@ -305,8 +304,6 @@ function crearHud(raiz, jugadores) {
         $('[data-gol]').innerHTML = `<b style="--c:${COLOR_EQ[e.eq]}">¡GOOOL!</b><small>${e.contra ? `En contra de ${esc(quien)}` : quien ? `de ${esc(quien)}` : ''}${e.asistencia ? ` · asistencia de ${esc(nombre(e.asistencia))}` : ''}</small><span>${e.marcador[0]} - ${e.marcador[1]}</span>`;
         $('[data-gol]').classList.add('on'); golT = performance.now();
         relator(e.contra ? `¡Gol en contra de ${quien}!` : `¡Gooool de ${quien}!`);
-      } else if (e.k === 'lectura' && mios.includes(e.hid)) {
-        const el = $('[data-lee]'); el.innerHTML = `🧠 ${esc(e.texto)}`; el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
       } else if (['palo', 'atajada', 'cabezazo', 'volea', 'esquiva'].includes(e.k) || (e.k === 'truco' && e.exito)) {
         const txt = e.k === 'truco' ? `¡${e.nombre.toUpperCase()}!` : { palo: '¡PALO!', atajada: e.rebote ? '¡DA REBOTE!' : '¡QUÉ ATAJADA!', cabezazo: '¡CABEZAZO!', volea: '¡DE VOLEA!', esquiva: '¡QUÉ RULETA!' }[e.k];
         $('[data-aviso]').textContent = txt; $('[data-aviso]').classList.remove('on'); void $('[data-aviso]').offsetWidth; $('[data-aviso]').classList.add('on'); avisoT = performance.now();

@@ -343,12 +343,12 @@ function texturaPelota() {
   g.putImageData(img, 0, 0);
   texPelota = new THREE.CanvasTexture(c);
   texPelota.colorSpace = THREE.SRGBColorSpace;
-  texPelota.anisotropy = 8;
+  texPelota.anisotropy = 16;
   return texPelota;
 }
 function crearPelota() {
   const mat = new THREE.MeshPhysicalMaterial({ map: texturaPelota(), roughness: .32, clearcoat: .8, clearcoatRoughness: .25 });
-  const m = new THREE.Mesh(new THREE.SphereGeometry(R_PEL, 40, 28), mat);
+  const m = new THREE.Mesh(new THREE.SphereGeometry(R_PEL, 96, 64), mat); // muchas caras: el borde queda redondo aunque esté grande
   m.scale.setScalar(ESCALA_PELOTA);
   m.castShadow = true;
   return m;
@@ -466,7 +466,7 @@ export function crearEscena(lienzoCanvas, { cancha = 'barrio' } = {}) {
       : g.rotation.y * Math.max(0, 1 - dt * 14);
     g.rotation.x += (objX - g.rotation.x) * Math.min(1, dt * 18);
     g.rotation.z += (objZ - g.rotation.z) * Math.min(1, dt * 14);
-    g.position.y = j.est === 'barrida' ? -.35 : j.est === 'vuela' ? .45 + Math.sin(Math.min(1, j.t / .6) * Math.PI) * .5 : 0;
+    g.position.y = j.est === 'barrida' ? -.35 : j.est === 'vuela' ? Math.max(0, .05 + Math.sin(Math.min(1, j.t / .55) * Math.PI) * (j.altoVuelo ?? .5)) : 0;
   }
 
   function hablar(id, situacion, semilla, prob = 1) {
