@@ -43,6 +43,10 @@
       "destination": "/api/juegos/futbol?ruta=:ruta*"
     },
     {
+      "source": "/api/empujon/:ruta*",
+      "destination": "/api/juegos/empujon?ruta=:ruta*"
+    },
+    {
       "source": "/api/memes/:ruta*",
       "destination": "/api/juegos/memes?ruta=:ruta*"
     },
@@ -85,6 +89,14 @@
     {
       "source": "/futbol/local",
       "destination": "/futbol/index"
+    },
+    {
+      "source": "/empujon/sala/:code",
+      "destination": "/empujon/index"
+    },
+    {
+      "source": "/empujon/bots",
+      "destination": "/empujon/index"
     },
     {
       "source": "/memes/sala/:code",

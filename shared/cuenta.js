@@ -221,7 +221,7 @@ export async function cambiarNombre(u, nombre) {
 // solo la versión (para que el navegador no muestre una vieja).
 const COLOR_OK = /^#[0-9a-fA-F]{6}$/;
 const FONDOS = ['lima', 'noche', 'atardecer', 'cancha', 'casino', 'oceano', 'fuego', 'violeta'];
-const JUEGOS_OK = ['royale', 'carrera', 'casino', 'haxball', 'pelea', 'futbol', 'memes', 'truco', 'ajedrez'];
+const JUEGOS_OK = ['royale', 'carrera', 'casino', 'haxball', 'pelea', 'futbol', 'empujon', 'memes', 'truco', 'ajedrez'];
 const IMG_OK = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 const texto = (t, max) => String(t ?? '').replace(/[\u0000-\u0009\u000b-\u001f\u007f\u200b-\u200f\u202a-\u202e]/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 export function limpiarPerfil(p) {

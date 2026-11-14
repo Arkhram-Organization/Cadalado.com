@@ -178,6 +178,7 @@ const LISTAS_DE_SALAS = {
   haxball: ['/api/haxball/lobby', () => import('../games/haxball/api.js')],
   pelea: ['/api/pelea/lobby', () => import('../games/pelea/api.js')],
   futbol: ['/api/futbol/lobby', () => import('../games/futbol/api.js')],
+  empujon: ['/api/empujon/lobby', () => import('../games/empujon/api.js')],
   memes: ['/api/memes/lobby', () => import('../games/memes/api.js')],
   truco: ['/api/truco/lobby', () => import('../games/truco/api.js')],
   ajedrez: ['/ajedrez/api/lobby', () => import('../games/chessort/api.js')],

@@ -6,7 +6,7 @@
 // ¿A qué objeto pertenece una clave?
 export function destinoDe(clave) {
   let m;
-  if ((m = /^(?:sala|lock|pres|pos):(memes|casino|carrera|royale|haxball|pelea|futbol):([A-Za-z0-9-]+)$/.exec(clave))) return `${m[1]}:${m[2].toUpperCase()}`;
+  if ((m = /^(?:sala|lock|pres|pos):(memes|casino|carrera|royale|haxball|pelea|futbol|empujon):([A-Za-z0-9-]+)$/.exec(clave))) return `${m[1]}:${m[2].toUpperCase()}`;
   if ((m = /^(?:lock:|pres:)?truco:([A-Za-z0-9]+)$/.exec(clave))) return `truco:${m[1].toUpperCase()}`;
   if ((m = /^(?:room|lock|pres):([a-z0-9]{4,16})$/.exec(clave))) return `ajedrez:${m[1]}`;
   return 'club';

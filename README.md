@@ -20,6 +20,7 @@ Todo es **un solo sitio en Vercel**, con cada juego en su ruta:
 | Haxball (fútbol 2D por equipos) | [`games/haxball`](games/haxball) | `cadalado.com/haxball` |
 | Piña Final (pelea 2D, 1v1 y 2v2) | [`games/pelea`](games/pelea) | `cadalado.com/pelea` |
 | La Canchita (fútbol 5 a 8 en 3D) | [`games/futbol`](games/futbol) | `cadalado.com/futbol` |
+| Empujón (todos contra todos o equipos, hasta 20) | [`games/empujon`](games/empujon) | `cadalado.com/empujon` |
 | Cuentas, historial, amigos y chats | [`shared`](shared) | `cadalado.com/club` |
 
 ```
@@ -102,6 +103,11 @@ mirá `games/memes/lib/memes.js`: es el ejemplo más corto.
   Si se activa "Si empatan: penales", el empate se define en una tanda (5 por lado y muerte súbita; la persona
   elige el palo y carga el tiro, o se tira con L si ataja). Cuando hay campeón, ceremonia con una copa propia:
   el equipo se junta, el capitán la levanta, papelitos, fuegos artificiales y bailes.
+- **Empujón:** arena para muchos arriba de la ciudad (Terraza, Plato y Puente). Te movés, empujás (mantener =
+  más fuerte), agarrás y revoleás, y saltás. Tirar a alguien da un punto y te hace crecer; el primero lleva la
+  corona (vale doble). Caer no te saca: volvés a entrar. Al final la plataforma se achica. Objetos: guante
+  gigante, cáscara de banana y bomba. Todos contra todos (hasta 20) o por equipos de 1v1 a 4v4. En las salas
+  online se entra en cualquier momento: si la ronda ya arrancó, te suma al toque (y deja su lugar un bot).
 - **Bots que aprenden (Piña Final y La Canchita):** durante el partido anotan cómo jugás (en la pelea: qué hacés a
   cada distancia, cuánto saltás o te cubrís; en el fútbol: a qué palo pateás, para qué lado gambeteás, qué trucos
   repetís) y se acomodan: gancho al que salta, barrida al que se cubre, el arquero se tira a tu palo, te cortan la

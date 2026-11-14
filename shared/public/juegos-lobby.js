@@ -6,6 +6,7 @@ export const SALAS = {
   carrera: (o) => ({ api: '/api/carrera/crear', url: '/carrera/sala/', opciones: { bots: 5, publica: false, ...o } }),
   memes: (o) => ({ api: '/api/memes/crear', url: '/memes/sala/', opciones: { bots: 2, publica: false, ...o } }),
   haxball: (o) => ({ api: '/api/haxball/crear', url: '/haxball/sala/', opciones: { bots: 1, publica: false, ...o } }),
+  empujon: (o) => ({ api: '/api/empujon/crear', url: '/empujon/sala/', opciones: { publica: false, ...o } }),
   futbol: (o) => ({ api: '/api/futbol/crear', url: '/futbol/sala/', opciones: { publica: false, ...o } }),
   pelea: (o) => ({ api: '/api/pelea/crear', url: '/pelea/sala/', opciones: { publica: false, ...o } }),
   casino: (o) => ({ api: '/api/casino/crear', url: '/casino/mesa/', opciones: { tipo: 'blackjack', publica: false, ...o } }),
